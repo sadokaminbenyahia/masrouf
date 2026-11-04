@@ -22,7 +22,9 @@ const LOOKUPS = {
 };
 
 let seq = 0;
-function txn(p: Partial<Transaction> & Pick<Transaction, 'label' | 'amount' | 'type'>): Transaction {
+function txn(
+  p: Partial<Transaction> & Pick<Transaction, 'label' | 'amount' | 'type'>,
+): Transaction {
   seq++;
   return {
     id: `t${seq}`,
@@ -115,10 +117,14 @@ describe('export → re-parse : mêmes dates, montants et types', () => {
       txn({ type: 'INCOME', amount: 2_600_000, label: 'VIREMENT SALAIRE', date: '2026-03-01' }),
     ];
     const once = roundTrip(rows).rows;
-    const reExported = once.map((r) => txn({ type: r.type, amount: r.amount, label: r.label, date: r.date }));
+    const reExported = once.map((r) =>
+      txn({ type: r.type, amount: r.amount, label: r.label, date: r.date }),
+    );
     const twice = roundTrip(reExported).rows;
     const hashes = (list: typeof once) =>
-      list.map((r) => computeImportHash({ date: r.date, amount: r.amount, type: r.type, label: r.label }));
+      list.map((r) =>
+        computeImportHash({ date: r.date, amount: r.amount, type: r.type, label: r.label }),
+      );
     expect(hashes(twice)).toEqual(hashes(once));
   });
 

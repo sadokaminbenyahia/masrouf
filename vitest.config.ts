@@ -19,7 +19,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/domain/**/*.ts'],
-      exclude: ['src/domain/**/*.test.ts', 'src/domain/**/index.ts', 'src/domain/**/types.ts'],
+      exclude: ['src/domain/**/*.test.ts', 'src/domain/**/__fixtures__/**', 'src/domain/**/index.ts', 'src/domain/**/types.ts'],
       thresholds: { lines: 80, functions: 80, statements: 80, branches: 75 },
       reporter: ['text-summary', 'html'],
     },

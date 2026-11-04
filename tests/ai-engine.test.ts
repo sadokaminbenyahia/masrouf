@@ -55,12 +55,8 @@ const toSample = (t: AiTransaction): TrainingSample | null =>
   t.type === 'TRANSFER' || t.categoryId === null
     ? null
     : { label: t.label, amount: t.amount, type: t.type, categoryId: t.categoryId };
-const trainSet = history
-  .filter((t) => t.date < SPLIT)
-  .flatMap((t) => toSample(t) ?? []);
-const testSet = history
-  .filter((t) => t.date >= SPLIT)
-  .flatMap((t) => toSample(t) ?? []);
+const trainSet = history.filter((t) => t.date < SPLIT).flatMap((t) => toSample(t) ?? []);
+const testSet = history.filter((t) => t.date >= SPLIT).flatMap((t) => toSample(t) ?? []);
 const model = engine.trainCategorizer(trainSet);
 
 const ACCOUNTS = [
@@ -68,7 +64,12 @@ const ACCOUNTS = [
   { id: 'acc_bank', name: 'BIAT', type: 'BANK' },
   { id: 'acc_card', name: 'Visa BIAT', type: 'CARD' },
 ];
-const parseCtx: ParseEntryContext = { today: TODAY, categories: CATEGORIES, accounts: ACCOUNTS, model };
+const parseCtx: ParseEntryContext = {
+  today: TODAY,
+  categories: CATEGORIES,
+  accounts: ACCOUNTS,
+  model,
+};
 
 describe('catégorisation (trainCategorizer → categorize → learnCorrection)', () => {
   it('le jeu synthétique est réaliste et séparé en apprentissage / test', () => {
@@ -99,7 +100,11 @@ describe('catégorisation (trainCategorizer → categorize → learnCorrection)'
   });
 
   it('learnCorrection change la prédiction suivante, sans muter le modèle d’origine', () => {
-    const input = { label: 'PAIEMENT CB CARREFOUR LA MARSA', amount: 89_000, type: 'EXPENSE' as const };
+    const input = {
+      label: 'PAIEMENT CB CARREFOUR LA MARSA',
+      amount: 89_000,
+      type: 'EXPENSE' as const,
+    };
     const before = engine.categorize(model, input, CATEGORIES);
     expect(before?.categoryId).toBe(categoryId('Courses'));
     const frozen = JSON.stringify(model);
@@ -122,23 +127,49 @@ describe('catégorisation (trainCategorizer → categorize → learnCorrection)'
   });
 
   it('démarrage à froid (modèle null) : règles par mots-clés', () => {
-    const p = engine.categorize(null, { label: 'Pharmacie Ennasr', amount: 12_000, type: 'EXPENSE' }, CATEGORIES);
+    const p = engine.categorize(
+      null,
+      { label: 'Pharmacie Ennasr', amount: 12_000, type: 'EXPENSE' },
+      CATEGORIES,
+    );
     expect(p?.categoryId).toBe(categoryId('Santé'));
     expect(p?.source).toBe('RULE');
-    expect(engine.categorize(null, { label: 'zzqx', amount: 1, type: 'EXPENSE' }, CATEGORIES)).toBeNull();
-    expect(engine.categorize(model, { label: 'CARREFOUR', amount: 1, type: 'EXPENSE' }, [])).toBeNull();
+    expect(
+      engine.categorize(null, { label: 'zzqx', amount: 1, type: 'EXPENSE' }, CATEGORIES),
+    ).toBeNull();
+    expect(
+      engine.categorize(model, { label: 'CARREFOUR', amount: 1, type: 'EXPENSE' }, []),
+    ).toBeNull();
   });
 });
 
 describe('parseEntry : saisie en langage naturel', () => {
-  const cases: [string, Partial<{ amount: number; date: string; type: string; category: string; accountId: string }>][] = [
+  const cases: [
+    string,
+    Partial<{ amount: number; date: string; type: string; category: string; accountId: string }>,
+  ][] = [
     ['café 3,500 hier', { amount: 3500, date: '2026-11-03', type: 'EXPENSE', category: 'Cafés' }],
-    ['salaire 2400 le 1er', { amount: 2_400_000, date: '2026-11-01', type: 'INCOME', category: 'Salaire' }],
-    ['taxi 7 dt en espèces', { amount: 7000, date: TODAY, type: 'EXPENSE', category: 'Transport', accountId: 'acc_cash' }],
-    ['courses carrefour 87,250 avant-hier', { amount: 87_250, date: '2026-11-02', category: 'Courses' }],
-    ['pizza hut 32.5 par carte', { amount: 32_500, category: 'Restaurants', accountId: 'acc_card' }],
+    [
+      'salaire 2400 le 1er',
+      { amount: 2_400_000, date: '2026-11-01', type: 'INCOME', category: 'Salaire' },
+    ],
+    [
+      'taxi 7 dt en espèces',
+      { amount: 7000, date: TODAY, type: 'EXPENSE', category: 'Transport', accountId: 'acc_cash' },
+    ],
+    [
+      'courses carrefour 87,250 avant-hier',
+      { amount: 87_250, date: '2026-11-02', category: 'Courses' },
+    ],
+    [
+      'pizza hut 32.5 par carte',
+      { amount: 32_500, category: 'Restaurants', accountId: 'acc_card' },
+    ],
     ['500 millimes pain', { amount: 500 }],
-    ['+150 remboursement ami il y a 3 jours', { amount: 150_000, type: 'INCOME', date: '2026-11-01' }],
+    [
+      '+150 remboursement ami il y a 3 jours',
+      { amount: 150_000, type: 'INCOME', date: '2026-11-01' },
+    ],
     ['loyer 750 le 3', { amount: 750_000, date: '2026-11-03', category: 'Loyer' }],
     ['essence agil 60 dt lundi', { amount: 60_000, date: '2026-11-02', category: 'Carburant' }],
     ['pharmacie 1 234,5 le 12/10', { amount: 1_234_500, date: '2026-10-12', category: 'Santé' }],
@@ -173,7 +204,12 @@ describe('parseEntry : saisie en langage naturel', () => {
 });
 
 /** Historique + anomalies injectées : restaurant 480 DT, courses en double, Netflix en hausse. */
-function dirty(): { txs: AiTransaction[]; unusualId: string; dupIds: string[]; netflixKey: string } {
+function dirty(): {
+  txs: AiTransaction[];
+  unusualId: string;
+  dupIds: string[];
+  netflixKey: string;
+} {
   const base = history.map((t) =>
     t.label === 'NETFLIX.COM' && t.date === '2026-10-15' ? { ...t, amount: 42_000 } : t,
   );
@@ -236,7 +272,11 @@ describe('detectAnomalies et detectRecurring', () => {
   });
 
   it('detectRecurring suggère Ooredoo et Netflix, jamais le salaire ni le loyer déclarés', () => {
-    const candidates = engine.detectRecurring({ today: TODAY, transactions: history, existing: RULES });
+    const candidates = engine.detectRecurring({
+      today: TODAY,
+      transactions: history,
+      existing: RULES,
+    });
     expect(recurringCandidatesSchema.safeParse(candidates).success).toBe(true);
     const keys = candidates.map((c) => c.merchantKey);
     expect(keys).toContain(merchantKey('OOREDOO INTERNET FIBRE'));
@@ -251,7 +291,12 @@ describe('detectAnomalies et detectRecurring', () => {
 });
 
 describe('forecastBalance, suggestBudgets', () => {
-  const input: ForecastInput = { today: TODAY, currentBalance: 3_371_250, history, recurring: RULES };
+  const input: ForecastInput = {
+    today: TODAY,
+    currentBalance: 3_371_250,
+    history,
+    recurring: RULES,
+  };
 
   it('low ≤ expected ≤ high, entiers, 6 mois + courant + 3 prévus', () => {
     const f = engine.forecastBalance(input);
@@ -276,7 +321,12 @@ describe('forecastBalance, suggestBudgets', () => {
   });
 
   it('suggestBudgets : catégories de dépense uniquement, montants arrondis', () => {
-    const list = engine.suggestBudgets({ today: TODAY, transactions: history, categories: CATEGORIES, monthlyIncome: 2_600_000 });
+    const list = engine.suggestBudgets({
+      today: TODAY,
+      transactions: history,
+      categories: CATEGORIES,
+      monthlyIncome: 2_600_000,
+    });
     expect(budgetSuggestionsSchema.safeParse(list).success).toBe(true);
     expect(list.length).toBeGreaterThan(3);
     const kinds = new Map(CATEGORIES.map((c) => [c.id, c.kind]));
@@ -337,7 +387,9 @@ describe('ask() avec un FinanceTools factice', () => {
     const biggest = await engine.ask('ma plus grosse dépense le mois dernier', ctx, tools);
     expect(biggest.intent).toBe('BIGGEST_EXPENSE');
     const octMax = Math.max(
-      ...history.filter((t) => t.type === 'EXPENSE' && t.date.startsWith('2026-10')).map((t) => t.amount),
+      ...history
+        .filter((t) => t.type === 'EXPENSE' && t.date.startsWith('2026-10'))
+        .map((t) => t.amount),
     );
     expect(biggest.text).toContain(formatMoney(octMax));
     const top = await engine.ask('où part mon argent ce trimestre ?', ctx, tools);
@@ -411,9 +463,17 @@ const restoMonthly = Math.round(
 );
 const whatIf: WhatIfInput = {
   today: TODAY,
-  goal: { id: 'g1', name: 'Voyage à Djerba', targetAmount: 30_000_000, savedAmount: 900_000, targetDate: null },
+  goal: {
+    id: 'g1',
+    name: 'Voyage à Djerba',
+    targetAmount: 30_000_000,
+    savedAmount: 900_000,
+    targetDate: null,
+  },
   monthly: monthlyTotals(history, months),
-  categorySpending: [{ categoryId: categoryId('Restaurants'), name: 'Restaurants', monthlyAverage: restoMonthly }],
+  categorySpending: [
+    { categoryId: categoryId('Restaurants'), name: 'Restaurants', monthlyAverage: restoMonthly },
+  ],
   adjustments: [{ categoryId: categoryId('Restaurants'), percent: 50 }],
   extraMonthlySaving: 0,
 };
@@ -438,7 +498,10 @@ describe('monthlySummary, simulateWhatIf, healthScore', () => {
       if (r.impact !== null) expect(Number.isSafeInteger(r.impact)).toBe(true);
     }
     expect(s.paragraphs.length).toBeGreaterThan(1);
-    const expense = sumWhere(summaryInput.transactions, (t) => t.type === 'EXPENSE' && t.date.startsWith('2026-10'));
+    const expense = sumWhere(
+      summaryInput.transactions,
+      (t) => t.type === 'EXPENSE' && t.date.startsWith('2026-10'),
+    );
     expect(s.highlights.find((h) => h.label === 'Dépenses')?.value).toBe(expense);
   });
 
@@ -463,7 +526,8 @@ describe('monthlySummary, simulateWhatIf, healthScore', () => {
     expect(Number.isInteger(h.score)).toBe(true);
     expect(h.score).toBeGreaterThanOrEqual(0);
     expect(h.score).toBeLessThanOrEqual(100);
-    const grade = h.score >= 80 ? 'EXCELLENT' : h.score >= 60 ? 'BON' : h.score >= 40 ? 'MOYEN' : 'FRAGILE';
+    const grade =
+      h.score >= 80 ? 'EXCELLENT' : h.score >= 60 ? 'BON' : h.score >= 40 ? 'MOYEN' : 'FRAGILE';
     expect(h.grade).toBe(grade);
     expect(h.topAdvice.length).toBeGreaterThan(0);
   });
@@ -475,15 +539,35 @@ describe('déterminisme', () => {
     const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
     return {
       model: m,
-      corrected: e.learnCorrection(m, { label: 'KFC', amount: 20_000, type: 'EXPENSE', categoryId: categoryId('Cafés') }, null),
+      corrected: e.learnCorrection(
+        m,
+        { label: 'KFC', amount: 20_000, type: 'EXPENSE', categoryId: categoryId('Cafés') },
+        null,
+      ),
       predictions: testSet.slice(0, 50).map((s) => e.categorize(m, s, CATEGORIES)),
       entries: ['café 3,500 hier', 'salaire 2400 le 1er', 'taxi 7 dt en espèces'].map((t) =>
         e.parseEntry(t, { ...parseCtx, model: m }),
       ),
-      anomalies: e.detectAnomalies({ today: TODAY, transactions: dirty().txs, categories: CATEGORIES, recurring: RULES, dismissedKeys: [] }),
+      anomalies: e.detectAnomalies({
+        today: TODAY,
+        transactions: dirty().txs,
+        categories: CATEGORIES,
+        recurring: RULES,
+        dismissedKeys: [],
+      }),
       recurring: e.detectRecurring({ today: TODAY, transactions: history, existing: [] }),
-      forecast: e.forecastBalance({ today: TODAY, currentBalance: 1_000_000, history, recurring: RULES }),
-      budgets: e.suggestBudgets({ today: TODAY, transactions: history, categories: CATEGORIES, monthlyIncome: null }),
+      forecast: e.forecastBalance({
+        today: TODAY,
+        currentBalance: 1_000_000,
+        history,
+        recurring: RULES,
+      }),
+      budgets: e.suggestBudgets({
+        today: TODAY,
+        transactions: history,
+        categories: CATEGORIES,
+        monthlyIncome: null,
+      }),
       answers: await Promise.all(
         ['combien j’ai dépensé ce mois ?', 'mes abonnements', 'n’importe quoi'].map((q) =>
           e.ask(q, ctx, fakeTools({ txs: history })),
@@ -508,7 +592,9 @@ describe('déterminisme', () => {
 
   it('le résumé varie avec la graine mais pas d’un appel à l’autre', () => {
     const titles = new Set(
-      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((seed) => engine.monthlySummary({ ...summaryInput, seed }).paragraphs.join('|')),
+      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((seed) =>
+        engine.monthlySummary({ ...summaryInput, seed }).paragraphs.join('|'),
+      ),
     );
     expect(titles.size).toBeGreaterThan(1);
   });
@@ -543,7 +629,8 @@ describe('pureté de src/domain : pas d’horloge ni d’aléa implicites', () =
     for (const f of files) {
       const code = stripComments(readFileSync(f, 'utf8'));
       if (/\bDate\.now\s*\(/.test(code)) offenders.push(`${relative(DOMAIN_DIR, f)} : Date.now(`);
-      if (/\bMath\.random\s*\(/.test(code)) offenders.push(`${relative(DOMAIN_DIR, f)} : Math.random(`);
+      if (/\bMath\.random\s*\(/.test(code))
+        offenders.push(`${relative(DOMAIN_DIR, f)} : Math.random(`);
     }
     expect(offenders).toEqual([]);
   });
@@ -563,7 +650,8 @@ describe('pureté de src/domain : pas d’horloge ni d’aléa implicites', () =
       // src/server/clock.ts). Toute autre occurrence sans argument est signalée.
       const bare = code.match(/\bnew\s+Date\s*\(\s*\)/g) ?? [];
       const allowed = code.match(/now:\s*Date\s*=\s*new\s+Date\s*\(\s*\)/g) ?? [];
-      if (bare.length !== allowed.length) offenders.push(`dates.ts : ${bare.length - allowed.length} × new Date()`);
+      if (bare.length !== allowed.length)
+        offenders.push(`dates.ts : ${bare.length - allowed.length} × new Date()`);
       expect(allowed.length).toBeLessThanOrEqual(1);
     }
     expect(offenders).toEqual([]);

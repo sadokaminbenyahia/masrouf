@@ -329,7 +329,12 @@ export function fakeTools(opts: FakeToolsOptions): FakeFinanceTools {
   ];
   const forecast: BalanceForecast = opts.forecast ?? {
     reliability: 'MEDIUM',
-    endOfMonth: { date: monthEnd(monthOf(TODAY)), expected: 2_400_000, low: 1_900_000, high: 2_900_000 },
+    endOfMonth: {
+      date: monthEnd(monthOf(TODAY)),
+      expected: 2_400_000,
+      low: 1_900_000,
+      high: 2_900_000,
+    },
     months: [],
     chart: [],
     monthlyNetEstimate: 350_000,

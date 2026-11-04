@@ -210,7 +210,11 @@ function unscopedCalls(userId: string): PrismaCall[] {
     if (isAllowedGlobal(c)) return false;
     const args = isRecord(c.args) ? c.args : {};
     if (c.method === 'create') {
-      return !(isRecord(args.data) && args.data.userId === userId && nestedTagsScoped(args.data, userId));
+      return !(
+        isRecord(args.data) &&
+        args.data.userId === userId &&
+        nestedTagsScoped(args.data, userId)
+      );
     }
     if (c.method === 'createMany') {
       const data = Array.isArray(args.data) ? args.data : [];
@@ -321,7 +325,12 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
     expect(r.ok).toBe(true);
     expectAllScoped();
     const create = calls.find((c) => c.method === 'create');
-    expect(create && isRecord(create.args) && isRecord(create.args.data) && create.args.data.categorySource).toBe('AI');
+    expect(
+      create &&
+        isRecord(create.args) &&
+        isRecord(create.args.data) &&
+        create.args.data.categorySource,
+    ).toBe('AI');
   });
 
   it('createTransaction : virement vers un compte étranger → NOT_FOUND, aucune écriture', async () => {
@@ -342,7 +351,11 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
   });
 
   it('updateTransaction : changement de catégorie → apprentissage + écriture scopée', async () => {
-    handlers.set('category.findFirst', () => ({ ...ROWS.category, id: 'cat_resto', name: 'Restaurants' }));
+    handlers.set('category.findFirst', () => ({
+      ...ROWS.category,
+      id: 'cat_resto',
+      name: 'Restaurants',
+    }));
     const r = await transactions.updateTransaction(USER, 'tx_1', {
       categoryId: 'cat_resto',
       label: 'Resto',
@@ -367,7 +380,10 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
     const del = await transactions.deleteTransaction(USER, 'tx_1');
     expect(del.ok).toBe(true);
     if (!del.ok) return;
-    const restored = await transactions.restoreTransaction(USER, { ...del.value, recurringId: 'rec_1' });
+    const restored = await transactions.restoreTransaction(USER, {
+      ...del.value,
+      recurringId: 'rec_1',
+    });
     expect(restored.ok).toBe(true);
     expect((await transactions.duplicateTransaction(USER, 'tx_1')).ok).toBe(true);
     expectAllScoped();
@@ -397,7 +413,13 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
     expect((await transactions.bulkCategorize(USER, ['tx_1'], 'cat_resto')).ok).toBe(true);
     expect((await transactions.bulkCategorize(USER, ['tx_1'], null)).ok).toBe(true);
     expect(
-      (await transactions.getTransactionsInRange(USER, { from: '2026-01-01', to: '2026-12-31' }, { types: ['EXPENSE'] })).ok,
+      (
+        await transactions.getTransactionsInRange(
+          USER,
+          { from: '2026-01-01', to: '2026-12-31' },
+          { types: ['EXPENSE'] },
+        )
+      ).ok,
     ).toBe(true);
     const csv = await transactions.exportTransactionsCsv(USER, { from: '2026-01-01' });
     expect(csv.ok).toBe(true);
@@ -406,15 +428,25 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
   });
 
   it('période inversée : refus sans aucune requête', async () => {
-    const r = await transactions.getTransactionsInRange(USER, { from: '2026-12-31', to: '2026-01-01' });
+    const r = await transactions.getTransactionsInRange(USER, {
+      from: '2026-12-31',
+      to: '2026-01-01',
+    });
     expect(r.ok).toBe(false);
-    const e = await transactions.exportTransactionsCsv(USER, { from: '2026-12-31', to: '2026-01-01' });
+    const e = await transactions.exportTransactionsCsv(USER, {
+      from: '2026-12-31',
+      to: '2026-01-01',
+    });
     expect(e.ok).toBe(false);
     expect(calls).toEqual([]);
   });
 
   it('le détecteur signale bien une requête non scopée (contrôle du test lui-même)', () => {
-    calls.push({ model: 'transaction', method: 'findMany', args: { where: { OR: [{ userId: USER }, { id: 'x' }] } } });
+    calls.push({
+      model: 'transaction',
+      method: 'findMany',
+      args: { where: { OR: [{ userId: USER }, { id: 'x' }] } },
+    });
     calls.push({ model: 'transaction', method: 'update', args: { where: { id: 'x' }, data: {} } });
     calls.push({ model: 'budget', method: 'create', args: { data: { amount: 1 } } });
     expect(unscopedCalls(USER)).toHaveLength(3);

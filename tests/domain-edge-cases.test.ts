@@ -48,6 +48,7 @@ import { assistantAnswerSchema } from '@/server/ai/output-schemas';
 import type { AiTransaction, AssistantContext, MonthlySummaryInput } from '@/domain/ai/types';
 import {
   CATEGORIES,
+  RENT_RULE,
   RULES,
   TODAY,
   budgetProgress,
@@ -325,21 +326,20 @@ describe('detectSeries / detectRecurring : cas limites', () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.categoryId).toBeNull();
     expect(found[0]?.amount).toBe(60_500);
-    expect(found[0]?.nextDate >= TODAY).toBe(true);
+    expect((found[0]?.nextDate ?? '') >= TODAY).toBe(true);
   });
 
   it('série couverte par une règle de même libellé normalisé : non suggérée', () => {
     const series = ['2026-07-02', '2026-08-02', '2026-09-02', '2026-10-02'].map((d) =>
       tx(d, 30_000, 'Salle de sport', 'Loisirs'),
     );
-    const rule = { ...RULES[1], id: 'rec_gym', label: 'Salle de sport', amount: 30_000 };
-    if (!rule.accountId) throw new Error('règle invalide');
+    const rule = { ...RENT_RULE, id: 'rec_gym', label: 'Salle de sport', amount: 30_000 };
     expect(detectRecurring({ today: TODAY, transactions: series, existing: [] })).toHaveLength(1);
     expect(
       detectRecurring({
         today: TODAY,
         transactions: series,
-        existing: [{ ...rule, type: 'EXPENSE', frequency: 'MONTHLY' }],
+        existing: [rule],
       }),
     ).toEqual([]);
   });
@@ -367,7 +367,9 @@ describe('generateMonthlySummary : gabarits et branches', () => {
         );
       }
       out.push(tx(`${ym}-02`, Math.round(expense * 0.6), 'CARREFOUR', 'Courses'));
-      out.push(tx(`${ym}-03`, Math.round(expense * 0.4), 'LOYER', 'Loyer', { recurringId: 'rec_loyer' }));
+      out.push(
+        tx(`${ym}-03`, Math.round(expense * 0.4), 'LOYER', 'Loyer', { recurringId: 'rec_loyer' }),
+      );
     }
     if (opts.income === 0) {
       return out.filter((t) => !(t.type === 'INCOME' && t.date.startsWith(opts.month)));
@@ -399,7 +401,15 @@ describe('generateMonthlySummary : gabarits et branches', () => {
 
   it('baisse marquée, bonne épargne, budgets respectés, objectif atteint', () => {
     const input = {
-      ...baseInput(scenario({ month: '2026-08', prevExpense: 1_000_000, curExpense: 500_000, income: 2_000_000 }), '2026-08'),
+      ...baseInput(
+        scenario({
+          month: '2026-08',
+          prevExpense: 1_000_000,
+          curExpense: 500_000,
+          income: 2_000_000,
+        }),
+        '2026-08',
+      ),
       budgets: [budgetProgress('Courses', 600_000, 300_000, '2026-08')],
       goals: [goalProgress({ id: 'g', name: 'Voyage', status: 'COMPLETED', ratio: 1 })],
     };
@@ -408,52 +418,93 @@ describe('generateMonthlySummary : gabarits et branches', () => {
       ...input,
       budgets: [...input.budgets, budgetProgress('Restaurants', 100_000, 10_000, '2026-08')],
     };
-    const joined = SEEDS.map((seed) => generateMonthlySummary({ ...twoBudgets, seed }).paragraphs.join(' ')).join(' ');
+    const joined = SEEDS.map((seed) =>
+      generateMonthlySummary({ ...twoBudgets, seed }).paragraphs.join(' '),
+    ).join(' ');
     // Le fait « budgets respectés » est peu prioritaire : l'objectif atteint passe devant.
     expect(joined).toMatch(/« Voyage »/);
     expect(joined).toMatch(/de moins|reculent|en moins/);
     // « d'août » : le mois commence par une voyelle.
-    expect(SEEDS.some((seed) => /d'août 2026/.test(JSON.stringify(generateMonthlySummary({ ...input, seed }))))).toBe(true);
+    expect(
+      SEEDS.some((seed) =>
+        /d'août 2026/.test(JSON.stringify(generateMonthlySummary({ ...input, seed }))),
+      ),
+    ).toBe(true);
   });
 
   it('dépenses stables et épargne moyenne', () => {
-    const txs = scenario({ month: '2026-09', prevExpense: 1_000_000, curExpense: 1_010_000, income: 1_100_000 });
-    const all = SEEDS.map((seed) => generateMonthlySummary({ ...baseInput(txs, '2026-09'), seed }).paragraphs.join(' '));
+    const txs = scenario({
+      month: '2026-09',
+      prevExpense: 1_000_000,
+      curExpense: 1_010_000,
+      income: 1_100_000,
+    });
+    const all = SEEDS.map((seed) =>
+      generateMonthlySummary({ ...baseInput(txs, '2026-09'), seed }).paragraphs.join(' '),
+    );
     expect(all.join(' ')).toMatch(/stables|très proche|Peu de changement/);
     expect(all.join(' ')).toMatch(/épargn|mis de côté/);
   });
 
   it('aucun revenu enregistré ce mois', () => {
-    const txs = scenario({ month: '2026-10', prevExpense: 900_000, curExpense: 950_000, income: 0 });
+    const txs = scenario({
+      month: '2026-10',
+      prevExpense: 900_000,
+      curExpense: 950_000,
+      income: 0,
+    });
     const set = texts(baseInput(txs, '2026-10'));
     expect([...set].every((t) => /revenu/.test(t))).toBe(true);
     expect(set.size).toBeGreaterThanOrEqual(3);
   });
 
   it('mois en cours : titre « point d’étape », comparaison à date', () => {
-    const txs = scenario({ month: '2026-11', prevExpense: 900_000, curExpense: 300_000, income: 2_000_000 });
-    const titles = new Set(SEEDS.map((seed) => generateMonthlySummary({ ...baseInput(txs, '2026-11'), seed }).title));
+    const txs = scenario({
+      month: '2026-11',
+      prevExpense: 900_000,
+      curExpense: 300_000,
+      income: 2_000_000,
+    });
+    const titles = new Set(
+      SEEDS.map((seed) => generateMonthlySummary({ ...baseInput(txs, '2026-11'), seed }).title),
+    );
     expect(titles.size).toBe(3);
     expect([...titles].some((t) => /novembre/i.test(t))).toBe(true);
   });
 
   it('budget unique dépassé, objectif en retard sans date, budget incohérent ignoré', () => {
-    const txs = scenario({ month: '2026-10', prevExpense: 1_000_000, curExpense: 1_200_000, income: 1_150_000 });
+    const txs = scenario({
+      month: '2026-10',
+      prevExpense: 1_000_000,
+      curExpense: 1_200_000,
+      income: 1_150_000,
+    });
     const over = budgetProgress('Courses', 500_000, 720_000, '2026-10');
-    const inconsistent = { ...budgetProgress('Loyer', 500_000, 400_000, '2026-10'), level: 'EXCEEDED' as const };
+    const inconsistent = {
+      ...budgetProgress('Loyer', 500_000, 400_000, '2026-10'),
+      level: 'EXCEEDED' as const,
+    };
     const input: MonthlySummaryInput = {
       ...baseInput(txs, '2026-10'),
       budgets: [over, inconsistent],
-      goals: [goalProgress({ id: 'g', name: 'Maison', status: 'OVERDUE', monthlyNeeded: null, targetDate: null })],
+      goals: [
+        goalProgress({
+          id: 'g',
+          name: 'Maison',
+          status: 'OVERDUE',
+          monthlyNeeded: null,
+          targetDate: null,
+        }),
+      ],
     };
     const s = generateMonthlySummary(input);
     expect(s.recommendations.length).toBe(3);
     const titles = s.recommendations.map((r) => r.title).join(' | ');
     expect(titles).toContain('Ramener Courses sous son budget');
     expect(titles).not.toContain('Ramener Loyer');
-    const late = SEEDS.flatMap((seed) => generateMonthlySummary({ ...input, budgets: [], seed }).recommendations).find(
-      (r) => r.title.includes('Maison'),
-    );
+    const late = SEEDS.flatMap(
+      (seed) => generateMonthlySummary({ ...input, budgets: [], seed }).recommendations,
+    ).find((r) => r.title.includes('Maison'));
     expect(late?.detail).toContain('a pris du retard');
     expect(late?.impact).toBeNull();
   });
@@ -517,7 +568,10 @@ describe('assistant : périodes (cas limites)', () => {
   });
 
   it('« depuis mars 2025 » → libellé avec l’année', () => {
-    expect(p('depuis mars 2025')[0]).toMatchObject({ from: '2025-03-01', label: 'depuis mars 2025' });
+    expect(p('depuis mars 2025')[0]).toMatchObject({
+      from: '2025-03-01',
+      label: 'depuis mars 2025',
+    });
   });
 
   it('« entre le 20 décembre et le 5 janvier » à cheval sur deux années', () => {
@@ -563,7 +617,9 @@ describe('assistant : entités et normalisation', () => {
       { id: 'g1', name: 'Voyage à Djerba' },
       { id: 'g2', name: 'Voiture' },
     ];
-    expect(matchGoal(normalizeQuestion('quand j’atteins mon objectif voyage ?'), goals)?.goal.id).toBe('g1');
+    expect(
+      matchGoal(normalizeQuestion('quand j’atteins mon objectif voyage ?'), goals)?.goal.id,
+    ).toBe('g1');
     expect(matchGoal(normalizeQuestion('ma voitur'), goals)?.goal.id).toBe('g2');
     expect(matchGoal(normalizeQuestion('mon objectif'), goals)).toBeNull();
     expect(matchGoal('x', [])).toBeNull();
@@ -597,8 +653,21 @@ describe('assistant : batterie de questions (réponses valides, chiffres issus d
     budgetProgress('Cafés', 50_000, 45_000, '2026-11'),
   ];
   const goals = [
-    goalProgress({ id: 'g1', name: 'Voyage à Djerba', targetDate: '2027-06-30', monthlyNeeded: 300_000, status: 'AT_RISK', monthsLeft: 7 }),
-    goalProgress({ id: 'g2', name: 'Fonds d’urgence', status: 'COMPLETED', ratio: 1, savedAmount: 3_000_000 }),
+    goalProgress({
+      id: 'g1',
+      name: 'Voyage à Djerba',
+      targetDate: '2027-06-30',
+      monthlyNeeded: 300_000,
+      status: 'AT_RISK',
+      monthsLeft: 7,
+    }),
+    goalProgress({
+      id: 'g2',
+      name: 'Fonds d’urgence',
+      status: 'COMPLETED',
+      ratio: 1,
+      savedAmount: 3_000_000,
+    }),
   ];
   const QUESTIONS = [
     'combien j’ai dépensé ce mois ?',
@@ -656,3 +725,111 @@ describe('assistant : batterie de questions (réponses valides, chiffres issus d
     expect(a.text).not.toMatch(/undefined|NaN|Infinity/);
   });
 });
+
+describe('assistant : configurations particulières des outils', () => {
+  const ctx: AssistantContext = {
+    today: TODAY,
+    categories: CATEGORIES,
+    accounts: [{ id: 'acc_bank', name: 'BIAT' }],
+    goals: [],
+  };
+  const history = syntheticHistory();
+  const thrifty: AiTransaction[] = ['2026-08', '2026-09', '2026-10', '2026-11'].flatMap((ym) => [
+    tx(`${ym}-01`, 3_000_000, 'SALAIRE', 'Salaire', { type: 'INCOME' }),
+    tx(`${ym}-02`, 400_000, 'CARREFOUR', 'Courses'),
+    tx(`${ym}-03`, 200_000, 'PIZZA HUT', 'Restaurants'),
+  ]);
+  const overrun = {
+    ...budgetProgress('Courses', 600_000, 300_000, '2026-11'),
+    projected: 2_250_000,
+    projectedOverrun: true,
+  };
+  const manyRules = Array.from({ length: 9 }, (_, i) => ({
+    ...RENT_RULE,
+    id: `rec_${i}`,
+    label: `Abonnement ${i}`,
+    amount: 10_000 + i * 1000,
+    nextDate: `2026-11-${String(10 + i).padStart(2, '0')}`,
+    accountId: 'acc_bank',
+    categoryId: null,
+    type: 'EXPENSE' as const,
+    frequency: (['MONTHLY', 'WEEKLY', 'YEARLY', 'QUARTERLY'] as const)[i % 4] ?? 'MONTHLY',
+    startDate: '2026-01-01',
+    endDate: null,
+    active: true,
+    autoCreate: false,
+  }));
+
+  const CASES: [string, Parameters<typeof fakeTools>[0], string][] = [
+    ['est-ce que j’ai gagné plus que le mois dernier ?', { txs: history }, 'COMPARE_PERIODS'],
+    [
+      'où part mon argent ce mois ?',
+      { txs: [tx('2026-11-02', 50_000, 'CARREFOUR', 'Courses')] },
+      'TOP_CATEGORIES',
+    ],
+    ['mes plus gros commerçants en courses cette année', { txs: history }, 'TOP_MERCHANTS'],
+    ['combien je dépense en moyenne par mois depuis juin ?', { txs: history }, 'AVERAGE_SPENDING'],
+    [
+      'combien je dépense en moyenne en restaurants en octobre ?',
+      { txs: history },
+      'AVERAGE_SPENDING',
+    ],
+    [
+      'il me reste combien en budget courses ?',
+      { txs: history, budgets: [overrun] },
+      'BUDGET_STATUS',
+    ],
+    [
+      'il me reste combien en budget cafés ?',
+      { txs: history, budgets: [budgetProgress('Cafés', 50_000, 45_000, '2026-11')] },
+      'BUDGET_STATUS',
+    ],
+    ['mon budget courses en octobre', { txs: history, budgets: [overrun] }, 'BUDGET_STATUS'],
+    [
+      'où en sont mes budgets ?',
+      {
+        txs: history,
+        budgets: [
+          budgetProgress('Restaurants', 100_000, 180_000, '2026-11'),
+          budgetProgress('Cafés', 50_000, 90_000, '2026-11'),
+        ],
+      },
+      'BUDGET_STATUS',
+    ],
+    [
+      'quel est mon solde ?',
+      { txs: history, balances: [{ id: 'acc_bank', name: 'BIAT', balance: 5000 }] },
+      'BALANCE',
+    ],
+    ['mes abonnements', { txs: history, recurring: manyRules }, 'SUBSCRIPTIONS'],
+    ['quel est mon taux d’épargne ?', { txs: thrifty }, 'SAVINGS_RATE'],
+    ['quel est mon taux d’épargne depuis août ?', { txs: thrifty }, 'SAVINGS_RATE'],
+  ];
+
+  it.each(CASES)('« %s »', async (q, opts, intent) => {
+    const tools = fakeTools(opts);
+    const a = await askAssistant(q, ctx, tools);
+    expect(assistantAnswerSchema.safeParse(a).success).toBe(true);
+    expect(a.intent).toBe(intent);
+    expect(a.understood).toBe(true);
+    expect(a.text).not.toMatch(/undefined|NaN|Infinity/);
+  });
+});
+
+// BUG (reconnaissance d'intention) : src/domain/ai/assistant/intents.ts:69 — le motif
+// /\b(?:plus|moins) (?:que|qu)\b/ exige « plus » immédiatement suivi de « que/qu ». Avec la
+// période intercalée, tournure française courante, la comparaison n'est pas reconnue.
+// Entrée « je dépense plus en octobre qu’en septembre ? » (deux périodes détectées) →
+// attendu COMPARE_PERIODS (octobre vs septembre) ; obtenu SPENDING_TOTAL (total d'octobre seul).
+it.fails(
+  'assistant : « je dépense plus en octobre qu’en septembre ? » → COMPARE_PERIODS',
+  async () => {
+    const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
+    const a = await askAssistant(
+      'je dépense plus en octobre qu’en septembre ?',
+      ctx,
+      fakeTools({ txs: syntheticHistory() }),
+    );
+    expect(a.intent).toBe('COMPARE_PERIODS');
+  },
+);

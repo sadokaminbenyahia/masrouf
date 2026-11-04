@@ -221,7 +221,11 @@ describe('agrégats, budgets, objectifs, comptes : sorties entières', () => {
   it('buildMonthlySeries conserve les sommes et reste entier', () => {
     for (const seed of SEEDS) {
       const txs = randomTransactions(seed, 300);
-      const sums: DailyTypeSum[] = txs.map((t) => ({ date: t.date, type: t.type, amount: t.amount }));
+      const sums: DailyTypeSum[] = txs.map((t) => ({
+        date: t.date,
+        type: t.type,
+        amount: t.amount,
+      }));
       const months = listMonths('2026-01', '2026-11');
       const series = buildMonthlySeries(months, sums);
       for (const m of series) {
@@ -323,7 +327,11 @@ describe('agrégats, budgets, objectifs, comptes : sorties entières', () => {
       today: TODAY,
     });
     expect(all).toHaveLength(1);
-    expect(summarizeBudgets(all)).toEqual({ budgeted: 300_000, spent: 123_457, remaining: 176_543 });
+    expect(summarizeBudgets(all)).toEqual({
+      budgeted: 300_000,
+      spent: 123_457,
+      remaining: 176_543,
+    });
     expect(summarizeBudgets([])).toBeNull();
   });
 
@@ -332,8 +340,7 @@ describe('agrégats, budgets, objectifs, comptes : sorties entières', () => {
     for (let i = 0; i < 500; i++) {
       const targetAmount = randInt(rand, 1, 100_000_000);
       const savedAmount = randInt(rand, 0, targetAmount * 2);
-      const targetDate =
-        rand() < 0.2 ? null : addDays('2024-01-01', randInt(rand, 0, 2500));
+      const targetDate = rand() < 0.2 ? null : addDays('2024-01-01', randInt(rand, 0, 2500));
       const p = computeGoalProgress(
         {
           id: 'g',
@@ -384,7 +391,10 @@ describe('agrégats, budgets, objectifs, comptes : sorties entières', () => {
         const type = pick(rand, ['INCOME', 'EXPENSE', 'TRANSFER'] as const);
         sums.push({ accountId: from.id, type, amount, count: 1 });
         if (type === 'TRANSFER') {
-          const to = pick(rand, accounts.filter((a) => a.id !== from.id));
+          const to = pick(
+            rand,
+            accounts.filter((a) => a.id !== from.id),
+          );
           incoming.push({ transferAccountId: to.id, amount, count: 1 });
         } else if (type === 'INCOME') income += amount;
         else expense += amount;
@@ -489,8 +499,16 @@ describe('moteur IA : sorties monétaires entières, jamais NaN/Infinity', () =>
     const cases = [
       { monthly: [], totalBalance: 0, fixed: 0 },
       { monthly, totalBalance: 3_000_000, fixed: 795_000 },
-      { monthly: monthly.map((m) => ({ ...m, income: 0, net: -m.expense })), totalBalance: -5, fixed: 0 },
-      { monthly: monthly.map((m) => ({ ...m, expense: 0, net: m.income })), totalBalance: 1, fixed: 10 },
+      {
+        monthly: monthly.map((m) => ({ ...m, income: 0, net: -m.expense })),
+        totalBalance: -5,
+        fixed: 0,
+      },
+      {
+        monthly: monthly.map((m) => ({ ...m, expense: 0, net: m.income })),
+        totalBalance: 1,
+        fixed: 10,
+      },
     ];
     for (let i = 0; i < 60; i++) {
       const h = pick(rand, histories);
