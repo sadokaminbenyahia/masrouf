@@ -106,7 +106,10 @@ export function QuickAddTransaction() {
   const onQuickAddEvent = useEffectEvent((detail: QuickAddDetail | undefined) =>
     openWith(detail ?? {}),
   );
-  useEffect(() => onUiEvent<QuickAddDetail | undefined>(QUICK_ADD_EVENT, onQuickAddEvent), []);
+  useEffect(
+    () => onUiEvent<QuickAddDetail | undefined>(QUICK_ADD_EVENT, (d) => onQuickAddEvent(d)),
+    [],
+  );
 
   useHotkey(
     'n',
