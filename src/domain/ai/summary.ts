@@ -20,14 +20,7 @@ import type {
 } from './types';
 
 type FactType =
-  | 'TOTAL'
-  | 'VS_PREV'
-  | 'VS_AVG'
-  | 'TOP_CATS'
-  | 'SPIKE'
-  | 'SAVINGS'
-  | 'BUDGETS'
-  | 'GOALS';
+  'TOTAL' | 'VS_PREV' | 'VS_AVG' | 'TOP_CATS' | 'SPIKE' | 'SAVINGS' | 'BUDGETS' | 'GOALS';
 
 interface Fact {
   type: FactType;
@@ -117,7 +110,8 @@ const PREV_DOWN_T: Templates<DeltaVars> = [
   (v) => `Belle évolution : ${v.pct} de dépenses en moins comparé ${v.rel} (${v.ref}).`,
 ];
 const PREV_STABLE_T: Templates<DeltaVars> = [
-  (v) => `Un niveau très proche ${v.rel === 'au mois précédent' ? 'du mois précédent' : 'de la même date le mois dernier'} (${v.ref}).`,
+  (v) =>
+    `Un niveau très proche ${v.rel === 'au mois précédent' ? 'du mois précédent' : 'de la même date le mois dernier'} (${v.ref}).`,
   (v) => `Vos dépenses restent stables par rapport ${v.rel} (${v.ref}).`,
   (v) => `Peu de changement comparé ${v.rel} (${v.ref}) : votre rythme est régulier.`,
 ];
@@ -151,9 +145,11 @@ interface SpikeVars {
   avg: string;
 }
 const SPIKE_T: Templates<SpikeVars> = [
-  (v) => `${v.name} a augmenté de ${v.pct} par rapport à votre moyenne (${v.amount} contre ${v.avg}).`,
+  (v) =>
+    `${v.name} a augmenté de ${v.pct} par rapport à votre moyenne (${v.amount} contre ${v.avg}).`,
   (v) => `Hausse notable en ${v.name} : ${v.amount}, soit ${v.pct} de plus que d'habitude.`,
-  (v) => `Le poste ${v.name} grimpe à ${v.amount}, ${v.pct} au-dessus de votre moyenne de ${v.avg}.`,
+  (v) =>
+    `Le poste ${v.name} grimpe à ${v.amount}, ${v.pct} au-dessus de votre moyenne de ${v.avg}.`,
 ];
 
 interface SavingVars {
@@ -178,12 +174,14 @@ const SAVE_NEG_T: Templates<SavingVars> = [
 
 const BUDGET_OVER_T: Templates<{ list: string; n: number }> = [
   (v) => `${v.n > 1 ? `${v.n} budgets dépassés` : 'Un budget dépassé'} : ${v.list}.`,
-  (v) => `Attention ${v.n > 1 ? 'aux budgets' : 'au budget'} ${v.list}, passé${v.n > 1 ? 's' : ''} au-dessus du plafond.`,
+  (v) =>
+    `Attention ${v.n > 1 ? 'aux budgets' : 'au budget'} ${v.list}, passé${v.n > 1 ? 's' : ''} au-dessus du plafond.`,
   (v) => `Petit dépassement côté ${v.list}.`,
 ];
 const BUDGET_OK_T: Templates<{ n: number }> = [
   () => 'Tous vos budgets ont été respectés.',
-  (v) => `${v.n > 1 ? `Vos ${v.n} budgets sont restés` : 'Votre budget est resté'} sous le plafond, bravo.`,
+  (v) =>
+    `${v.n > 1 ? `Vos ${v.n} budgets sont restés` : 'Votre budget est resté'} sous le plafond, bravo.`,
   () => 'Aucun dépassement de budget à signaler.',
 ];
 
@@ -261,7 +259,8 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
   const expense = curExp.reduce((s, t) => s + t.amount, 0);
   const income = cur.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
   const catName = new Map(input.categories.map((c) => [c.id, c.name]));
-  const nameOf = (id: string | null) => (id ? (catName.get(id) ?? 'Sans catégorie') : 'Sans catégorie');
+  const nameOf = (id: string | null) =>
+    id ? (catName.get(id) ?? 'Sans catégorie') : 'Sans catégorie';
   const monthLabel = formatMonthFR(month);
   const titleVars = { month: monthLabel, de: deMonth(month) };
   const title = pickTemplate(partial ? TITLE_PARTIAL_T : TITLE_T, seed, month, 'TITLE', titleVars);
@@ -327,7 +326,8 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
     .map((ym) => inMonth(ym))
     .filter((txs) => txs.length > 0)
     .map((txs) => txs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0));
-  const avg3 = prevTotals.length > 0 ? prevTotals.reduce((s, x) => s + x, 0) / prevTotals.length : 0;
+  const avg3 =
+    prevTotals.length > 0 ? prevTotals.reduce((s, x) => s + x, 0) / prevTotals.length : 0;
   if (!partial && avg3 > 0 && prevTotals.length >= 2) {
     const d = (expense - avg3) / avg3;
     if (Math.abs(d) >= 0.05) {
@@ -345,9 +345,7 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
   // Top 3 des catégories.
   const curCats = [...byCategory(curExp)].sort((a, b) => b[1].total - a[1].total);
   if (curCats.length > 0 && expense > 0) {
-    const list = curCats
-      .slice(0, 3)
-      .map(([id, s]) => `${nameOf(id)} (${m(s.total)})`);
+    const list = curCats.slice(0, 3).map(([id, s]) => `${nameOf(id)} (${m(s.total)})`);
     facts.push({
       type: 'TOP_CATS',
       interest: expense * 0.15,
@@ -359,7 +357,9 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
   const prevMonthsWithData = prevMonths.filter((ym) => inMonth(ym).length > 0);
   const prevCatAvg = new Map<string | null, number>();
   if (prevMonthsWithData.length > 0) {
-    const prevExp = prevMonthsWithData.flatMap((ym) => inMonth(ym).filter((t) => t.type === 'EXPENSE'));
+    const prevExp = prevMonthsWithData.flatMap((ym) =>
+      inMonth(ym).filter((t) => t.type === 'EXPENSE'),
+    );
     for (const [id, s] of byCategory(prevExp)) {
       prevCatAvg.set(id, s.total / prevMonthsWithData.length);
     }
@@ -447,7 +447,9 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
   const ranked = others.sort((a, b) => b.interest - a.interest).slice(0, 4);
   const comparison = ranked.find((f) => f.type === 'VS_PREV' || f.type === 'VS_AVG');
   const rest = ranked.filter((f) => f !== comparison);
-  const paragraphs: string[] = [[total?.text ?? '', comparison?.text ?? ''].filter(Boolean).join(' ')];
+  const paragraphs: string[] = [
+    [total?.text ?? '', comparison?.text ?? ''].filter(Boolean).join(' '),
+  ];
   for (let i = 0; i < rest.length; i += 2) {
     paragraphs.push(
       rest
@@ -536,7 +538,8 @@ function buildRecommendations(p: {
   const small = byCategory(curExp.filter((t) => t.amount <= 15_000));
   let bestSmall: [string | null, CatStat] | null = null;
   for (const entry of small) {
-    if (entry[1].count >= 6 && (!bestSmall || entry[1].total > bestSmall[1].total)) bestSmall = entry;
+    if (entry[1].count >= 6 && (!bestSmall || entry[1].total > bestSmall[1].total))
+      bestSmall = entry;
   }
   if (bestSmall) {
     const [id, s] = bestSmall;
@@ -562,7 +565,8 @@ function buildRecommendations(p: {
   let bestSub: Candidate | null = null;
   for (const txs of series.values()) {
     const perMonth = new Map<string, AiTransaction[]>();
-    for (const t of txs) perMonth.set(monthOf(t.date), [...(perMonth.get(monthOf(t.date)) ?? []), t]);
+    for (const t of txs)
+      perMonth.set(monthOf(t.date), [...(perMonth.get(monthOf(t.date)) ?? []), t]);
     if (perMonth.size < 3 || [...perMonth.values()].some((l) => l.length !== 1)) continue;
     const sorted = [...txs].sort((a, b) => (a.date < b.date ? -1 : 1));
     const last = sorted[sorted.length - 1];

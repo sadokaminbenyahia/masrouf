@@ -27,7 +27,12 @@ describe('parsePeriod', () => {
     ['depuis mars', '2026-03-01', '2026-03-18', 'depuis mars'],
     ['le 12 mars', '2026-03-12', '2026-03-12', 'le 12 mars 2026'],
     ['le 05/01', '2026-01-05', '2026-01-05', 'le 5 janvier 2026'],
-    ['du 20 décembre au 5 janvier', '2025-12-20', '2026-01-05', 'du 20 décembre 2025 au 5 janvier 2026'],
+    [
+      'du 20 décembre au 5 janvier',
+      '2025-12-20',
+      '2026-01-05',
+      'du 20 décembre 2025 au 5 janvier 2026',
+    ],
     ['du 3 février au 10 mars', '2026-02-03', '2026-03-10', 'du 3 février au 10 mars 2026'],
     ['entre le 10 et le 3 mars', '2026-03-03', '2026-03-10', 'du 3 au 10 mars 2026'],
     ['du 01/02/2025 au 15/03/2025', '2025-02-01', '2025-03-15', 'du 1er février au 15 mars 2025'],
@@ -40,7 +45,10 @@ describe('parsePeriod', () => {
 
   it('week-end vu depuis un samedi', () => {
     expect(p('ce week-end', '2026-03-21')).toMatchObject({ from: '2026-03-21', to: '2026-03-22' });
-    expect(p('le week-end dernier', '2026-03-22')).toMatchObject({ from: '2026-03-14', to: '2026-03-15' });
+    expect(p('le week-end dernier', '2026-03-22')).toMatchObject({
+      from: '2026-03-14',
+      to: '2026-03-15',
+    });
   });
 
   it('rejette les valeurs invalides', () => {
@@ -60,10 +68,14 @@ describe('labelForRange / previousPeriod', () => {
     expect(labelForRange({ from: '2026-03-17', to: '2026-03-17' }, T)).toBe('hier');
     expect(labelForRange({ from: '2026-03-18', to: '2026-03-18' }, T)).toBe("aujourd'hui");
     expect(labelForRange({ from: '2025-07-01', to: '2025-09-30' }, T)).toBe('au 3e trimestre 2025');
-    expect(labelForRange({ from: '2025-01-01', to: '2025-03-31' }, T)).toBe('au 1er trimestre 2025');
+    expect(labelForRange({ from: '2025-01-01', to: '2025-03-31' }, T)).toBe(
+      'au 1er trimestre 2025',
+    );
     expect(labelForRange({ from: '2024-01-01', to: '2024-12-31' }, T)).toBe('en 2024');
     expect(labelForRange({ from: '2026-01-01', to: '2026-12-31' }, T)).toBe('cette année');
-    expect(labelForRange({ from: '2026-01-01', to: '2026-02-28' }, T)).toBe('du 1er janvier au 28 février 2026');
+    expect(labelForRange({ from: '2026-01-01', to: '2026-02-28' }, T)).toBe(
+      'du 1er janvier au 28 février 2026',
+    );
   });
   it('période précédente de même durée', () => {
     expect(previousPeriod({ from: '2026-01-01', to: '2026-03-31' }, T)).toMatchObject({

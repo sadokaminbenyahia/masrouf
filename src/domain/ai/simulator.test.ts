@@ -23,7 +23,13 @@ const MONTHLY = [
 function input(over: Partial<WhatIfInput> = {}): WhatIfInput {
   return {
     today: TODAY,
-    goal: { id: 'g1', name: 'Voyage à Djerba', targetAmount: 1_500_000, savedAmount: 600_000, targetDate: null },
+    goal: {
+      id: 'g1',
+      name: 'Voyage à Djerba',
+      targetAmount: 1_500_000,
+      savedAmount: 600_000,
+      targetDate: null,
+    },
     monthly: MONTHLY,
     categorySpending: [
       { categoryId: 'resto', name: 'Restaurants', monthlyAverage: 200_000 },
@@ -97,7 +103,11 @@ describe('simulateWhatIf', () => {
 
   it('scénario insuffisant malgré les réglages', () => {
     const r = simulateWhatIf(
-      input({ monthly: [mt('2026-01', 0, 500_000)], adjustments: [{ categoryId: 'cafes', percent: 50 }], extraMonthlySaving: 0 }),
+      input({
+        monthly: [mt('2026-01', 0, 500_000)],
+        adjustments: [{ categoryId: 'cafes', percent: 50 }],
+        extraMonthlySaving: 0,
+      }),
     );
     expect(r.scenarioMonthlySaving).toBe(-455_000);
     expect(r.message).toMatch(/resterait de/);
@@ -113,7 +123,15 @@ describe('simulateWhatIf', () => {
 
   it('objectif déjà atteint', () => {
     const r = simulateWhatIf(
-      input({ goal: { id: 'g', name: 'Vélo', targetAmount: 500_000, savedAmount: 700_000, targetDate: null } }),
+      input({
+        goal: {
+          id: 'g',
+          name: 'Vélo',
+          targetAmount: 500_000,
+          savedAmount: 700_000,
+          targetDate: null,
+        },
+      }),
     );
     expect(r.baselineDate).toBe(TODAY);
     expect(r.scenarioDate).toBe(TODAY);
@@ -127,7 +145,13 @@ describe('simulateWhatIf', () => {
       input({
         adjustments: [],
         extraMonthlySaving: 0,
-        goal: { id: 'g', name: 'Voyage', targetAmount: 1_500_000, savedAmount: 600_000, targetDate: '2026-12-01' },
+        goal: {
+          id: 'g',
+          name: 'Voyage',
+          targetAmount: 1_500_000,
+          savedAmount: 600_000,
+          targetDate: '2026-12-01',
+        },
       }),
     );
     expect(r.monthsSaved).toBe(0);
@@ -137,7 +161,13 @@ describe('simulateWhatIf', () => {
       input({
         adjustments: [],
         extraMonthlySaving: 0,
-        goal: { id: 'g', name: 'Voyage', targetAmount: 1_500_000, savedAmount: 600_000, targetDate: '2026-04-01' },
+        goal: {
+          id: 'g',
+          name: 'Voyage',
+          targetAmount: 1_500_000,
+          savedAmount: 600_000,
+          targetDate: '2026-04-01',
+        },
       }),
     );
     expect(late.message).toMatch(/il faudra épargner davantage/);
@@ -157,14 +187,22 @@ describe('simulateWhatIf', () => {
     expect(r.scenarioMonthlySaving).toBe(350_900);
     expect(r.monthsSaved).toBe(0);
     expect(r.message).toMatch(/à la même échéance/);
-    const capped = simulateWhatIf(input({ adjustments: [{ categoryId: 'resto', percent: 150 }], extraMonthlySaving: 0 }));
+    const capped = simulateWhatIf(
+      input({ adjustments: [{ categoryId: 'resto', percent: 150 }], extraMonthlySaving: 0 }),
+    );
     expect(capped.scenarioMonthlySaving).toBe(550_000);
   });
 
   it('projection prolongée jusqu’à l’atteinte, plafonnée à 120 mois', () => {
     const long = simulateWhatIf(
       input({
-        goal: { id: 'g', name: 'Maison', targetAmount: 11_100_000, savedAmount: 600_000, targetDate: null },
+        goal: {
+          id: 'g',
+          name: 'Maison',
+          targetAmount: 11_100_000,
+          savedAmount: 600_000,
+          targetDate: null,
+        },
         adjustments: [],
         extraMonthlySaving: 0,
       }),
@@ -173,7 +211,13 @@ describe('simulateWhatIf', () => {
     expect(long.timeline).toHaveLength(30);
     const never = simulateWhatIf(
       input({
-        goal: { id: 'g', name: 'Île', targetAmount: 100_000_000_000, savedAmount: 0, targetDate: null },
+        goal: {
+          id: 'g',
+          name: 'Île',
+          targetAmount: 100_000_000_000,
+          savedAmount: 0,
+          targetDate: null,
+        },
         adjustments: [],
         extraMonthlySaving: 0,
       }),

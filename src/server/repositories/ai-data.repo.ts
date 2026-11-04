@@ -12,8 +12,7 @@ export const TRAINING_SOURCES: readonly CategorySource[] = ['USER', 'IMPORT', 'S
 export const MAX_TRAINING_SAMPLES = 20_000;
 
 const TRANSACTION_TYPES: readonly TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER'];
-const asType = (t: string): TransactionType =>
-  TRANSACTION_TYPES.find((x) => x === t) ?? 'EXPENSE';
+const asType = (t: string): TransactionType => TRANSACTION_TYPES.find((x) => x === t) ?? 'EXPENSE';
 
 const aiSelect = {
   id: true,
@@ -27,7 +26,10 @@ const aiSelect = {
 } as const;
 
 /** Transactions de l'utilisateur sur une période inclusive (tous types ; les algorithmes filtrent). */
-export async function listAiTransactions(userId: string, range: DateRange): Promise<AiTransaction[]> {
+export async function listAiTransactions(
+  userId: string,
+  range: DateRange,
+): Promise<AiTransaction[]> {
   const rows = await prisma.transaction.findMany({
     where: { userId, date: { gte: range.from, lte: range.to } },
     select: aiSelect,
@@ -84,7 +86,11 @@ export async function monthlyCategoryTotals(
   range: DateRange,
 ): Promise<MonthlyCategoryTotal[]> {
   const rows = await prisma.transaction.findMany({
-    where: { userId, date: { gte: range.from, lte: range.to }, type: { in: ['EXPENSE', 'INCOME'] } },
+    where: {
+      userId,
+      date: { gte: range.from, lte: range.to },
+      type: { in: ['EXPENSE', 'INCOME'] },
+    },
     select: { date: true, amount: true, type: true, categoryId: true },
   });
   const map = new Map<string, MonthlyCategoryTotal>();

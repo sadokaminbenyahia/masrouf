@@ -187,10 +187,7 @@ export const INTENT_SAMPLES: Record<KnownIntent, string[]> = {
     'Quelles sont mes plus grosses dépenses du mois dernier ?',
     'Ma plus grosse dépense cette année ?',
   ],
-  AVERAGE_SPENDING: [
-    'Combien je dépense en moyenne en courses ?',
-    'Ma dépense moyenne par mois ?',
-  ],
+  AVERAGE_SPENDING: ['Combien je dépense en moyenne en courses ?', 'Ma dépense moyenne par mois ?'],
   BUDGET_STATUS: [
     'Il me reste combien dans mon budget courses ?',
     'Où en sont mes budgets ce mois-ci ?',
@@ -203,5 +200,8 @@ export const INTENT_SAMPLES: Record<KnownIntent, string[]> = {
   ],
   SUBSCRIPTIONS: ['Quels sont mes abonnements ?', 'Combien me coûtent mes charges fixes ?'],
   GOAL_PROGRESS: ['Quand vais-je atteindre mon objectif ?', 'Où en sont mes objectifs ?'],
-  SAVINGS_RATE: ['Quel est mon taux d’épargne cette année ?', 'Combien j’ai économisé ce mois-ci ?'],
+  SAVINGS_RATE: [
+    'Quel est mon taux d’épargne cette année ?',
+    'Combien j’ai économisé ce mois-ci ?',
+  ],
 };

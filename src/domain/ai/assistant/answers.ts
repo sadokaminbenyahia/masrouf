@@ -201,10 +201,7 @@ const spendingTotal: Answerer = async ({ tools, period, expenseCategory: cat, to
         }
       : null;
   return base('SPENDING_TOTAL', text, {
-    highlights: [
-      money(cat ? `Dépenses ${cat.name}` : 'Dépenses', total),
-      count('Transactions', n),
-    ],
+    highlights: [money(cat ? `Dépenses ${cat.name}` : 'Dépenses', total), count('Transactions', n)],
     chart,
     period: periodOut(period),
     href: buildTransactionsHref({
@@ -252,7 +249,10 @@ const incomeTotal: Answerer = async ({ tools, period, incomeCategory: cat, today
       to: period.to,
       type: 'INCOME',
     }),
-    suggestions: [`Quel est mon taux d’épargne ${period.label} ?`, 'Combien j’aurai à la fin du mois ?'],
+    suggestions: [
+      `Quel est mon taux d’épargne ${period.label} ?`,
+      'Combien j’aurai à la fin du mois ?',
+    ],
   });
 };
 
@@ -349,9 +349,13 @@ const comparePeriods: Answerer = async (input) => {
           ? `Vos ${noun}${what} sont en hausse`
           : `Vos ${noun}${what} sont en baisse`;
     text = `${trend} : ${dateNote ? dateNote.toLowerCase() : ''}${formatMoney(A)} ${aLabel}, contre ${formatMoney(B)}${sameDate} (${formatPercent(delta, true)}).`;
-    if (sbFull) text += ` Sur l'ensemble de la période précédente, le total était de ${formatMoney(sbFull.total)}.`;
+    if (sbFull)
+      text += ` Sur l'ensemble de la période précédente, le total était de ${formatMoney(sbFull.total)}.`;
   }
-  const highlights: AssistantHighlight[] = [money(capitalize(a.label), A), money(capitalize(b.label), B)];
+  const highlights: AssistantHighlight[] = [
+    money(capitalize(a.label), A),
+    money(capitalize(b.label), B),
+  ];
   if (delta !== null) highlights.push(percent('Évolution', delta));
   const ordered = b.from <= a.from ? [b, a] : [a, b];
   const values = new Map([
@@ -385,7 +389,9 @@ const topCategories: Answerer = async ({ tools, period, today }) => {
     });
   }
   const top = rows.slice(0, 3);
-  const list = top.map((r) => `${r.name} (${formatMoney(r.total)}, ${formatPercent(r.total / total)})`);
+  const list = top.map(
+    (r) => `${r.name} (${formatMoney(r.total)}, ${formatPercent(r.total / total)})`,
+  );
   const topShare = top.reduce((s, r) => s + r.total, 0) / total;
   const tense = isPast(period, today) ? 'est surtout parti' : 'part surtout';
   let text = `${capitalize(when)}, votre argent ${tense} en ${joinFr(list)}.`;
@@ -438,7 +444,10 @@ const topMerchants: Answerer = async ({ tools, period, expenseCategory: cat }) =
     },
     period: periodOut(period),
     href,
-    suggestions: [`Où part mon argent ${period.label} ?`, `Mes plus grosses dépenses ${period.label}`],
+    suggestions: [
+      `Où part mon argent ${period.label} ?`,
+      `Mes plus grosses dépenses ${period.label}`,
+    ],
   });
 };
 
@@ -486,7 +495,13 @@ const biggestExpense: Answerer = async ({ tools, period, expenseCategory: cat, t
   });
 };
 
-const averageSpending: Answerer = async ({ tools, period, periods, expenseCategory: cat, today }) => {
+const averageSpending: Answerer = async ({
+  tools,
+  period,
+  periods,
+  expenseCategory: cat,
+  today,
+}) => {
   const current = monthOf(today);
   let months: YearMonth[];
   const explicit = periods.length > 0 && monthsCovered(period) >= 2;
@@ -506,9 +521,7 @@ const averageSpending: Answerer = async ({ tools, period, periods, expenseCatego
   ).filter((m) => months.includes(m.month));
   const n = months.length;
   const label =
-    explicit && n !== 3
-      ? labelForRange(range, today)
-      : `les ${n} derniers mois complets`;
+    explicit && n !== 3 ? labelForRange(range, today) : `les ${n} derniers mois complets`;
   const what = cat ? ` en ${cat.name}` : '';
   const sum = monthly.reduce((s, m) => s + m.expense, 0);
   const href = buildTransactionsHref({
@@ -518,19 +531,27 @@ const averageSpending: Answerer = async ({ tools, period, periods, expenseCatego
     type: 'EXPENSE',
   });
   if (sum === 0) {
-    return base('AVERAGE_SPENDING', `Aucune dépense${what} enregistrée ${inPeriod(label)} : pas de moyenne à calculer.`, {
-      period: { ...range, label },
-      href,
-    });
+    return base(
+      'AVERAGE_SPENDING',
+      `Aucune dépense${what} enregistrée ${inPeriod(label)} : pas de moyenne à calculer.`,
+      {
+        period: { ...range, label },
+        href,
+      },
+    );
   }
   const avg = Math.round(sum / n);
-  const max = monthly.reduce((best, m) => (m.expense > best.expense ? m : best), monthly[0] ?? { month: firstMonth, income: 0, expense: 0, net: 0 });
+  const max = monthly.reduce(
+    (best, m) => (m.expense > best.expense ? m : best),
+    monthly[0] ?? { month: firstMonth, income: 0, expense: 0, net: 0 },
+  );
   const span =
     n === 1
       ? formatMonthFR(firstMonth)
       : `de ${formatMonthFR(firstMonth)} à ${formatMonthFR(lastMonth)}`;
   let text = `En moyenne, vous dépensez ${formatMoney(avg)} par mois${what} (calcul sur ${plural(n, 'mois', 'mois')}, ${span}).`;
-  if (n >= 2) text += ` Le mois le plus élevé : ${formatMonthFR(max.month)}, avec ${formatMoney(max.expense)}.`;
+  if (n >= 2)
+    text += ` Le mois le plus élevé : ${formatMonthFR(max.month)}, avec ${formatMoney(max.expense)}.`;
   return base('AVERAGE_SPENDING', text, {
     highlights: [money('Moyenne mensuelle', avg), money('Mois le plus élevé', max.expense)],
     chart:
@@ -538,30 +559,45 @@ const averageSpending: Answerer = async ({ tools, period, periods, expenseCatego
         ? {
             kind: 'bar',
             title: cat ? `Dépenses ${cat.name} par mois` : 'Dépenses par mois',
-            data: monthly.map((m) => ({ label: formatMonthFR(m.month, 'short'), value: m.expense })),
+            data: monthly.map((m) => ({
+              label: formatMonthFR(m.month, 'short'),
+              value: m.expense,
+            })),
           }
         : null,
     period: { ...range, label },
     href,
     suggestions: [
-      cat ? `Il me reste combien dans mon budget ${cat.name.toLowerCase()} ?` : 'Où part mon argent ce mois-ci ?',
+      cat
+        ? `Il me reste combien dans mon budget ${cat.name.toLowerCase()} ?`
+        : 'Où part mon argent ce mois-ci ?',
       'Est-ce que je dépense plus que le mois dernier ?',
     ],
   });
 };
 
 const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory: cat, today }) => {
-  const month = periods.length > 0 && monthsCovered(period) === 1 ? monthOf(period.from) : monthOf(today);
+  const month =
+    periods.length > 0 && monthsCovered(period) === 1 ? monthOf(period.from) : monthOf(today);
   const range: DateRange = { from: monthStart(month), to: monthEnd(month) };
   const label = labelForRange(range, today);
   const outPeriod = { ...range, label };
-  const href = buildTransactionsHref({ categoryId: cat?.id, from: range.from, to: range.to, type: 'EXPENSE' });
+  const href = buildTransactionsHref({
+    categoryId: cat?.id,
+    from: range.from,
+    to: range.to,
+    type: 'EXPENSE',
+  });
   const list = await tools.budgetStatus(month);
 
   if (cat) {
     const b = list.find((x) => x.category.id === cat.id || x.budget.categoryId === cat.id);
     if (!b) {
-      const { total } = await tools.sumTransactions({ range, type: 'EXPENSE', categoryIds: [cat.id] });
+      const { total } = await tools.sumTransactions({
+        range,
+        type: 'EXPENSE',
+        categoryIds: [cat.id],
+      });
       return base(
         'BUDGET_STATUS',
         `Vous n'avez pas de budget pour ${cat.name}. ${capitalize(label)}, vous y avez dépensé ${formatMoney(total)}. Vous pouvez en créer un depuis la page Budgets.`,
@@ -569,7 +605,10 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
           highlights: [money(`Dépenses ${cat.name}`, total)],
           period: outPeriod,
           href,
-          suggestions: ['Où en sont mes budgets ce mois-ci ?', `Combien je dépense en moyenne en ${cat.name.toLowerCase()} ?`],
+          suggestions: [
+            'Où en sont mes budgets ce mois-ci ?',
+            `Combien je dépense en moyenne en ${cat.name.toLowerCase()} ?`,
+          ],
         },
       );
     }
@@ -612,7 +651,10 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
       chart: pie,
       period: outPeriod,
       href,
-      suggestions: ['Où en sont mes budgets ce mois-ci ?', `Mes plus grosses dépenses en ${name.toLowerCase()} ce mois-ci`],
+      suggestions: [
+        'Où en sont mes budgets ce mois-ci ?',
+        `Mes plus grosses dépenses en ${name.toLowerCase()} ce mois-ci`,
+      ],
     });
   }
 
@@ -639,7 +681,8 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
   if (warning.length > 0) {
     text += ` À surveiller : ${joinFr(warning.map((b) => `${b.category.name} (${formatPercent(b.ratio)})`))}.`;
   }
-  if (exceeded.length === 0 && warning.length === 0) text += ' Tous vos budgets sont sous contrôle.';
+  if (exceeded.length === 0 && warning.length === 0)
+    text += ' Tous vos budgets sont sous contrôle.';
   return base('BUDGET_STATUS', text, {
     highlights: [money('Reste au total', remaining), count('Budgets dépassés', exceeded.length)],
     chart: {
@@ -688,7 +731,9 @@ const RELIABILITY_NOTE = {
 const forecast: Answerer = async ({ tools, today, norm }) => {
   const f = await tools.forecast();
   const eom = f.endOfMonth;
-  const wantsMonths = /\b(?:prochains? mois|mois prochain|dans \d+ mois|trimestre prochain)\b/.test(norm);
+  const wantsMonths = /\b(?:prochains? mois|mois prochain|dans \d+ mois|trimestre prochain)\b/.test(
+    norm,
+  );
   let text = `D'après votre rythme actuel, votre solde devrait être d'environ ${formatMoney(eom.expected)} à la fin du mois (entre ${formatMoney(eom.low)} et ${formatMoney(eom.high)}).`;
   if (wantsMonths && f.months.length > 0) {
     text += ` Ensuite : ${joinFr(f.months.map((m) => `fin ${formatMonthFR(monthOf(m.date))} ≈ ${formatMoney(m.expected)}`))}.`;
@@ -760,7 +805,9 @@ const subscriptions: Answerer = async ({ tools }) => {
   }
   const total = rules.reduce((s, r) => s + r.monthly, 0);
   const shown = rules.slice(0, 6);
-  const list = shown.map(({ rule }) => `${rule.label} (${formatMoney(rule.amount)} ${FREQUENCY_LABEL[rule.frequency]})`);
+  const list = shown.map(
+    ({ rule }) => `${rule.label} (${formatMoney(rule.amount)} ${FREQUENCY_LABEL[rule.frequency]})`,
+  );
   let text = `Vous avez ${plural(rules.length, 'dépense récurrente active', 'dépenses récurrentes actives')}, soit environ ${formatMoney(total)} par mois : ${joinFr(list)}`;
   text += rules.length > shown.length ? `, et ${rules.length - shown.length} autre(s).` : '.';
   const next = [...rules].sort((a, b) => (a.rule.nextDate < b.rule.nextDate ? -1 : 1))[0];
@@ -772,7 +819,10 @@ const subscriptions: Answerer = async ({ tools }) => {
     chart: {
       kind: 'pie',
       title: 'Coût mensuel des récurrences',
-      data: shown.map(({ rule, monthly }) => ({ label: shortLabel(rule.label, 18), value: monthly })),
+      data: shown.map(({ rule, monthly }) => ({
+        label: shortLabel(rule.label, 18),
+        value: monthly,
+      })),
     },
     href: '/recurrents',
     suggestions: ['Quel est mon taux d’épargne ce mois-ci ?', 'Combien j’aurai à la fin du mois ?'],
@@ -791,20 +841,28 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
   const matched = matchGoal(norm, goals)?.goal ?? (goals.length === 1 ? goals[0] : undefined);
   if (!matched) {
     const list = goals.map(
-      (g) => `« ${g.name} » à ${formatPercent(Math.min(1, g.ratio))} (${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)})`,
+      (g) =>
+        `« ${g.name} » à ${formatPercent(Math.min(1, g.ratio))} (${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)})`,
     );
     return base(
       'GOAL_PROGRESS',
       `Vous avez ${plural(goals.length, 'objectif')} : ${joinFr(list)}. Précisez le nom d'un objectif pour savoir quand vous l'atteindrez.`,
       {
-        highlights: [money('Épargné au total', goals.reduce((s, g) => s + g.savedAmount, 0))],
+        highlights: [
+          money(
+            'Épargné au total',
+            goals.reduce((s, g) => s + g.savedAmount, 0),
+          ),
+        ],
         chart: {
           kind: 'bar',
           title: 'Épargne par objectif',
           data: goals.map((g) => ({ label: shortLabel(g.name, 18), value: g.savedAmount })),
         },
         href: '/objectifs',
-        suggestions: goals.slice(0, 3).map((g) => `Quand vais-je atteindre mon objectif ${g.name} ?`),
+        suggestions: goals
+          .slice(0, 3)
+          .map((g) => `Quand vais-je atteindre mon objectif ${g.name} ?`),
       },
     );
   }
@@ -823,7 +881,10 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
   }
   const months = lastCompleteMonths(today, 3);
   const monthly = await tools.monthlyTotals({
-    range: { from: monthStart(months[0] ?? monthOf(today)), to: monthEnd(months[2] ?? monthOf(today)) },
+    range: {
+      from: monthStart(months[0] ?? monthOf(today)),
+      to: monthEnd(months[2] ?? monthOf(today)),
+    },
   });
   const sim = simulateWhatIf({
     today,
@@ -848,13 +909,20 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
   }
   const timeline = sim.timeline.slice(0, 12);
   return base('GOAL_PROGRESS', text, {
-    highlights: [money('Épargné', g.savedAmount), money('Reste', remaining), percent('Progression', g.ratio)],
+    highlights: [
+      money('Épargné', g.savedAmount),
+      money('Reste', remaining),
+      percent('Progression', g.ratio),
+    ],
     chart:
       timeline.length >= 2 && sim.baselineMonthlySaving > 0
         ? {
             kind: 'line',
             title: `Projection « ${g.name} »`,
-            data: timeline.map((p) => ({ label: formatMonthFR(p.month, 'short'), value: p.baseline })),
+            data: timeline.map((p) => ({
+              label: formatMonthFR(p.month, 'short'),
+              value: p.baseline,
+            })),
           }
         : null,
     href: '/objectifs',
@@ -918,4 +986,3 @@ export const ANSWERS: Record<KnownIntent, Answerer> = {
   GOAL_PROGRESS: goalProgress,
   SAVINGS_RATE: savingsRate,
 };
-

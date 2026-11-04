@@ -123,5 +123,8 @@ export async function listForTool(
       recurringId: true,
     },
   });
-  return rows.map((r) => ({ ...r, type: parseEnum(TRANSACTION_TYPES, r.type, 'Transaction.type') }));
+  return rows.map((r) => ({
+    ...r,
+    type: parseEnum(TRANSACTION_TYPES, r.type, 'Transaction.type'),
+  }));
 }

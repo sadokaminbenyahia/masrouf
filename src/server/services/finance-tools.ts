@@ -72,9 +72,7 @@ export function createFinanceTools(userId: string, deps: FinanceToolsDeps): Fina
         const cur = groups.get(key) ?? { label: titleCase(key), total: 0, count: 0 };
         groups.set(key, { ...cur, total: cur.total + row.total, count: cur.count + row.count });
       }
-      return [...groups.values()]
-        .sort((a, b) => b.total - a.total)
-        .slice(0, Math.max(1, f.limit));
+      return [...groups.values()].sort((a, b) => b.total - a.total).slice(0, Math.max(1, f.limit));
     },
 
     async budgetStatus(month) {

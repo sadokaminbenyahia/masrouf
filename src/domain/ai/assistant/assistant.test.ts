@@ -47,7 +47,16 @@ function tx(
   type: AiTransaction['type'] = 'EXPENSE',
 ): AiTransaction {
   seq++;
-  return { id: `t${seq}`, date, amount, type, label, categoryId, accountId: 'a1', recurringId: null };
+  return {
+    id: `t${seq}`,
+    date,
+    amount,
+    type,
+    label,
+    categoryId,
+    accountId: 'a1',
+    recurringId: null,
+  };
 }
 
 function buildHistory(): AiTransaction[] {
@@ -104,8 +113,20 @@ function goal(p: Partial<GoalProgress> & { id: string; name: string }): GoalProg
 }
 
 const GOALS: GoalProgress[] = [
-  goal({ id: 'g1', name: 'Voyage à Djerba', targetDate: '2026-08-18', monthlyNeeded: 180_000, status: 'ON_TRACK' }),
-  goal({ id: 'g2', name: "Fonds d'urgence", targetAmount: 6_000_000, savedAmount: 2_100_000, ratio: 0.35 }),
+  goal({
+    id: 'g1',
+    name: 'Voyage à Djerba',
+    targetDate: '2026-08-18',
+    monthlyNeeded: 180_000,
+    status: 'ON_TRACK',
+  }),
+  goal({
+    id: 'g2',
+    name: "Fonds d'urgence",
+    targetAmount: 6_000_000,
+    savedAmount: 2_100_000,
+    ratio: 0.35,
+  }),
 ];
 
 const RULES: RecurringRule[] = [
@@ -209,14 +230,18 @@ function makeTools(opts: FakeOptions = {}): FakeTools {
       return listMonths(monthOf(f.range.from), monthOf(f.range.to)).map((month): MonthTotals => {
         const inMonth = rows.filter((t) => monthOf(t.date) === month);
         const income = inMonth.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-        const expense = inMonth.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+        const expense = inMonth
+          .filter((t) => t.type === 'EXPENSE')
+          .reduce((s, t) => s + t.amount, 0);
         return { month, income, expense, net: income - expense };
       });
     },
     async listTransactions(f) {
       log('listTransactions', f);
       const rows = [...match(f)];
-      rows.sort((a, b) => (f.sort === 'AMOUNT_DESC' ? b.amount - a.amount : a.date < b.date ? 1 : -1));
+      rows.sort((a, b) =>
+        f.sort === 'AMOUNT_DESC' ? b.amount - a.amount : a.date < b.date ? 1 : -1,
+      );
       return rows.slice(0, f.limit);
     },
     async topMerchants(f) {
@@ -298,55 +323,187 @@ const ask = (q: string, tools: FinanceTools = makeTools(), ctx: AssistantContext
 type Case = [string, string, string | null, string | null, string | null];
 
 const REFERENCE: Case[] = [
-  ['combien j’ai dépensé en restaurants ce trimestre ?', 'SPENDING_TOTAL', '2026-01-01', '2026-03-31', 'c_resto'],
-  ['mes plus grosses dépenses du mois dernier', 'BIGGEST_EXPENSE', '2026-02-01', '2026-02-28', null],
+  [
+    'combien j’ai dépensé en restaurants ce trimestre ?',
+    'SPENDING_TOTAL',
+    '2026-01-01',
+    '2026-03-31',
+    'c_resto',
+  ],
+  [
+    'mes plus grosses dépenses du mois dernier',
+    'BIGGEST_EXPENSE',
+    '2026-02-01',
+    '2026-02-28',
+    null,
+  ],
   ['je dépense plus que le mois dernier ?', 'COMPARE_PERIODS', '2026-03-01', '2026-03-31', null],
-  ['il me reste combien dans mon budget courses ?', 'BUDGET_STATUS', '2026-03-01', '2026-03-31', null],
+  [
+    'il me reste combien dans mon budget courses ?',
+    'BUDGET_STATUS',
+    '2026-03-01',
+    '2026-03-31',
+    null,
+  ],
   ['quel est mon solde ?', 'BALANCE', null, null, null],
   ['combien j’aurai à la fin du mois ?', 'FORECAST', '2026-03-18', '2026-03-31', null],
-  ['est-ce que je peux me permettre un téléphone à 900 dinars ?', 'CAN_AFFORD', '2026-03-18', '2026-03-31', null],
+  [
+    'est-ce que je peux me permettre un téléphone à 900 dinars ?',
+    'CAN_AFFORD',
+    '2026-03-18',
+    '2026-03-31',
+    null,
+  ],
   ['quand vais-je atteindre mon objectif voyage ?', 'GOAL_PROGRESS', null, null, null],
   ['mes abonnements', 'SUBSCRIPTIONS', null, null, null],
   ['taux d’épargne cette année', 'SAVINGS_RATE', '2026-01-01', '2026-12-31', null],
-  ['Combien j’ai dépensé en resto ce mois ?', 'SPENDING_TOTAL', '2026-03-01', '2026-03-31', 'c_resto'],
+  [
+    'Combien j’ai dépensé en resto ce mois ?',
+    'SPENDING_TOTAL',
+    '2026-03-01',
+    '2026-03-31',
+    'c_resto',
+  ],
   ['combien j’ai gagné depuis janvier ?', 'INCOME_TOTAL', '2026-01-01', '2026-03-18', null],
   ['je dépense plus qu’en janvier ?', 'COMPARE_PERIODS', '2026-03-01', '2026-03-31', null],
   ['où part mon argent ce trimestre ?', 'TOP_CATEGORIES', '2026-01-01', '2026-03-31', null],
   ['mes plus gros commerçants', 'TOP_MERCHANTS', '2026-03-01', '2026-03-31', null],
   ['ma plus grosse dépense le mois dernier', 'BIGGEST_EXPENSE', '2026-02-01', '2026-02-28', null],
-  ['combien je dépense en moyenne en courses ?', 'AVERAGE_SPENDING', '2025-12-01', '2026-02-28', 'c_courses'],
-  ['il me reste combien en budget loisirs ?', 'BUDGET_STATUS', '2026-03-01', '2026-03-31', 'c_loisirs'],
+  [
+    'combien je dépense en moyenne en courses ?',
+    'AVERAGE_SPENDING',
+    '2025-12-01',
+    '2026-02-28',
+    'c_courses',
+  ],
+  [
+    'il me reste combien en budget loisirs ?',
+    'BUDGET_STATUS',
+    '2026-03-01',
+    '2026-03-31',
+    'c_loisirs',
+  ],
   ['je peux acheter un téléphone à 900 dinars ?', 'CAN_AFFORD', '2026-03-18', '2026-03-31', null],
   ['quand j’atteins mon objectif voyage ?', 'GOAL_PROGRESS', null, null, null],
   ['quel est mon taux d’épargne ?', 'SAVINGS_RATE', '2026-03-01', '2026-03-31', null],
-  ['combien j’ai dépensé en bouffe la semaine dernière ?', 'SPENDING_TOTAL', '2026-03-09', '2026-03-15', 'c_courses'],
+  [
+    'combien j’ai dépensé en bouffe la semaine dernière ?',
+    'SPENDING_TOTAL',
+    '2026-03-09',
+    '2026-03-15',
+    'c_courses',
+  ],
   ['dépenses essence ce mois-ci', 'SPENDING_TOTAL', '2026-03-01', '2026-03-31', 'c_carburant'],
   ['combien pour internet en février ?', 'SPENDING_TOTAL', '2026-02-01', '2026-02-28', 'c_telecom'],
-  ['mes dépenses en électricité l’an dernier', 'SPENDING_TOTAL', '2025-01-01', '2025-12-31', 'c_factures'],
-  ['combien j’ai claqué en sorties ce week-end ?', 'SPENDING_TOTAL', '2026-03-14', '2026-03-15', 'c_loisirs'],
-  ['combien en cafés les 30 derniers jours ?', 'SPENDING_TOTAL', '2026-02-17', '2026-03-18', 'c_cafes'],
-  ['combien j’ai dépensé chez le médecin les 3 derniers mois ?', 'SPENDING_TOTAL', '2025-12-19', '2026-03-18', 'c_sante'],
+  [
+    'mes dépenses en électricité l’an dernier',
+    'SPENDING_TOTAL',
+    '2025-01-01',
+    '2025-12-31',
+    'c_factures',
+  ],
+  [
+    'combien j’ai claqué en sorties ce week-end ?',
+    'SPENDING_TOTAL',
+    '2026-03-14',
+    '2026-03-15',
+    'c_loisirs',
+  ],
+  [
+    'combien en cafés les 30 derniers jours ?',
+    'SPENDING_TOTAL',
+    '2026-02-17',
+    '2026-03-18',
+    'c_cafes',
+  ],
+  [
+    'combien j’ai dépensé chez le médecin les 3 derniers mois ?',
+    'SPENDING_TOTAL',
+    '2025-12-19',
+    '2026-03-18',
+    'c_sante',
+  ],
   ['combien j’ai dépensé hier ?', 'SPENDING_TOTAL', '2026-03-17', '2026-03-17', null],
   ['combien j’ai dépensé aujourd’hui ?', 'SPENDING_TOTAL', '2026-03-18', '2026-03-18', null],
-  ['combien j’ai dépensé entre le 1er et le 10 mars ?', 'SPENDING_TOTAL', '2026-03-01', '2026-03-10', null],
+  [
+    'combien j’ai dépensé entre le 1er et le 10 mars ?',
+    'SPENDING_TOTAL',
+    '2026-03-01',
+    '2026-03-10',
+    null,
+  ],
   ['combien j’ai dépensé en mars 2025 ?', 'SPENDING_TOTAL', '2025-03-01', '2025-03-31', null],
   ['combien j’ai dépensé en décembre ?', 'SPENDING_TOTAL', '2025-12-01', '2025-12-31', null],
   ['quel sera mon solde fin de mois ?', 'FORECAST', '2026-03-18', '2026-03-31', null],
-  ['répartition de mes dépenses le trimestre dernier', 'TOP_CATEGORIES', '2025-10-01', '2025-12-31', null],
-  ['ce trimestre par rapport au trimestre dernier', 'COMPARE_PERIODS', '2026-01-01', '2026-03-31', null],
+  [
+    'répartition de mes dépenses le trimestre dernier',
+    'TOP_CATEGORIES',
+    '2025-10-01',
+    '2025-12-31',
+    null,
+  ],
+  [
+    'ce trimestre par rapport au trimestre dernier',
+    'COMPARE_PERIODS',
+    '2026-01-01',
+    '2026-03-31',
+    null,
+  ],
   ['combien j’ai économisé cette année ?', 'SAVINGS_RATE', '2026-01-01', '2026-12-31', null],
   ['mes charges fixes', 'SUBSCRIPTIONS', null, null, null],
   ['où en sont mes objectifs ?', 'GOAL_PROGRESS', null, null, null],
   ['combien j’ai sur mes comptes ?', 'BALANCE', null, null, null],
   ['quel est mon salaire ce mois-ci ?', 'INCOME_TOTAL', '2026-03-01', '2026-03-31', 'c_salaire'],
-  ['dépense moyenne par mois en transport', 'AVERAGE_SPENDING', '2025-12-01', '2026-02-28', 'c_transport'],
-  ['est-ce que j’ai dépassé mon budget restaurants ?', 'BUDGET_STATUS', '2026-03-01', '2026-03-31', null],
+  [
+    'dépense moyenne par mois en transport',
+    'AVERAGE_SPENDING',
+    '2025-12-01',
+    '2026-02-28',
+    'c_transport',
+  ],
+  [
+    'est-ce que j’ai dépassé mon budget restaurants ?',
+    'BUDGET_STATUS',
+    '2026-03-01',
+    '2026-03-31',
+    null,
+  ],
   ['combien je vais avoir dans 3 mois ?', 'FORECAST', '2026-03-18', '2026-03-31', null],
-  ['mes 5 plus grosses dépenses depuis le début de l’année', 'BIGGEST_EXPENSE', '2026-01-01', '2026-03-18', null],
-  ['j’ai les moyens de m’offrir une console à 1 200 dt ?', 'CAN_AFFORD', '2026-03-18', '2026-03-31', null],
-  ['combien de dépenses en supermarché du 01/02 au 15/02 ?', 'SPENDING_TOTAL', '2026-02-01', '2026-02-15', 'c_courses'],
-  ['mes courses ce mois-ci comparées au mois dernier', 'COMPARE_PERIODS', '2026-03-01', '2026-03-31', 'c_courses'],
-  ['quels sont mes revenus en freelance cette année ?', 'INCOME_TOTAL', '2026-01-01', '2026-12-31', 'c_freelance'],
+  [
+    'mes 5 plus grosses dépenses depuis le début de l’année',
+    'BIGGEST_EXPENSE',
+    '2026-01-01',
+    '2026-03-18',
+    null,
+  ],
+  [
+    'j’ai les moyens de m’offrir une console à 1 200 dt ?',
+    'CAN_AFFORD',
+    '2026-03-18',
+    '2026-03-31',
+    null,
+  ],
+  [
+    'combien de dépenses en supermarché du 01/02 au 15/02 ?',
+    'SPENDING_TOTAL',
+    '2026-02-01',
+    '2026-02-15',
+    'c_courses',
+  ],
+  [
+    'mes courses ce mois-ci comparées au mois dernier',
+    'COMPARE_PERIODS',
+    '2026-03-01',
+    '2026-03-31',
+    'c_courses',
+  ],
+  [
+    'quels sont mes revenus en freelance cette année ?',
+    'INCOME_TOTAL',
+    '2026-01-01',
+    '2026-12-31',
+    'c_freelance',
+  ],
   ['quelle heure est-il ?', 'UNKNOWN', null, null, null],
   ['bonjour', 'UNKNOWN', null, null, null],
   ['raconte-moi une blague', 'UNKNOWN', null, null, null],
@@ -397,7 +554,11 @@ describe('askAssistant — contenu des réponses', () => {
     expect(a.href).toBe(
       '/transactions?categoryId=c_resto&from=2026-01-01&to=2026-03-31&type=EXPENSE',
     );
-    expect(a.highlights[0]).toEqual({ label: 'Dépenses Restaurants', value: 515_000, format: 'money' });
+    expect(a.highlights[0]).toEqual({
+      label: 'Dépenses Restaurants',
+      value: 515_000,
+      format: 'money',
+    });
   });
 
   it('aucune dépense : texte adapté, pas de graphique', async () => {
@@ -558,7 +719,11 @@ describe('askAssistant — contenu des réponses', () => {
     expect(none.text).toMatch(/pas encore d'objectif/);
     const done = await ask(
       'mon objectif voyage ?',
-      makeTools({ goals: [goal({ id: 'g', name: 'Voyage', savedAmount: 1_500_000, status: 'COMPLETED', ratio: 1 })] }),
+      makeTools({
+        goals: [
+          goal({ id: 'g', name: 'Voyage', savedAmount: 1_500_000, status: 'COMPLETED', ratio: 1 }),
+        ],
+      }),
     );
     expect(done.text).toMatch(/Bravo/);
     const negative = await ask(

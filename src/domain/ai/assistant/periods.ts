@@ -224,8 +224,7 @@ function resolveDayRange(
   const end = dayMonthYear(d2, m2, y2, m1 ?? current, parseYear(y1), today);
   if (!end) return null;
   const startMonth = m1 ?? end.month;
-  const startYear =
-    parseYear(y1) ?? (startMonth > end.month && !y1 ? end.year - 1 : end.year);
+  const startYear = parseYear(y1) ?? (startMonth > end.month && !y1 ? end.year - 1 : end.year);
   const start = dayMonthYear(d1, startMonth, undefined, startMonth, startYear, today);
   if (!start) return null;
   let from = safeDate(start.year, start.month, start.day);
@@ -398,7 +397,10 @@ const MATCHERS: Matcher[] = [
     },
   },
   {
-    re: new RegExp(`\\bdepuis (?:le mois de |le debut de |debut )?(${MONTH_RE})(?: (\\d{4}))?\\b`, 'g'),
+    re: new RegExp(
+      `\\bdepuis (?:le mois de |le debut de |debut )?(${MONTH_RE})(?: (\\d{4}))?\\b`,
+      'g',
+    ),
     resolve: (m, today) => {
       const month = monthIndex(m[1]);
       if (month === null) return null;
@@ -447,7 +449,6 @@ const MATCHERS: Matcher[] = [
     },
   },
 ];
-
 
 /** Toutes les périodes trouvées, dans l'ordre du texte, sans chevauchement (la plus longue gagne). */
 export function parsePeriods(norm: string, today: ISODate): ParsedPeriod[] {

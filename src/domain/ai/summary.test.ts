@@ -19,7 +19,16 @@ const tx = (
   categoryId: string | null,
   label: string,
   type: AiTransaction['type'] = 'EXPENSE',
-): AiTransaction => ({ id: `t${++n}`, date, amount, type, label, categoryId, accountId: 'a', recurringId: null });
+): AiTransaction => ({
+  id: `t${++n}`,
+  date,
+  amount,
+  type,
+  label,
+  categoryId,
+  accountId: 'a',
+  recurringId: null,
+});
 
 function richTransactions(): AiTransaction[] {
   const out: AiTransaction[] = [];
@@ -34,7 +43,8 @@ function richTransactions(): AiTransaction[] {
     out.push(tx(`${ym}-20`, 130_000, 'courses', 'AZIZA'));
     out.push(tx(`${ym}-08`, last ? 420_000 : 90_000, 'resto', 'RESTAURANT'));
     const cafes = last ? 20 : 8;
-    for (let d = 1; d <= cafes; d++) out.push(tx(`${ym}-${String(d).padStart(2, '0')}`, 3_500, 'cafes', 'CAFE'));
+    for (let d = 1; d <= cafes; d++)
+      out.push(tx(`${ym}-${String(d).padStart(2, '0')}`, 3_500, 'cafes', 'CAFE'));
     if (last) out.push(tx(`${ym}-25`, 400_000, null, 'ACHAT DIVERS'));
     out.push(tx(`${ym}-02`, 300_000, null, 'RETRAIT', 'TRANSFER'));
   });
@@ -44,7 +54,15 @@ function richTransactions(): AiTransaction[] {
 const BUDGETS: BudgetProgress[] = [
   {
     budget: { id: 'b1', categoryId: 'resto', amount: 150_000, sortOrder: 0 },
-    category: { id: 'resto', name: 'Restaurants', kind: 'EXPENSE', group: 'WANTS', icon: 'Utensils', color: '#000000', sortOrder: 0 },
+    category: {
+      id: 'resto',
+      name: 'Restaurants',
+      kind: 'EXPENSE',
+      group: 'WANTS',
+      icon: 'Utensils',
+      color: '#000000',
+      sortOrder: 0,
+    },
     month: '2026-09',
     spent: 420_000,
     remaining: -270_000,
@@ -93,7 +111,12 @@ describe('generateMonthlySummary', () => {
 
   it('varie selon la graine', () => {
     const texts = new Set(
-      ['a', 'b', 'c', 'd', 'e', 'f'].map((s) => JSON.stringify([generateMonthlySummary(rich(s)).title, generateMonthlySummary(rich(s)).paragraphs])),
+      ['a', 'b', 'c', 'd', 'e', 'f'].map((s) =>
+        JSON.stringify([
+          generateMonthlySummary(rich(s)).title,
+          generateMonthlySummary(rich(s)).paragraphs,
+        ]),
+      ),
     );
     expect(texts.size).toBeGreaterThan(1);
   });
@@ -126,7 +149,9 @@ describe('generateMonthlySummary', () => {
 
   it('détecte les petites dépenses fréquentes et la hausse d’abonnement', () => {
     const input = { ...rich(), budgets: [], goals: [] };
-    input.transactions = input.transactions.map((t) => (t.label === 'SALAIRE' ? { ...t, amount: 5_000_000 } : t));
+    input.transactions = input.transactions.map((t) =>
+      t.label === 'SALAIRE' ? { ...t, amount: 5_000_000 } : t,
+    );
     const s = generateMonthlySummary(input);
     const titles = s.recommendations.map((r) => r.title).join(' | ');
     expect(titles).toMatch(/Freiner la hausse en Restaurants/);
@@ -160,12 +185,25 @@ describe('generateMonthlySummary', () => {
   });
 
   it('sans revenu, objectif atteint, budgets respectés', () => {
-    const txs = [tx('2026-09-02', 100_000, 'courses', 'CARREFOUR'), tx('2026-08-02', 100_000, 'courses', 'CARREFOUR')];
+    const txs = [
+      tx('2026-09-02', 100_000, 'courses', 'CARREFOUR'),
+      tx('2026-08-02', 100_000, 'courses', 'CARREFOUR'),
+    ];
     const s = generateMonthlySummary({
       ...rich(),
       transactions: txs,
-      budgets: [{ ...BUDGETS[0], spent: 10_000, remaining: 140_000, ratio: 0.07, level: 'OK' } as BudgetProgress],
-      goals: [{ ...(GOALS[0] as GoalProgress), status: 'COMPLETED', savedAmount: 1_500_000, ratio: 1 }],
+      budgets: [
+        {
+          ...BUDGETS[0],
+          spent: 10_000,
+          remaining: 140_000,
+          ratio: 0.07,
+          level: 'OK',
+        } as BudgetProgress,
+      ],
+      goals: [
+        { ...(GOALS[0] as GoalProgress), status: 'COMPLETED', savedAmount: 1_500_000, ratio: 1 },
+      ],
     });
     const all = s.paragraphs.join(' ');
     expect(all).toMatch(/revenu/);
@@ -177,7 +215,9 @@ describe('generateMonthlySummary', () => {
     const t = [() => 'a', () => 'b', () => 'c'];
     const a = pickTemplate(t, 's', '2026-01', 'X', {});
     expect(pickTemplate(t, 's', '2026-01', 'X', {})).toBe(a);
-    const all = new Set(['1', '2', '3', '4', '5', '6', '7', '8'].map((s) => pickTemplate(t, s, '2026-01', 'X', {})));
+    const all = new Set(
+      ['1', '2', '3', '4', '5', '6', '7', '8'].map((s) => pickTemplate(t, s, '2026-01', 'X', {})),
+    );
     expect(all.size).toBeGreaterThan(1);
   });
 });

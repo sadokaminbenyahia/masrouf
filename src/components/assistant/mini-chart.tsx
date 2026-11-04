@@ -33,9 +33,12 @@ export interface MiniChartProps {
 
 /** Résumé textuel du graphique (nom accessible). */
 function describe(chart: MiniChartData, discreet: boolean): string {
-  const kind = chart.kind === 'pie' ? 'Camembert' : chart.kind === 'line' ? 'Courbe' : 'Histogramme';
+  const kind =
+    chart.kind === 'pie' ? 'Camembert' : chart.kind === 'line' ? 'Courbe' : 'Histogramme';
   const values = chart.data
-    .map((d) => `${d.label} : ${discreet ? 'montant masqué' : formatMoney(d.value, { decimals: 0 })}`)
+    .map(
+      (d) => `${d.label} : ${discreet ? 'montant masqué' : formatMoney(d.value, { decimals: 0 })}`,
+    )
     .join(' ; ');
   return `${kind}${chart.title ? ` « ${chart.title} »` : ''}. ${values}.`;
 }
@@ -76,7 +79,7 @@ export function MiniChart({ chart, height = 180, className }: MiniChartProps) {
   return (
     <figure className={cn('w-full', className)}>
       {chart.title ? (
-        <figcaption className="mb-2 text-xs font-medium text-muted-foreground">
+        <figcaption className="text-muted-foreground mb-2 text-xs font-medium">
           {chart.title}
         </figcaption>
       ) : null}
@@ -140,7 +143,10 @@ export function MiniChart({ chart, height = 180, className }: MiniChartProps) {
         </ResponsiveContainer>
       </div>
       {chart.kind === 'pie' ? (
-        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-hidden="true">
+        <ul
+          className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs"
+          aria-hidden="true"
+        >
           {chart.data.map((d, i) => (
             <li key={d.label} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full" style={{ background: color(i) }} />

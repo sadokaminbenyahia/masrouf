@@ -14,7 +14,15 @@ const mt = (month: string, income: number, expense: number): MonthTotals => ({
 function budget(level: BudgetProgress['level']): BudgetProgress {
   return {
     budget: { id: 'b', categoryId: 'c', amount: 100_000, sortOrder: 0 },
-    category: { id: 'c', name: 'C', kind: 'EXPENSE', group: 'WANTS', icon: 'Tag', color: '#000000', sortOrder: 0 },
+    category: {
+      id: 'c',
+      name: 'C',
+      kind: 'EXPENSE',
+      group: 'WANTS',
+      icon: 'Tag',
+      color: '#000000',
+      sortOrder: 0,
+    },
     month: '2026-03',
     spent: 0,
     remaining: 0,
@@ -88,8 +96,13 @@ describe('computeHealthScore', () => {
       budgets: [],
       goals: [],
     });
-    expect(s.components.map((c) => c.key)).toEqual(['SAVINGS_RATE', 'EMERGENCY_FUND', 'FIXED_CHARGES']);
-    const total = HEALTH_WEIGHTS.SAVINGS_RATE + HEALTH_WEIGHTS.EMERGENCY_FUND + HEALTH_WEIGHTS.FIXED_CHARGES;
+    expect(s.components.map((c) => c.key)).toEqual([
+      'SAVINGS_RATE',
+      'EMERGENCY_FUND',
+      'FIXED_CHARGES',
+    ]);
+    const total =
+      HEALTH_WEIGHTS.SAVINGS_RATE + HEALTH_WEIGHTS.EMERGENCY_FUND + HEALTH_WEIGHTS.FIXED_CHARGES;
     expect(byKey(s, 'SAVINGS_RATE')?.weight).toBeCloseTo(0.25 / total, 10);
     // épargne 10 % → 50 ; couverture 5 400/1 800 = 3 mois → 60 ; charges 35 % → 100
     expect(byKey(s, 'SAVINGS_RATE')?.score).toBe(50);
@@ -144,7 +157,11 @@ describe('computeHealthScore', () => {
     const s = computeHealthScore({
       ...BASE,
       totalBalance: 20_000_000,
-      monthly: [mt('2025-12', 2_000_000, 1_000_000), mt('2026-01', 2_000_000, 950_000), mt('2026-02', 2_000_000, 900_000)],
+      monthly: [
+        mt('2025-12', 2_000_000, 1_000_000),
+        mt('2026-01', 2_000_000, 950_000),
+        mt('2026-02', 2_000_000, 900_000),
+      ],
       budgets: [budget('OK')],
       goals: [goal('COMPLETED', 1)],
     });
@@ -158,7 +175,11 @@ describe('computeHealthScore', () => {
       const exp = (i * 104_729) % 3_500_000;
       const s = computeHealthScore({
         ...BASE,
-        monthly: [mt('2025-12', inc, exp), mt('2026-01', inc, exp + i * 1000), mt('2026-02', inc / 2, exp)],
+        monthly: [
+          mt('2025-12', inc, exp),
+          mt('2026-01', inc, exp + i * 1000),
+          mt('2026-02', inc / 2, exp),
+        ],
         totalBalance: (i - 30) * 100_000,
         fixedMonthlyCharges: i * 20_000,
       });

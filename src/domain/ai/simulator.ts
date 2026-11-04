@@ -130,7 +130,8 @@ function buildMessage(p: {
   const levers: string[] = p.applied.map(
     (a) => `réduisant ${a.name} de ${String(a.percent).replace('.', ',')} %`,
   );
-  if (p.extra > 0) levers.push(`épargnant ${formatMoney(p.extra, { decimals: 0 })} de plus par mois`);
+  if (p.extra > 0)
+    levers.push(`épargnant ${formatMoney(p.extra, { decimals: 0 })} de plus par mois`);
   const hasScenario = levers.length > 0;
   const intro = hasScenario
     ? `En ${joinFr(levers)}`
@@ -145,7 +146,8 @@ function buildMessage(p: {
     const when = formatMonthFR(monthOf(p.scenarioDate));
     sentence = `${intro}, vous atteignez ${goal} en ${when}`;
     if (hasScenario) {
-      if (p.monthsSaved === null) sentence += `, alors qu'au rythme actuel il ne serait pas atteint`;
+      if (p.monthsSaved === null)
+        sentence += `, alors qu'au rythme actuel il ne serait pas atteint`;
       else if (p.monthsSaved > 0) sentence += `, ${p.monthsSaved} mois plus tôt`;
       else sentence += `, à la même échéance qu'au rythme actuel`;
     }

@@ -200,7 +200,8 @@ export function computeHealthScore(input: HealthInput): HealthScore {
       components: [],
       summary:
         'Pas encore assez de données pour évaluer votre santé financière. Ajoutez vos revenus et dépenses pour obtenir un score.',
-      topAdvice: 'Enregistrez vos transactions pendant quelques semaines pour obtenir un premier score.',
+      topAdvice:
+        'Enregistrez vos transactions pendant quelques semaines pour obtenir un premier score.',
     };
   }
 
@@ -228,7 +229,8 @@ export function computeHealthScore(input: HealthInput): HealthScore {
   };
   let summary = `Votre santé financière est ${gradeText[grade]} (${score}/100).`;
   if (strongest) summary += ` Point fort : ${strongest.label.toLowerCase()}.`;
-  if (lever && lever.key !== strongest?.key) summary += ` À améliorer : ${lever.label.toLowerCase()}.`;
+  if (lever && lever.key !== strongest?.key)
+    summary += ` À améliorer : ${lever.label.toLowerCase()}.`;
 
   return {
     score,

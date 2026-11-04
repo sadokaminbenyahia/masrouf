@@ -11,7 +11,10 @@ export interface StoredAiModel {
   updatedAt: Date;
 }
 
-export async function loadAiModel(userId: string, kind: AiModelKind): Promise<StoredAiModel | null> {
+export async function loadAiModel(
+  userId: string,
+  kind: AiModelKind,
+): Promise<StoredAiModel | null> {
   return prisma.aiModel.findFirst({
     where: { userId, kind },
     select: { version: true, data: true, updatedAt: true },
