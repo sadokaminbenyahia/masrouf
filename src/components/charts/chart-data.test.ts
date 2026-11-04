@@ -2,19 +2,25 @@ import { describe, expect, it } from 'vitest';
 import type { BalanceForecast, ForecastChartPoint } from '@/domain/ai/types';
 import type { CategorySlice, MonthTotals } from '@/domain/types';
 import {
-  averageSavingsRate,
   computeSavingsRates,
   describeBreakdown,
   describeForecast,
   describeMonthly,
   describeSavingsRates,
+  forecastHasHistory,
+  forecastIsEmpty,
   forecastMayGoNegative,
+  moneyTicks,
+  niceTicks,
   OTHER_KEY,
+  periodSavingsRate,
   prepareDonutData,
   prepareForecastData,
   prepareMonthlyBars,
-  savingsRate,
+  savingsRateTicks,
   slicesTotal,
+  TODAY_LABEL,
+  trimLeadingEmptyMonths,
   UNCATEGORIZED_KEY,
 } from './chart-data';
 import { categoryColor, chartVar } from './colors';
@@ -120,16 +126,51 @@ describe('séries mensuelles', () => {
   });
 });
 
+describe('mois vides en tête de série', () => {
+  it('commence au premier mois avec des données', () => {
+    const series: MonthTotals[] = [
+      { month: '2026-07', income: 0, expense: 0, net: 0 },
+      { month: '2026-08', income: 0, expense: 0, net: 0 },
+      { month: '2026-09', income: 0, expense: 300_000, net: -300_000 },
+      { month: '2026-10', income: 0, expense: 0, net: 0 },
+      { month: '2026-11', income: 1_000, expense: 0, net: 1_000 },
+    ];
+    expect(trimLeadingEmptyMonths(series).map((m) => m.month)).toEqual([
+      '2026-09',
+      '2026-10',
+      '2026-11',
+    ]);
+    expect(trimLeadingEmptyMonths(series.slice(0, 2))).toEqual([]);
+  });
+});
+
 describe("taux d'épargne", () => {
-  it('calcule net / revenus, null sans revenu', () => {
-    expect(savingsRate({ income: 2_000_000, net: 500_000 })).toBe(0.25);
-    expect(savingsRate({ income: 0, net: -300_000 })).toBeNull();
+  it('définition du domaine, null sans revenu, mois en cours exclu', () => {
     expect(computeSavingsRates(months).map((d) => d.rate)).toEqual([null, 0.25, -0.25]);
+    const withCurrent = computeSavingsRates(months, '2026-11');
+    expect(withCurrent.map((d) => d.rate)).toEqual([null, 0.25, null]);
+    expect(withCurrent.map((d) => d.partial)).toEqual([false, false, true]);
+    // Les versements vers le groupe « Épargne » ne réduisent pas le taux
+    const groups = new Map([['2026-10', 500_000]]);
+    expect(computeSavingsRates(months, '2026-11', groups)[1]?.rate).toBe(0.5);
   });
 
-  it('moyenne pondérée sur les mois avec revenus', () => {
-    expect(averageSavingsRate(months)).toBe(0);
-    expect(averageSavingsRate([{ month: '2026-01', income: 0, expense: 10, net: -10 }])).toBeNull();
+  it('moyenne des mois terminés (mois en cours exclu)', () => {
+    // Σ (revenus − dépenses) / Σ revenus sur septembre et octobre : (−300 + 500) / 2000
+    expect(periodSavingsRate(months, '2026-11-04')).toBeCloseTo(0.1);
+    // novembre terminé : (−300 + 500 − 500) / 4000
+    expect(periodSavingsRate(months, '2026-12-01')).toBeCloseTo(-0.075);
+    expect(
+      periodSavingsRate([{ month: '2026-01', income: 0, expense: 10, net: -10 }], '2026-02-01'),
+    ).toBeNull();
+  });
+
+  it('graduations en % entiers par pas de 10 %, incluant 0 et le repère', () => {
+    const ticks = savingsRateTicks(computeSavingsRates(months), 0.2);
+    expect(ticks[0]).toBeLessThanOrEqual(-0.25);
+    expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(0.3);
+    expect(ticks).toContain(0);
+    for (const t of ticks) expect(Math.abs(Math.round(t * 100) % 10)).toBe(0);
   });
 
   it('décrit la courbe', () => {
@@ -155,13 +196,56 @@ describe('prévision', () => {
     expect(data[2]?.band).toEqual([700_000, 1_100_000]);
   });
 
-  it('ne modifie pas un point réel ayant déjà une prévision', () => {
+  it('ancien format : point d’ancrage déjà fourni (expected = actual)', () => {
     const data = prepareForecastData([
-      { month: '2026-11', actual: 5, expected: 6, low: 4, high: 8 },
-      { month: '2026-12', actual: null, expected: 7, low: 3, high: 9 },
+      { month: '2026-09', actual: 900, expected: null, low: null, high: null },
+      { month: '2026-10', actual: 1_000, expected: 1_000, low: 1_000, high: 1_000 },
+      { month: '2026-11', actual: null, expected: 1_100, low: 900, high: 1_300 },
     ]);
-    expect(data[0]?.expected).toBe(6);
-    expect(data[0]?.band).toEqual([4, 8]);
+    expect(data).toHaveLength(3);
+    expect(data[1]?.expected).toBe(1_000);
+    expect(data.some((d) => d.today)).toBe(false);
+  });
+
+  it('solde du jour sur le mois courant : point « auj. » puis fin de mois prévue', () => {
+    const data = prepareForecastData([
+      { month: '2026-09', actual: 900, expected: null, low: null, high: null },
+      // ancrage de l'ancien format, à ignorer : la prévision part d'aujourd'hui
+      { month: '2026-10', actual: 1_000, expected: 1_000, low: 1_000, high: 1_000 },
+      { month: '2026-11', actual: 1_050, expected: 1_200, low: 1_100, high: 1_300 },
+      { month: '2026-12', actual: null, expected: 1_400, low: 1_000, high: 1_800 },
+    ]);
+    expect(data.map((d) => d.label)).toEqual([
+      'sept. 26',
+      'oct. 26',
+      TODAY_LABEL,
+      'nov. 26',
+      'déc. 26',
+    ]);
+    expect(new Set(data.map((d) => d.key)).size).toBe(data.length);
+    expect(data[1]?.expected).toBeNull();
+    expect(data[1]?.band).toBeNull();
+    const today = data[2];
+    expect(today).toMatchObject({ today: true, actual: 1_050, expected: 1_050 });
+    expect(today?.longLabel).toBe("Aujourd'hui");
+    const dated = prepareForecastData(
+      [{ month: '2026-11', actual: 1_050, expected: 1_200, low: 1_100, high: 1_300 }],
+      '2026-11-04',
+    );
+    expect(dated[0]?.longLabel).toMatch(/^Aujourd'hui \(4.novembre\)$/);
+    expect(today?.band).toEqual([1_050, 1_050]);
+    expect(data[3]).toMatchObject({ actual: null, expected: 1_200, band: [1_100, 1_300] });
+  });
+
+  it('détecte une prévision sans historique (nouvel utilisateur)', () => {
+    const empty = [
+      { month: '2026-10', actual: 0, expected: 0, low: 0, high: 0 },
+      { month: '2026-11', actual: null, expected: 0, low: 0, high: 0 },
+    ];
+    expect(forecastHasHistory({ chart: empty })).toBe(false);
+    expect(forecastIsEmpty({ chart: empty, reliability: 'LOW' })).toBe(true);
+    expect(forecastIsEmpty({ chart: empty, reliability: 'MEDIUM' })).toBe(false);
+    expect(forecastIsEmpty({ chart, reliability: 'LOW' })).toBe(false);
   });
 
   const point = (expected: number, low: number) => ({
@@ -188,6 +272,29 @@ describe('prévision', () => {
     const text = describeForecast(base, money);
     expect(text).toContain('Fin du mois : 1 DT');
     expect(text).toContain('Fiabilité moyenne');
+  });
+});
+
+describe('graduations rondes', () => {
+  it('pas ronds en dinars, couvrant les données', () => {
+    expect(moneyTicks([3_250_000, 1_500_000, -200_000])).toEqual([
+      -1_000_000, 0, 1_000_000, 2_000_000, 3_000_000, 4_000_000,
+    ]);
+    expect(moneyTicks([2_600_000])).toEqual([0, 1_000_000, 2_000_000, 3_000_000]);
+    const t = moneyTicks([5_229_000, 3_700_000, 6_537_000], false);
+    expect(t[0]).toBeLessThanOrEqual(3_700_000);
+    expect(t[t.length - 1]).toBeGreaterThanOrEqual(6_537_000);
+    expect(t.length).toBeLessThanOrEqual(6);
+    for (const v of t) expect(v % 500_000).toBe(0);
+  });
+
+  it('cas limites', () => {
+    expect(niceTicks(0, 0, { unit: 1000 })).toEqual([0, 1000]);
+    expect(niceTicks(0, 3, { unit: 1 })).toEqual([0, 1, 2, 3]);
+    expect(niceTicks(0, 0.43, { unit: 0.1, allowQuarter: false })).toEqual([
+      0, 0.1, 0.2, 0.3, 0.4, 0.5,
+    ]);
+    expect(niceTicks(Number.NaN, 1, { unit: 1 })).toEqual([0]);
   });
 });
 

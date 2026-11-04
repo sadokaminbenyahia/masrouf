@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { averageSavingsRate } from '@/components/charts/chart-data';
+import { forecastIsEmpty, periodSavingsRate } from '@/components/charts/chart-data';
 import { ForecastChart } from '@/components/charts/forecast-chart';
 import { formatPercent } from '@/components/charts/format';
 import { SavingsRateChart } from '@/components/charts/savings-rate-chart';
@@ -31,6 +31,7 @@ import { Stagger, StaggerItem } from '@/components/dashboard/stagger';
 import { AnomalyList } from '@/components/insights/anomaly-list';
 import { HealthScoreCard } from '@/components/insights/health-score-card';
 import { InsightList } from '@/components/insights/insight-list';
+import { MaskedText } from '@/components/insights/use-masked-text';
 
 export const metadata: Metadata = { title: 'Analyses · Masrouf' };
 
@@ -58,6 +59,7 @@ function forecastRows(forecast: BalanceForecast): { label: string; point: Foreca
 }
 
 function ForecastSection({ forecast }: { forecast: BalanceForecast }) {
+  const empty = forecastIsEmpty(forecast);
   return (
     <SectionCard
       id="previsions"
@@ -69,57 +71,71 @@ function ForecastSection({ forecast }: { forecast: BalanceForecast }) {
     >
       <div className="space-y-5">
         <ForecastChart forecast={forecast} height={320} />
-        <div className="text-muted-foreground space-y-2 text-sm leading-relaxed">
-          <p>{forecast.explanation}</p>
-          <p>
-            Flux mensuel estimé hors récurrences :{' '}
-            <Money
-              value={forecast.monthlyNetEstimate}
-              sign="always"
-              decimals={0}
-              className="text-foreground font-medium"
-            />
-            . La zone ombrée contient le solde réel avec une probabilité de 80 % : elle
-            s&apos;élargit avec l&apos;horizon, car l&apos;incertitude augmente.
-          </p>
-        </div>
-        <Table>
-          <TableCaption className="sr-only">Prévision du solde par échéance</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Échéance</TableHead>
-              <TableHead scope="col" className="text-right">
-                Solde attendu
-              </TableHead>
-              <TableHead scope="col" className="text-right">
-                Fourchette à 80 %
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {forecastRows(forecast).map(({ label, point }) => (
-              <TableRow key={point.date}>
-                <TableCell>
-                  <span className="font-medium">{label}</span>
-                  <span className="text-muted-foreground block text-xs">
-                    {formatDateFR(point.date)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Money
-                    value={point.expected}
-                    decimals={0}
-                    className={point.expected < 0 ? 'text-expense font-semibold' : 'font-semibold'}
-                  />
-                </TableCell>
-                <TableCell className="text-muted-foreground text-right">
-                  <Money value={point.low} decimals={0} /> –{' '}
-                  <Money value={point.high} decimals={0} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {empty ? null : (
+          <>
+            <div className="text-muted-foreground space-y-2 text-sm leading-relaxed">
+              <p>
+                <MaskedText text={forecast.explanation} />
+              </p>
+              <p>
+                Flux mensuel estimé hors récurrences :{' '}
+                <Money
+                  value={forecast.monthlyNetEstimate}
+                  sign="always"
+                  decimals={0}
+                  className="text-foreground font-medium"
+                />
+                . La zone ombrée contient le solde réel avec une probabilité de 80 % : elle
+                s&apos;élargit avec l&apos;horizon, car l&apos;incertitude augmente.
+              </p>
+            </div>
+            <Table>
+              <TableCaption className="sr-only">Prévision du solde par échéance</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Échéance</TableHead>
+                  <TableHead scope="col" className="text-right">
+                    Solde attendu
+                    <span className="sm:hidden"> et fourchette</span>
+                  </TableHead>
+                  <TableHead scope="col" className="hidden text-right sm:table-cell">
+                    Fourchette à 80 %
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {forecastRows(forecast).map(({ label, point }) => (
+                  <TableRow key={point.date}>
+                    <TableCell>
+                      <span className="font-medium">{label}</span>
+                      <span className="text-muted-foreground block text-xs">
+                        {formatDateFR(point.date)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Money
+                        value={point.expected}
+                        decimals={0}
+                        className={
+                          point.expected < 0 ? 'text-expense font-semibold' : 'font-semibold'
+                        }
+                      />
+                      {/* Mobile : la fourchette passe sous le solde (pas de colonne coupée) */}
+                      <span className="text-muted-foreground block text-xs sm:hidden">
+                        <Money value={point.low} decimals={0} /> –{' '}
+                        <Money value={point.high} decimals={0} />
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden text-right sm:table-cell">
+                      <Money value={point.low} decimals={0} /> –{' '}
+                      <Money value={point.high} decimals={0} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
       </div>
     </SectionCard>
   );
@@ -134,7 +150,9 @@ export default async function AnalysesPage() {
     settle('analyses:getAnomalies', () => getAnomalies(userId)),
   ]);
   const todayIso = dashboard.ok ? dashboard.value.today : today();
-  const savings = dashboard.ok ? averageSavingsRate(dashboard.value.monthly) : null;
+  // TODO(domaine) : DashboardData n'expose pas encore les dépenses du groupe « Épargne » par
+  // mois ; elles valent 0 ici (taux = net / revenus) jusqu'à ce que le service les fournisse.
+  const savings = dashboard.ok ? periodSavingsRate(dashboard.value.monthly, todayIso) : null;
 
   return (
     <>
@@ -172,7 +190,7 @@ export default async function AnalysesPage() {
           )}
         </StaggerItem>
 
-        <StaggerItem>
+        <StaggerItem index={1}>
           <div id="sante" className="scroll-mt-24">
             {health.ok ? (
               <HealthScoreCard score={health.value} />
@@ -187,7 +205,7 @@ export default async function AnalysesPage() {
         </StaggerItem>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <StaggerItem className="min-w-0">
+          <StaggerItem className="min-w-0" index={2}>
             {anomalies.ok ? (
               <SectionCard
                 id="anomalies"
@@ -204,7 +222,7 @@ export default async function AnalysesPage() {
               </div>
             )}
           </StaggerItem>
-          <StaggerItem className="min-w-0">
+          <StaggerItem className="min-w-0" index={3}>
             {dashboard.ok ? (
               <SectionCard
                 id="conseils"
@@ -222,7 +240,7 @@ export default async function AnalysesPage() {
           </StaggerItem>
         </div>
 
-        <StaggerItem>
+        <StaggerItem index={4}>
           <SectionCard
             id="repartition"
             title="Répartition"
@@ -237,7 +255,7 @@ export default async function AnalysesPage() {
           </SectionCard>
         </StaggerItem>
 
-        <StaggerItem>
+        <StaggerItem index={5}>
           {dashboard.ok ? (
             <SectionCard
               id="evolution"
@@ -252,11 +270,14 @@ export default async function AnalysesPage() {
                     <h3 className="text-sm font-semibold">Taux d&apos;épargne mensuel</h3>
                     <p className="text-muted-foreground text-sm">
                       {savings === null
-                        ? 'Aucun revenu sur la période'
-                        : `Sur 12 mois : ${formatPercent(savings)} de vos revenus épargnés`}
+                        ? 'Aucun revenu sur les mois terminés'
+                        : `Mois terminés : ${formatPercent(savings)} de vos revenus épargnés`}
                     </p>
                   </div>
-                  <SavingsRateChart months={dashboard.value.monthly} />
+                  <SavingsRateChart
+                    months={dashboard.value.monthly}
+                    currentMonth={dashboard.value.month}
+                  />
                 </div>
               </div>
             </SectionCard>

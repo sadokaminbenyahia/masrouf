@@ -7,7 +7,6 @@
  * chevauchement, retour à la ligne sur mobile, pas de défilement horizontal).
  */
 import { useId, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 
 export interface ChartDataColumn<T> {
   header: string;

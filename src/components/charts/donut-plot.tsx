@@ -24,43 +24,42 @@ export function DonutPlot({
 }: DonutPlotProps) {
   const animate = useChartAnimation();
   return (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart accessibilityLayer={false}>
-            <Pie
-              data={data}
-              dataKey="amount"
-              nameKey="name"
-              innerRadius="64%"
-              outerRadius="92%"
-              paddingAngle={data.length > 1 ? 1 : 0}
-              stroke="var(--card)"
-              strokeWidth={2}
-              startAngle={90}
-              endAngle={-270}
-              // Le graphique est une image (role="img") : aucun arrêt de tabulation sans nom ;
-              // la légende (boutons) est l'alternative clavier.
-              rootTabIndex={-1}
-              isAnimationActive={animate}
-              animationDuration={600}
-              onMouseEnter={(_, index) => onActiveChange(data[index]?.key ?? null)}
-              onMouseLeave={() => onActiveChange(null)}
-              onClick={(_, index) => onSelectDatum(data[index])}
-            >
-              {data.map((d) => (
-                <Cell
-                  key={d.key}
-                  fill={d.color}
-                  opacity={activeKey !== null && activeKey !== d.key ? 0.35 : 1}
-                  style={{
-                    cursor: d.slice && clickable ? 'pointer' : 'default',
-                    transition: 'opacity 150ms ease',
-                    outline: 'none',
-                  }}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart accessibilityLayer={false}>
+        <Pie
+          data={data}
+          dataKey="amount"
+          nameKey="name"
+          innerRadius="64%"
+          outerRadius="92%"
+          paddingAngle={data.length > 1 ? 1 : 0}
+          stroke="var(--card)"
+          strokeWidth={2}
+          startAngle={90}
+          endAngle={-270}
+          // Le graphique est une image (role="img") : aucun arrêt de tabulation sans nom ;
+          // la légende (boutons) est l'alternative clavier.
+          rootTabIndex={-1}
+          isAnimationActive={animate}
+          animationDuration={600}
+          onMouseEnter={(_, index) => onActiveChange(data[index]?.key ?? null)}
+          onMouseLeave={() => onActiveChange(null)}
+          onClick={(_, index) => onSelectDatum(data[index])}
+        >
+          {data.map((d) => (
+            <Cell
+              key={d.key}
+              fill={d.color}
+              opacity={activeKey !== null && activeKey !== d.key ? 0.35 : 1}
+              style={{
+                cursor: d.slice && clickable ? 'pointer' : 'default',
+                transition: 'opacity 150ms ease',
+                outline: 'none',
+              }}
+            />
+          ))}
+        </Pie>
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
-

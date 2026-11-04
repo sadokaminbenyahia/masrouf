@@ -39,7 +39,6 @@ export interface MonthlyBarsChartProps {
   className?: string;
 }
 
-
 export function MonthlyBarsChart({
   months,
   onSelectMonth,
@@ -64,12 +63,12 @@ export function MonthlyBarsChart({
         ]}
       />
       <div role="img" aria-label={describeMonthly(data, text)} style={{ height }}>
-          <MonthlyBarsPlot
-            data={data}
-            ticks={ticks}
-            showNet={showNet}
-            onSelectMonth={onSelectMonth}
-          />
+        <MonthlyBarsPlot
+          data={data}
+          ticks={ticks}
+          showNet={showNet}
+          onSelectMonth={onSelectMonth}
+        />
       </div>
       <ChartDataTable<MonthlyBarDatum>
         caption="Revenus, dépenses et solde net par mois"

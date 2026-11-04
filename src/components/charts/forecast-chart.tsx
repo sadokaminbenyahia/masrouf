@@ -81,11 +81,18 @@ export function ForecastChart({
   className,
 }: ForecastChartProps) {
   const { text } = useChartMoney();
-  const data = useMemo(() => prepareForecastData(forecast.chart), [forecast.chart]);
+  const data = useMemo(
+    () => prepareForecastData(forecast.chart, forecast.chartToday),
+    [forecast.chart, forecast.chartToday],
+  );
   const negative = forecastMayGoNegative(forecast);
   const compact = height < 200;
   const ticks = useMemo(
-    () => moneyTicks(data.flatMap((d) => [d.actual, d.expected, d.low, d.high]), negative),
+    () =>
+      moneyTicks(
+        data.flatMap((d) => [d.actual, d.expected, d.low, d.high]),
+        negative,
+      ),
     [data, negative],
   );
 
@@ -108,7 +115,7 @@ export function ForecastChart({
         </div>
       ) : null}
       <div role="img" aria-label={describeForecast(forecast, text)} style={{ height }}>
-          <ForecastPlot data={data} ticks={ticks} negative={negative} compact={compact} />
+        <ForecastPlot data={data} ticks={ticks} negative={negative} compact={compact} />
       </div>
       <ChartDataTable<ForecastDatum>
         caption="Solde réel et prévu par mois"

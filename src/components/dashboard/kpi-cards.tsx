@@ -150,11 +150,7 @@ const TONE_CLASSES = {
 } as const;
 
 function MonthExpenseKpi({ data }: { data: KpiData }) {
-  const change = describeExpenseChange(
-    data.expenseChange,
-    data.month,
-    data.comparisonLabel,
-  );
+  const change = describeExpenseChange(data.expenseChange, data.month, data.comparisonLabel);
   const last6 = trimLeadingEmptyMonths(data.monthly)
     .slice(-6)
     .map((m) => m.expense);

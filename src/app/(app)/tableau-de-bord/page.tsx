@@ -124,6 +124,7 @@ function DashboardContent({
             current: d.current,
             previous: d.previous,
             expenseChange: d.expenseChange,
+            comparisonLabel: d.comparisonLabel,
             remainingToSpend: d.remainingToSpend,
             dailyAllowance: d.dailyAllowance,
             monthly: d.monthly,
@@ -133,7 +134,7 @@ function DashboardContent({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="min-w-0 space-y-4 lg:col-span-2">
-          <StaggerItem>
+          <StaggerItem index={1}>
             <SectionCard
               testId="chart-categories"
               title="Répartition des dépenses"
@@ -143,7 +144,7 @@ function DashboardContent({
               <CategoryBreakdown today={d.today} initialSlices={d.byCategory} />
             </SectionCard>
           </StaggerItem>
-          <StaggerItem>
+          <StaggerItem index={2}>
             <SectionCard
               testId="chart-12-months"
               title="12 derniers mois"
@@ -153,7 +154,7 @@ function DashboardContent({
               <MonthlyOverview months={d.monthly} />
             </SectionCard>
           </StaggerItem>
-          <StaggerItem>
+          <StaggerItem index={3}>
             <SectionCard
               testId="top-expenses"
               title="Plus grosses dépenses du mois"
@@ -172,7 +173,7 @@ function DashboardContent({
 
         <div className="min-w-0 space-y-4">
           {hasBudgets ? (
-            <StaggerItem>
+            <StaggerItem index={4}>
               <SectionCard
                 title="Alertes budgets"
                 icon={Target}
@@ -182,14 +183,14 @@ function DashboardContent({
               </SectionCard>
             </StaggerItem>
           ) : null}
-          <StaggerItem>
+          <StaggerItem index={5}>
             <ForecastBlock forecast={forecast} />
           </StaggerItem>
-          <StaggerItem>
+          <StaggerItem index={6}>
             <HealthBlock health={health} />
           </StaggerItem>
           {d.upcomingRecurring.length > 0 ? (
-            <StaggerItem>
+            <StaggerItem index={7}>
               <SectionCard
                 title="Échéances à venir"
                 icon={CalendarClock}
@@ -203,12 +204,12 @@ function DashboardContent({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <StaggerItem className="min-w-0">
+        <StaggerItem className="min-w-0" index={8}>
           <SectionCard title="Conseils" icon={Lightbulb}>
             <InsightList insights={d.insights} limit={3} />
           </SectionCard>
         </StaggerItem>
-        <StaggerItem className="min-w-0">
+        <StaggerItem className="min-w-0" index={9}>
           <AnomaliesBlock anomalies={anomalies} />
         </StaggerItem>
       </div>

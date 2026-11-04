@@ -2,7 +2,7 @@
  * Préparation PURE des données de graphiques (testée). Les séries restent en millimes :
  * le formatage a lieu dans les tickFormatter / infobulles via formatMoney ou <Money>.
  */
-import { formatMonthFR, type ISODate, type YearMonth } from '@/domain/dates';
+import { formatDateFR, formatMonthFR, type ISODate, type YearMonth } from '@/domain/dates';
 import type { Millimes } from '@/domain/money';
 import type { BalanceForecast, ForecastChartPoint } from '@/domain/ai/types';
 import { averageSavingsRate, savingsRate, withSavingsGroup } from '@/domain/savings';
@@ -126,7 +126,7 @@ export function niceTicks(min: number, max: number, options: NiceTicksOptions): 
     hi = Math.max(hi, 0);
     if (lo === hi) hi = lo + 1;
   }
-  const clean = (v: number) => Number((v * unit).toFixed(10));
+  const clean = (v: number) => Number((v * unit).toFixed(10)) || 0; // || 0 : jamais « −0 »
   for (const step of niceSteps(allowQuarter)) {
     const first = Math.floor(lo / step) * step;
     const last = Math.ceil(hi / step) * step;
@@ -321,7 +321,11 @@ export const TODAY_LABEL = 'auj.';
  *  - sinon, le dernier point réel reçoit expected = actual (et une bande de largeur nulle)
  *    pour que la ligne pointillée en parte.
  */
-export function prepareForecastData(chart: readonly ForecastChartPoint[]): ForecastDatum[] {
+export function prepareForecastData(
+  chart: readonly ForecastChartPoint[],
+  /** Date du solde réel du mois courant (`BalanceForecast.chartToday`) */
+  today?: ISODate,
+): ForecastDatum[] {
   const sorted = [...chart].sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
   const band = (low: Millimes | null, high: Millimes | null): [Millimes, Millimes] | null =>
     low !== null && high !== null ? [Math.min(low, high), Math.max(low, high)] : null;
@@ -360,7 +364,7 @@ export function prepareForecastData(chart: readonly ForecastChartPoint[]): Forec
         key: `${p.month}-today`,
         today: true,
         label: TODAY_LABEL,
-        longLabel: "Aujourd'hui",
+        longLabel: today ? `Aujourd'hui (${formatDateFR(today, 'dayMonth')})` : "Aujourd'hui",
         expected: actual,
         low: null,
         high: null,

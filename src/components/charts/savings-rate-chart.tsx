@@ -55,7 +55,7 @@ export function SavingsRateChart({
   return (
     <div className={cn('space-y-3', className)}>
       <div role="img" aria-label={describeSavingsRates(data)} style={{ height }}>
-          <SavingsRatePlot data={data} ticks={ticks} target={SAVINGS_TARGET} />
+        <SavingsRatePlot data={data} ticks={ticks} target={SAVINGS_TARGET} />
       </div>
       {partial ? (
         <p className="text-muted-foreground text-xs">
@@ -72,7 +72,11 @@ export function SavingsRateChart({
             header: "Taux d'épargne",
             align: 'right',
             cell: (d) =>
-              d.partial ? 'Mois en cours' : d.rate === null ? 'Aucun revenu' : formatPercent(d.rate),
+              d.partial
+                ? 'Mois en cours'
+                : d.rate === null
+                  ? 'Aucun revenu'
+                  : formatPercent(d.rate),
           },
         ]}
       />

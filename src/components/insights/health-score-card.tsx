@@ -159,9 +159,8 @@ function NotEnoughData({ compact }: { compact: boolean }) {
         <div className="space-y-1">
           <p className="font-medium">Pas encore de score</p>
           <p className="text-muted-foreground leading-relaxed">
-            Le score se calcule à partir de quelques semaines de revenus et de dépenses.
-            Continuez à enregistrer vos opérations, ou importez un relevé pour l&apos;obtenir dès
-            maintenant.
+            Le score se calcule à partir de quelques semaines de revenus et de dépenses. Continuez à
+            enregistrer vos opérations, ou importez un relevé pour l&apos;obtenir dès maintenant.
           </p>
         </div>
       </div>

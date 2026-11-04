@@ -55,9 +55,13 @@ const LEVEL_TEXT: Record<BudgetProgress['level'], string> = {
  * Texte lu par les lecteurs d'écran pour la barre : montants réels (la barre est plafonnée à
  * 100 %), niveau d'alerte ; les montants sont masqués en mode discret.
  */
-export function budgetValueText(b: BudgetProgress, discreet: boolean): string {
-  const level =
-    b.level === 'OK' && b.projectedOverrun ? 'dépassement prévu' : LEVEL_TEXT[b.level];
+export type BudgetValueInput = Pick<
+  BudgetProgress,
+  'spent' | 'ratio' | 'level' | 'projectedOverrun'
+> & { budget: Pick<BudgetProgress['budget'], 'amount'> };
+
+export function budgetValueText(b: BudgetValueInput, discreet: boolean): string {
+  const level = b.level === 'OK' && b.projectedOverrun ? 'dépassement prévu' : LEVEL_TEXT[b.level];
   if (discreet) return `${formatPercent(b.ratio)} du budget utilisé, ${level}`;
   const spent = formatMoney(b.spent, { decimals: 0 });
   const budget = formatMoney(b.budget.amount, { decimals: 0 });
