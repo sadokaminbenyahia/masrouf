@@ -270,6 +270,9 @@ export function buildCommitRows(
       categoryFromAI: edit.categoryFromAI && edit.categoryId !== null,
     };
     if (row.note !== undefined) commit.note = row.note;
+    // Libellé nettoyé : on transmet le libellé bancaire d'origine pour que l'empreinte anti-doublon
+    // reste calculée dessus (un ré-import du même relevé sera bien reconnu).
+    if (commit.label !== row.label) commit.originalLabel = row.label;
     out.push(commit);
   }
   return out;

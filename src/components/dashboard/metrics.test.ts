@@ -8,30 +8,30 @@ describe('describeExpenseChange', () => {
     expect(d).toMatchObject({
       trend: 'up',
       tone: 'bad',
-      percent: '+12 %',
-      text: '+12 % vs octobre',
+      percent: '+12 %',
+      text: '+12 % vs octobre',
     });
-    expect(d?.srText).toBe('Dépenses en hausse de 12 % par rapport à octobre.');
+    expect(d?.srText).toBe('Dépenses en hausse de 12 % par rapport à octobre.');
   });
 
   it('baisse : favorable', () => {
     const d = describeExpenseChange(-0.25, '2026-01');
-    expect(d).toMatchObject({ trend: 'down', tone: 'good', text: '−25 % vs décembre' });
-    expect(d?.srText).toContain('baisse de 25 %');
+    expect(d).toMatchObject({ trend: 'down', tone: 'good', text: '−25 % vs décembre' });
+    expect(d?.srText).toContain('baisse de 25 %');
   });
 
   it('cite la période de comparaison fournie par le service (mois partiel)', () => {
     const d = describeExpenseChange(-0.45, '2026-11', 'vs 1–4 octobre');
-    expect(d?.text).toBe('−45 % vs 1–4 octobre');
-    expect(d?.srText).toBe('Dépenses en baisse de 45 % (comparaison : 1–4 octobre).');
-    expect(describeExpenseChange(0.1, '2026-11', 'vs octobre')?.text).toBe('+10 % vs octobre');
+    expect(d?.text).toBe('−45 % vs 1–4 octobre');
+    expect(d?.srText).toBe('Dépenses en baisse de 45 % (comparaison : 1–4 octobre).');
+    expect(describeExpenseChange(0.1, '2026-11', 'vs octobre')?.text).toBe('+10 % vs octobre');
   });
 
   it('stable et sans référence', () => {
     expect(describeExpenseChange(0.001, '2026-11')).toMatchObject({
       trend: 'flat',
       tone: 'neutral',
-      percent: '0 %',
+      percent: '0 %',
     });
     expect(describeExpenseChange(null, '2026-11')).toBeNull();
     expect(describeExpenseChange(Number.POSITIVE_INFINITY, '2026-11')).toBeNull();

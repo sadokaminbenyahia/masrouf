@@ -416,7 +416,9 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
   }
 
   // Taux d'épargne (définition unique : les versements vers le groupe Épargne sont de l'épargne).
-  const savingsIds = new Set(input.categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id));
+  const savingsIds = new Set(
+    input.categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id),
+  );
   const totals = {
     income,
     expense,
@@ -681,8 +683,7 @@ function buildRecommendations(p: {
   // Replis : poste variable principal, catégorie sans budget. Chacun parcourt TOUTES les
   // catégories éligibles et retient la première qui n'est pas déjà couverte par une
   // recommandation, pour garantir 3 recommandations quand les données le permettent.
-  const taken = (id: string | null) =>
-    id !== null && chosen.some((x) => x.categoryId === id);
+  const taken = (id: string | null) => id !== null && chosen.some((x) => x.categoryId === id);
   const fallback: Candidate[] = [];
   const topVar = curCats.find(([id, s]) => s.count >= 3 && !taken(id));
   const isFirstVar = topVar !== undefined && topVar === curCats.find(([, s]) => s.count >= 3);

@@ -28,6 +28,8 @@ export interface SavingsRateChartProps {
   months: MonthTotals[];
   /** Mois en cours (incomplet) : exclu de la courbe */
   currentMonth?: YearMonth;
+  /** Versements mensuels vers les catégories du groupe Épargne (comptés comme épargne) */
+  savingsByMonth?: { month: YearMonth; amount: number }[];
   height?: number;
   className?: string;
 }
@@ -37,10 +39,19 @@ export const SAVINGS_TARGET = 0.2;
 export function SavingsRateChart({
   months,
   currentMonth,
+  savingsByMonth,
   height = 220,
   className,
 }: SavingsRateChartProps) {
-  const data = useMemo(() => computeSavingsRates(months, currentMonth), [months, currentMonth]);
+  const data = useMemo(
+    () =>
+      computeSavingsRates(
+        months,
+        currentMonth,
+        new Map((savingsByMonth ?? []).map((s) => [s.month, s.amount])),
+      ),
+    [months, currentMonth, savingsByMonth],
+  );
   const ticks = useMemo(() => savingsRateTicks(data, SAVINGS_TARGET), [data]);
   const partial = data.find((d) => d.partial);
 

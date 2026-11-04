@@ -38,11 +38,7 @@ export const signedMillimesSchema = z
   .max(MAX_MILLIMES);
 export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Couleur invalide (#RRGGBB).');
 /** Nom d'icône : uniquement ceux de la liste fermée `ICON_NAMES` (src/domain/icons.ts). */
-export const iconSchema = z
-  .string()
-  .min(1)
-  .max(40)
-  .refine(isIconName, 'Icône invalide.');
+export const iconSchema = z.string().min(1).max(40).refine(isIconName, 'Icône invalide.');
 
 export const accountTypeSchema = z.enum(ACCOUNT_TYPES);
 export const transactionTypeSchema = z.enum(TRANSACTION_TYPES);

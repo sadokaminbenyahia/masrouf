@@ -150,9 +150,14 @@ export default async function AnalysesPage() {
     settle('analyses:getAnomalies', () => getAnomalies(userId)),
   ]);
   const todayIso = dashboard.ok ? dashboard.value.today : today();
-  // TODO(domaine) : DashboardData n'expose pas encore les dépenses du groupe « Épargne » par
-  // mois ; elles valent 0 ici (taux = net / revenus) jusqu'à ce que le service les fournisse.
-  const savings = dashboard.ok ? periodSavingsRate(dashboard.value.monthly, todayIso) : null;
+  // Les versements vers le groupe « Épargne » comptent comme de l'épargne (définition du domaine).
+  const savings = dashboard.ok
+    ? periodSavingsRate(
+        dashboard.value.monthly,
+        todayIso,
+        new Map(dashboard.value.savingsByMonth.map((s) => [s.month, s.amount])),
+      )
+    : null;
 
   return (
     <>
@@ -277,6 +282,7 @@ export default async function AnalysesPage() {
                   <SavingsRateChart
                     months={dashboard.value.monthly}
                     currentMonth={dashboard.value.month}
+                    savingsByMonth={dashboard.value.savingsByMonth}
                   />
                 </div>
               </div>

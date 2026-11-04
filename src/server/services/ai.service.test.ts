@@ -195,7 +195,12 @@ describe('ai.service', () => {
     await ai.predictCategory('u10', { label: 'Carrefour', amount: 1000, type: 'EXPENSE' });
     saveAiModel.mockClear();
     const transfer = {
-      sample: { label: 'Retrait DAB', amount: 20_000, type: 'TRANSFER' as const, categoryId: 'c_resto' },
+      sample: {
+        label: 'Retrait DAB',
+        amount: 20_000,
+        type: 'TRANSFER' as const,
+        categoryId: 'c_resto',
+      },
       previousCategoryId: null,
     };
     const items = ['Pizzeria Roma', 'Chez Slah', 'Retrait DAB'].map((label, i) => ({
@@ -222,7 +227,11 @@ describe('ai.service', () => {
   it('modèle stocké illisible (JSON) : journalisé puis réentraîné', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     store.set('u11', { version: 1, data: '{pas du json', updatedAt: new Date(0) });
-    const r = await ai.predictCategory('u11', { label: 'Carrefour', amount: 1000, type: 'EXPENSE' });
+    const r = await ai.predictCategory('u11', {
+      label: 'Carrefour',
+      amount: 1000,
+      type: 'EXPENSE',
+    });
     expect(r.ok).toBe(true);
     expect(warn.mock.calls.some((c) => String(c[0]).includes('illisible'))).toBe(true);
     expect(saveAiModel).toHaveBeenCalledTimes(1);
@@ -260,7 +269,9 @@ describe('ai.service', () => {
       expect(r.value.text).not.toMatch(/\d/);
     }
     expect(
-      error.mock.calls.some((c) => String(c[0]).includes('outil de l’assistant en échec (balances)')),
+      error.mock.calls.some((c) =>
+        String(c[0]).includes('outil de l’assistant en échec (balances)'),
+      ),
     ).toBe(true);
   });
 });

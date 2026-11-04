@@ -62,8 +62,8 @@ function clampScore(v: number): number {
  * Vrai si le score repose sur assez de données. Le domaine renvoie un score neutre (50) sans
  * aucune composante quand l'historique est insuffisant : on affiche alors un état vide.
  */
-export function hasHealthData(score: Pick<HealthScore, 'components'>): boolean {
-  return score.components.length > 0;
+export function hasHealthData(score: Pick<HealthScore, 'components' | 'dataSufficient'>): boolean {
+  return score.dataSufficient && score.components.length > 0;
 }
 
 function Gauge({

@@ -25,7 +25,12 @@ import { askAssistant } from '@/domain/ai/assistant';
 import { parsePeriods } from '@/domain/ai/assistant/periods';
 import { detectIntent } from '@/domain/ai/assistant/intents';
 import { extractQuestionAmount, matchGoal } from '@/domain/ai/assistant/entities';
-import { capitalize, contentWords, jaccard, normalizeQuestion } from '@/domain/ai/assistant/normalize';
+import {
+  capitalize,
+  contentWords,
+  jaccard,
+  normalizeQuestion,
+} from '@/domain/ai/assistant/normalize';
 import { formatPercent } from '@/domain/format';
 import {
   ceilTo,
@@ -822,18 +827,15 @@ describe('assistant : configurations particulières des outils', () => {
 
 // Régression (corrigée) : le motif exigeait « plus » immédiatement suivi de « que/qu » ; avec la
 // période intercalée (tournure courante), la comparaison n'était pas reconnue.
-it(
-  'assistant : « je dépense plus en octobre qu’en septembre ? » → COMPARE_PERIODS',
-  async () => {
-    const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
-    const a = await askAssistant(
-      'je dépense plus en octobre qu’en septembre ?',
-      ctx,
-      fakeTools({ txs: syntheticHistory() }),
-    );
-    expect(a.intent).toBe('COMPARE_PERIODS');
-  },
-);
+it('assistant : « je dépense plus en octobre qu’en septembre ? » → COMPARE_PERIODS', async () => {
+  const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
+  const a = await askAssistant(
+    'je dépense plus en octobre qu’en septembre ?',
+    ctx,
+    fakeTools({ txs: syntheticHistory() }),
+  );
+  expect(a.intent).toBe('COMPARE_PERIODS');
+});
 
 it('assistant : « depuis le 10 novembre 2027 » → réponse pour ce mois-ci, avec la remarque', async () => {
   const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };

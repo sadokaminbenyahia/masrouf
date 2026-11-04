@@ -44,9 +44,7 @@ export function baselineMonthlySaving(
   const pool = complete.length > 0 ? complete : sorted.filter((m) => m.month <= current);
   const last3 = pool.slice(-3);
   const groups = new Map(savingsGroupByMonth.map((g) => [g.month, g.amount]));
-  return Math.round(
-    median(withSavingsGroup(last3, groups).map((m) => savedAmount(m))),
-  );
+  return Math.round(median(withSavingsGroup(last3, groups).map((m) => savedAmount(m))));
 }
 
 /** Nombre de mois pour combler `remaining` au rythme `saving` (null si jamais). */
@@ -90,7 +88,10 @@ export function simulateWhatIf(input: WhatIfInput): WhatIfResult {
   const reached = [baseMonths, scenMonths].filter((n): n is number => n !== null);
   const horizon = Math.min(
     MAX_SIMULATION_MONTHS,
-    Math.max(MIN_TIMELINE_MONTHS, reached.length > 0 ? Math.max(...reached) + TIMELINE_TAIL_MONTHS : 0),
+    Math.max(
+      MIN_TIMELINE_MONTHS,
+      reached.length > 0 ? Math.max(...reached) + TIMELINE_TAIL_MONTHS : 0,
+    ),
   );
   const start: YearMonth = monthOf(today);
   const timeline: WhatIfResult['timeline'] = [];

@@ -15,7 +15,9 @@ describe('savingsRate', () => {
   });
 
   it('négatif si dépenses > revenus ; null sans revenu', () => {
-    expect(savingsRate({ income: 1_000, expense: 1_500, savingsGroupExpense: 0 })).toBeCloseTo(-0.5);
+    expect(savingsRate({ income: 1_000, expense: 1_500, savingsGroupExpense: 0 })).toBeCloseTo(
+      -0.5,
+    );
     expect(savingsRate({ income: 0, expense: 1_500, savingsGroupExpense: 0 })).toBeNull();
   });
 });

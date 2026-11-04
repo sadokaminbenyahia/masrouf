@@ -199,5 +199,8 @@ const MONEY_IN_TEXT_RE =
  * « +2,4 k DT ») par « ••• DT ». Les autres nombres (pourcentages, dates…) sont conservés.
  */
 export function maskMoneyInText(text: string): string {
-  return text.replace(MONEY_IN_TEXT_RE, (_m, currency: string) => `${MASKED_MONEY}${NBSP}${currency}`);
+  return text.replace(
+    MONEY_IN_TEXT_RE,
+    (_m, currency: string) => `${MASKED_MONEY}${NBSP}${currency}`,
+  );
 }

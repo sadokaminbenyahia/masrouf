@@ -25,7 +25,11 @@ describe('auth.service.registerUser (accès base via user.repo uniquement)', () 
       ok: true,
       value: { id: 'u_new', email: 'a@b.tn' },
     });
-    expect(createUser).toHaveBeenCalledWith({ email: 'a@b.tn', name: 'Amel', passwordHash: 'hash' });
+    expect(createUser).toHaveBeenCalledWith({
+      email: 'a@b.tn',
+      name: 'Amel',
+      passwordHash: 'hash',
+    });
     expect(bootstrapUser).toHaveBeenCalledWith('u_new');
   });
 

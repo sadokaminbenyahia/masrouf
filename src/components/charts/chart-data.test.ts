@@ -53,11 +53,11 @@ describe('colors', () => {
 
 describe('formatPercent', () => {
   it('formate à la française avec signe optionnel', () => {
-    expect(formatPercent(0.123)).toBe('12 %');
-    expect(formatPercent(0.123, { signed: true })).toBe('+12 %');
-    expect(formatPercent(-0.5, { signed: true })).toBe('−50 %');
-    expect(formatPercent(0.1234, { decimals: 1 })).toBe('12,3 %');
-    expect(formatPercent(0.001, { signed: true })).toBe('0 %');
+    expect(formatPercent(0.123)).toBe('12 %');
+    expect(formatPercent(0.123, { signed: true })).toBe('+12 %');
+    expect(formatPercent(-0.5, { signed: true })).toBe('−50 %');
+    expect(formatPercent(0.1234, { decimals: 1 })).toBe('12,3 %');
+    expect(formatPercent(0.001, { signed: true })).toBe('0 %');
   });
 });
 
@@ -99,7 +99,7 @@ describe('prepareDonutData', () => {
       money,
     );
     expect(text).toBe(
-      'Répartition des dépenses, total 4 DT : Courses 75 % (3 DT), Cafés 25 % (1 DT).',
+      'Répartition des dépenses, total 4 DT : Courses 75 % (3 DT), Cafés 25 % (1 DT).',
     );
   });
 });
@@ -165,7 +165,7 @@ describe("taux d'épargne", () => {
     ).toBeNull();
   });
 
-  it('graduations en % entiers par pas de 10 %, incluant 0 et le repère', () => {
+  it('graduations en % entiers par pas de 10 %, incluant 0 et le repère', () => {
     const ticks = savingsRateTicks(computeSavingsRates(months), 0.2);
     expect(ticks[0]).toBeLessThanOrEqual(-0.25);
     expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(0.3);
@@ -175,8 +175,8 @@ describe("taux d'épargne", () => {
 
   it('décrit la courbe', () => {
     const text = describeSavingsRates(computeSavingsRates(months));
-    expect(text).toContain('Dernier mois : −25 %');
-    expect(text).toContain('Meilleur mois : octobre 2026 (25 %)');
+    expect(text).toContain('Dernier mois : −25 %');
+    expect(text).toContain('Meilleur mois : octobre 2026 (25 %)');
     expect(describeSavingsRates([])).toContain('aucun revenu');
   });
 });

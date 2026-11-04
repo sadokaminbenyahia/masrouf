@@ -140,14 +140,18 @@ describe('maskMoneyInText (mode discret)', () => {
         const text = `Vous avez dépensé ${formatted} ce mois-ci (12 % de plus).`;
         const masked = maskMoneyInText(text);
         expect(masked, formatted).not.toContain(formatted);
-        expect(masked).toMatch(/^Vous avez dépensé •••\u00a0(DT|EUR) ce mois-ci \(12 % de plus\)\.$/);
+        expect(masked).toMatch(
+          /^Vous avez dépensé •••\u00a0(DT|EUR) ce mois-ci \(12 % de plus\)\.$/,
+        );
       }
     }
   });
 
   it('plusieurs montants ; les autres nombres sont conservés', () => {
     const t = `Courses : ${formatMoney(450_000)} sur ${formatMoney(500_000, { decimals: 0 })} (90${NB}%), le 12 mars 2026.`;
-    expect(maskMoneyInText(t)).toBe(`Courses : •••${NB}DT sur •••${NB}DT (90${NB}%), le 12 mars 2026.`);
+    expect(maskMoneyInText(t)).toBe(
+      `Courses : •••${NB}DT sur •••${NB}DT (90${NB}%), le 12 mars 2026.`,
+    );
     expect(maskMoneyInText('3 mois, 12 jours, 2026')).toBe('3 mois, 12 jours, 2026');
     expect(maskMoneyInText('le 12 DTs, 3 dt')).toBe('le 12 DTs, 3 dt');
   });

@@ -1,7 +1,14 @@
 // Propriétaire : agent A
 import 'server-only';
 import { computeAllBudgetProgress } from '@/domain/budgets';
-import { addMonthsYM, monthEnd, monthOf, monthRange, monthStart, type YearMonth } from '@/domain/dates';
+import {
+  addMonthsYM,
+  monthEnd,
+  monthOf,
+  monthRange,
+  monthStart,
+  type YearMonth,
+} from '@/domain/dates';
 import { appError, err, ok, type Result } from '@/domain/result';
 import type { Budget, BudgetProgress } from '@/domain/types';
 import type { BudgetUpsertData } from '@/lib/schemas/budgets';

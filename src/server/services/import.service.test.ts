@@ -58,7 +58,13 @@ describe('import.service', () => {
 
   it('doublon POSSIBLE : même compte, montant et type à ±2 jours, libellé différent', async () => {
     flows.push(
-      { date: '2026-11-02', amount: 45_000, type: 'EXPENSE', label: 'Monoprix', accountId: 'acc_1' },
+      {
+        date: '2026-11-02',
+        amount: 45_000,
+        type: 'EXPENSE',
+        label: 'Monoprix',
+        accountId: 'acc_1',
+      },
       { date: '2026-11-10', amount: 45_000, type: 'EXPENSE', label: 'Aziza', accountId: 'acc_2' },
     );
     const r = await svc.previewImport('u1', {

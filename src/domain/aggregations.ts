@@ -189,6 +189,9 @@ export function comparisonPeriod(
   const { year, month: m } = parseYearMonth(prev);
   const day = Math.min(parseISODate(today).day, daysInMonth(year, m));
   const range = { from: monthStart(prev), to: toISODate(year, m, day) };
-  const label = day === daysInMonth(year, m) ? `vs ${prevName}` : `vs ${day === 1 ? '1er' : `1–${day}`} ${prevName}`;
+  const label =
+    day === daysInMonth(year, m)
+      ? `vs ${prevName}`
+      : `vs ${day === 1 ? '1er' : `1–${day}`} ${prevName}`;
   return { range, label };
 }
