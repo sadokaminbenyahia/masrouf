@@ -146,6 +146,92 @@ function computeNormalizedLabel(raw: string): string {
   return collapse(stripNoise(folded));
 }
 
+// ───────────────────────── Libellé lisible (import) ─────────────────────────
+
+const CLEAN_PREFIX_RE =
+  /^(?:\s*(?:paiement(?:\s+par)?(?:\s+(?:cb|tpe|carte))?|achat(?:\s+(?:par\s+)?(?:cb|tpe|carte))?|retrait(?:\s+(?:dab|gab))?|vir(?:ement)?(?:\s+(?:re[cç]u|[eé]mis|sepa|permanent))?|prlv(?:\s+sepa)?|pr[eé]l[eè]vement|cb|tpe|carte)(?![\p{L}\d])[\s:.\-/*]*)+/iu;
+const CLEAN_REF_RE = /(?:\b(?:r[eé]f|n°|no|num)\s*[:.]?\s*[\w-]*\d[\w-]*)|n°\s*\S+/giu;
+const CLEAN_CARD_RE = /(?:\bcarte\s+)?(?:[x*]{2,}\s?\d{2,4}\b|\b\d{4}[x*]{2,}\w*)/giu;
+/** Dates « AAAA-MM(-JJ) » (les dates « JJ/MM » sont couvertes par DATE_RE). */
+const CLEAN_ISO_DATE_RE = /\b(?:19|20)\d{2}[/.-]\d{1,2}(?:[/.-]\d{1,2})?\b/g;
+/** Références : tout mot contenant 4 chiffres ou plus, sauf une année seule (« 2026 »). */
+const CLEAN_DIGIT_TOKEN_RE = /\b(?!(?:19|20)\d{2}\b)[\p{L}]*\d{4,}[\p{L}\d]*\b/gu;
+const CLEAN_LEGAL_RE = /\b(?:sarl|suarl|ste|ets|s\.a\.?)(?![\p{L}])/giu;
+/** Petits mots laissés en minuscules (sauf en tête). */
+const LOWER_WORDS: ReadonlySet<string> = new Set([
+  'de',
+  'du',
+  'des',
+  'la',
+  'le',
+  'les',
+  'et',
+  'à',
+  'a',
+  'au',
+  'aux',
+  'en',
+  'sur',
+  'pour',
+]);
+
+function titleCaseFr(s: string): string {
+  const words = s.toLocaleLowerCase('fr').split(' ');
+  return words
+    .map((w, i) => {
+      if (w === '') return w;
+      // « La Marsa », « La Goulette » : l'article fait partie du nom de lieu.
+      const next = foldText(words[i + 1] ?? '');
+      const placeArticle = (w === 'la' || w === 'le' || w === 'les') && TUNISIAN_PLACES.has(next);
+      if (i > 0 && LOWER_WORDS.has(w) && !placeArticle) return w;
+      // « l'aouina » → « L'Aouina », « d'or » → « d'Or »
+      const m = /^([ld]')(.+)$/u.exec(w);
+      if (m) {
+        const head = i === 0 ? (m[1] ?? '').toLocaleUpperCase('fr') : (m[1] ?? '');
+        const rest = m[2] ?? '';
+        return `${head}${rest.charAt(0).toLocaleUpperCase('fr')}${rest.slice(1)}`;
+      }
+      return w
+        .split('-')
+        .map((part) => part.charAt(0).toLocaleUpperCase('fr') + part.slice(1))
+        .join('-');
+    })
+    .join(' ');
+}
+
+function tidy(s: string): string {
+  return s
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:])/g, '$1')
+    .replace(/^[\s,.;:\-/]+|[\s,.;:\-/]+$/g, '')
+    .replace(/\s+-\s+-\s+/g, ' - ')
+    .trim();
+}
+
+/**
+ * Libellé lisible pour l'import : retire les préfixes bancaires (« PAIEMENT CB »…), les dates,
+ * heures, références, cartes masquées et formes juridiques ; garde le marchand ET la ville ;
+ * casse « Titre » à la française. « PAIEMENT CB MONOPRIX MENZAH 02/11 » → « Monoprix Menzah ».
+ * Si tout est retiré (« RETRAIT DAB 12/03 »), on garde les mots du libellé d'origine.
+ */
+export function cleanLabel(raw: string): string {
+  const base = raw.replace(/[’`´]/g, "'").replace(/\s+/g, ' ').trim();
+  const noise = (s: string) =>
+    tidy(
+      s
+        .replace(CLEAN_CARD_RE, ' ')
+        .replace(CLEAN_REF_RE, ' ')
+        .replace(CLEAN_ISO_DATE_RE, ' ')
+        .replace(DATE_RE, ' ')
+        .replace(TIME_RE, ' ')
+        .replace(CLEAN_DIGIT_TOKEN_RE, ' ')
+        .replace(CLEAN_LEGAL_RE, ' '),
+    );
+  const cleaned = noise(base.replace(CLEAN_PREFIX_RE, ''));
+  const kept = cleaned !== '' ? cleaned : noise(base);
+  return kept === '' ? base : titleCaseFr(kept);
+}
+
 /** Clé de comparaison d'un nom (catégorie, compte) : « Famille & cadeaux » → « famille cadeaux ». */
 export function nameKey(name: string): string {
   return collapse(foldText(name));

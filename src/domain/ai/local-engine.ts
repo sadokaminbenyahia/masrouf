@@ -10,7 +10,7 @@ import {
   learnCorrections,
   trainCategorizer,
 } from './categorizer';
-import { merchantKey } from './text';
+import { cleanLabel, merchantKey } from './text';
 import { parseEntry } from './nl-entry';
 import { detectAnomalies } from './anomalies';
 import { detectRecurring } from './recurring-detect';
@@ -26,6 +26,7 @@ export class LocalAIEngine implements AIEngine {
   readonly categorizerVersion = CATEGORIZER_VERSION;
 
   merchantKey = merchantKey;
+  cleanLabel = cleanLabel;
 
   trainCategorizer = trainCategorizer;
   learnCorrection = learnCorrection;

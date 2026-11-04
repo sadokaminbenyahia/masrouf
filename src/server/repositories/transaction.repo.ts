@@ -292,14 +292,16 @@ export async function findFlowsForDuplicates(
   userId: string,
   range: DateRange,
   db: Db = prisma,
-): Promise<{ date: ISODate; amount: number; type: TransactionType; label: string }[]> {
+): Promise<
+  { date: ISODate; amount: number; type: TransactionType; label: string; accountId: string }[]
+> {
   const rows = await db.transaction.findMany({
     where: {
       userId,
       type: { in: ['EXPENSE', 'INCOME'] },
       date: { gte: range.from, lte: range.to },
     },
-    select: { date: true, amount: true, type: true, label: true },
+    select: { date: true, amount: true, type: true, label: true, accountId: true },
   });
   return rows.map((r) => ({
     ...r,

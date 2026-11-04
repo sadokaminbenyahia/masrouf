@@ -153,6 +153,26 @@ export function categoryMonthSums(
 }
 
 /**
+ * Dépenses mensuelles des catégories du groupe SAVINGS pour chaque mois de `months` (0 si
+ * aucune), à partir de sommes par (catégorie, jour).
+ */
+export function savingsGroupByMonth(
+  months: readonly YearMonth[],
+  sums: readonly { categoryId: string | null; date: ISODate; amount: Millimes }[],
+  categories: readonly Pick<Category, 'id' | 'group'>[],
+): { month: YearMonth; amount: Millimes }[] {
+  const ids = new Set(categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id));
+  const byMonth = new Map<YearMonth, Millimes>(months.map((m) => [m, 0]));
+  for (const s of sums) {
+    if (s.categoryId === null || !ids.has(s.categoryId)) continue;
+    const ym = monthOf(s.date);
+    const cur = byMonth.get(ym);
+    if (cur !== undefined) byMonth.set(ym, cur + s.amount);
+  }
+  return months.map((month) => ({ month, amount: byMonth.get(month) ?? 0 }));
+}
+
+/**
  * Période de comparaison du mois affiché. Pour le mois en cours, le mois précédent « à date »
  * (mêmes jours : du 1er au jour d'aujourd'hui, borné à la fin du mois) : « vs 1–4 octobre ».
  * Pour un mois terminé, le mois précédent entier : « vs octobre ».

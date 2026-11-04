@@ -240,6 +240,11 @@ export interface DashboardData {
   byCategory: CategorySlice[];
   /** 12 derniers mois, du plus ancien au plus récent */
   monthly: MonthTotals[];
+  /**
+   * Dépenses mensuelles vers les catégories du groupe SAVINGS, sur les mêmes mois que `monthly`
+   * (0 si aucune) : sert au taux d'épargne (voir src/domain/savings.ts).
+   */
+  savingsByMonth: { month: YearMonth; amount: Millimes }[];
   topExpenses: Transaction[];
   budgetAlerts: BudgetProgress[];
   insights: Insight[];
@@ -259,10 +264,16 @@ export interface ImportRow {
 
 export interface ImportPreviewRow extends ImportRow {
   importHash: string;
-  /** Doublon exact d'une transaction existante ou d'une autre ligne du fichier */
-  duplicate: 'NONE' | 'EXISTING' | 'IN_FILE';
+  /**
+   * EXISTING / IN_FILE : doublon (transaction existante, autre ligne du fichier).
+   * POSSIBLE : même compte, même montant et même type à ±2 jours, libellé différent — ligne
+   * importable, mais à vérifier (l'interface la décoche par défaut).
+   */
+  duplicate: 'NONE' | 'EXISTING' | 'IN_FILE' | 'POSSIBLE';
   suggestedCategoryId: string | null;
   suggestionConfidence: number | null;
+  /** Libellé lisible proposé (`cleanLabel`) : « PAIEMENT CB MONOPRIX 02/11 » → « Monoprix » */
+  suggestedLabel?: string;
 }
 
 export interface ImportCommitResult {

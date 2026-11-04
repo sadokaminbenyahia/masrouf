@@ -31,6 +31,11 @@ export const importCommitInputSchema = z.object({
         categoryId: idSchema.nullable(),
         /** La catégorie vient-elle d'une suggestion IA non modifiée ? */
         categoryFromAI: z.boolean().default(false),
+        /**
+         * Libellé bancaire d'origine quand `label` est le libellé nettoyé choisi : sert à
+         * l'empreinte et à la détection des doublons (stables d'un import à l'autre).
+         */
+        originalLabel: z.string().trim().min(1).max(140).optional(),
       }),
     )
     .min(1)

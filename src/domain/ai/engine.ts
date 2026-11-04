@@ -37,6 +37,8 @@ export interface AIEngine {
 
   /** Clé marchand normalisée d'un libellé bancaire (« PAIEMENT CB CARREFOUR 12/03 » → « carrefour »). */
   merchantKey(label: string): string;
+  /** Libellé lisible (import) : « PAIEMENT CB MONOPRIX MENZAH 02/11 » → « Monoprix Menzah ». */
+  cleanLabel(label: string): string;
 
   /** Entraîne un classifieur à partir des transactions catégorisées par l'utilisateur. */
   trainCategorizer(samples: TrainingSample[]): CategorizerModel;

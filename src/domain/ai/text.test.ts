@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cleanLabel,
   charTrigrams,
   foldText,
   jaccard,
@@ -74,5 +75,24 @@ describe('utilitaires', () => {
     expect(charTrigrams('')).toEqual([]);
     expect(jaccard(['a', 'b'], ['b', 'c'])).toBeCloseTo(1 / 3);
     expect(jaccard([], [])).toBe(0);
+  });
+});
+
+describe('cleanLabel (libellé lisible à l’import)', () => {
+  it.each([
+    ['PAIEMENT CB MONOPRIX MENZAH 02/11', 'Monoprix Menzah'],
+    ['ACHAT CB CARREFOUR LA MARSA 12/03/2026 CARTE XXXX1234', 'Carrefour La Marsa'],
+    ['PRLV SEPA OOREDOO TUNISIE REF:123456', 'Ooredoo Tunisie'],
+    ['VIR RECU SALAIRE OCTOBRE 2026', 'Salaire Octobre 2026'],
+    ["PAIEMENT TPE STE AZIZA SARL L'AOUINA", "Aziza l'Aouina"],
+    ['CB*NETFLIX.COM 1234567', 'Netflix.com'],
+    ['AGIL STATION 14:32 N° 778899', 'Agil Station'],
+    ['STEG FACT 2026-10', 'Steg Fact'],
+    ['Café des Délices', 'Café des Délices'],
+    // Tout serait retiré : on garde les mots d'origine.
+    ['RETRAIT DAB 12/03', 'Retrait Dab'],
+    ['12/03', '12/03'],
+  ])('« %s » → « %s »', (raw, expected) => {
+    expect(cleanLabel(raw)).toBe(expected);
   });
 });

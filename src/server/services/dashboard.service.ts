@@ -7,6 +7,7 @@ import {
   buildMonthlySeries,
   categoryMonthSums,
   comparisonPeriod,
+  savingsGroupByMonth,
   dailyAllowance,
   relativeChange,
 } from '@/domain/aggregations';
@@ -40,6 +41,8 @@ const DETECTION_MONTHS = 6;
 const UPCOMING_DAYS = 30;
 const UPCOMING_LIMIT = 5;
 const TOP_EXPENSES = 5;
+/** Mois de la série mensuelle (et de `savingsByMonth`). */
+const SERIES_MONTHS = 12;
 
 /** Mois de référence de la règle 50/30/20 : le mois affiché s'il est terminé, sinon le précédent. */
 function ruleMonthFor(month: YearMonth, day: ISODate): YearMonth {
@@ -81,6 +84,7 @@ export async function getDashboard(
     spikeRows,
     history,
     dismissedKeys,
+    savingsRows,
   ] = await Promise.all([
     listAccounts(userId),
     listBudgetProgress(userId, ym),
@@ -92,7 +96,7 @@ export async function getDashboard(
       ? Promise.resolve(null)
       : txRepo.sumByType(userId, comparison.range),
     getCategoryBreakdown(userId, range, 'EXPENSE'),
-    getMonthlySeries(userId, 12, ym),
+    getMonthlySeries(userId, SERIES_MONTHS, ym),
     txRepo.topTransactions(userId, range, 'EXPENSE', TOP_EXPENSES),
     txRepo.sumByType(userId, monthRange(ruleMonth)),
     txRepo.sumByCategory(userId, monthRange(ruleMonth), 'EXPENSE'),
@@ -103,6 +107,11 @@ export async function getDashboard(
     ),
     txRepo.findInRange(userId, detectionRange, { types: ['EXPENSE', 'INCOME'] }),
     listDismissedKeys(userId),
+    txRepo.sumByCategoryAndDay(
+      userId,
+      { from: monthStart(addMonthsYM(ym, -(SERIES_MONTHS - 1))), to: monthEnd(ym) },
+      'EXPENSE',
+    ),
   ]);
   if (!accounts.ok) return accounts;
   if (!budgets.ok) return budgets;
@@ -152,6 +161,11 @@ export async function getDashboard(
     dailyAllowance: remainingToSpend === null ? null : dailyAllowance(remainingToSpend, ym, day),
     byCategory: byCategory.value,
     monthly: monthly.value,
+    savingsByMonth: savingsGroupByMonth(
+      monthly.value.map((m) => m.month),
+      savingsRows,
+      categories,
+    ),
     topExpenses,
     budgetAlerts: budgets.value.filter(isBudgetAlert),
     insights,

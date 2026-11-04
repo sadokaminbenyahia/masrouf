@@ -429,43 +429,83 @@ const spentThisMonth = (txs: readonly SeedTx[], category: string) =>
     )
     .reduce((s, t) => s + t.amount, 0);
 
+interface PoolItem {
+  label: string;
+  min: number;
+  max: number;
+  account: AccountKey;
+  tags?: string[];
+}
+
 /**
- * Garantit au moins un budget en alerte (WARNING, 80–95 %) et un dépassé (EXCEEDED, ≥ 105 %)
- * ce mois-ci (Courses et Loisirs), quel que soit le jour du mois : on ajuste les dépenses du mois courant.
+ * Amène la dépense du mois courant d'une catégorie entre `lo` et `hi` × plafond, avec des
+ * achats plausibles : plusieurs petits montants (dans les fourchettes habituelles du
+ * générateur, donc sans fausse anomalie), répartis sur les jours déjà écoulés du mois.
  */
-function enforceBudgetLevels(txs: SeedTx[]): void {
-  // EXCEEDED : Loisirs.
-  const loisirs = dinarsToMillimes(100);
-  const spentLoisirs = spentThisMonth(txs, 'Loisirs');
-  if (spentLoisirs < loisirs * 1.05) {
-    txs.push({
-      account: 'card',
-      type: 'EXPENSE',
-      amount: Math.round(loisirs * 1.12 - spentLoisirs),
-      date: TODAY,
-      label: 'Concert au Théâtre municipal',
-      category: 'Loisirs',
-      tags: ['sortie'],
-    });
-  }
-  // WARNING : Courses, entre 80 % et 95 % (le plein de courses du mois, payé par carte bancaire).
-  const courses = dinarsToMillimes(450);
-  const isRemovable = (t: SeedTx) => t.category === 'Courses' && monthOf(t.date) === currentMonth;
-  while (spentThisMonth(txs, 'Courses') > courses * 0.95) {
+function fillBudget(
+  txs: SeedTx[],
+  category: string,
+  budgetDT: number,
+  lo: number,
+  hi: number,
+  pool: readonly PoolItem[],
+): void {
+  const plafond = dinarsToMillimes(budgetDT);
+  const isRemovable = (t: SeedTx) => t.category === category && monthOf(t.date) === currentMonth;
+  while (spentThisMonth(txs, category) > plafond * hi) {
     const idx = txs.findIndex(isRemovable);
     if (idx < 0) break;
     txs.splice(idx, 1);
   }
-  const spentCourses = spentThisMonth(txs, 'Courses');
-  if (spentCourses < courses * 0.8) {
+  const elapsed = Math.max(1, Number(TODAY.slice(8)));
+  for (let k = 0; k < 40 && spentThisMonth(txs, category) < plafond * lo; k++) {
+    const spent = spentThisMonth(txs, category);
+    const item = pick(pool);
+    const room = Math.floor((plafond * hi - spent) / 500) * 500;
+    const value = Math.min(amount(item.min, item.max, 500), room);
+    if (value < 1_000) break;
     txs.push({
-      account: 'bank',
+      account: item.account,
       type: 'EXPENSE',
-      amount: Math.round((courses * 0.88 - spentCourses) / 100) * 100,
-      date: TODAY,
-      label: 'Carrefour La Marsa - courses du mois',
-      category: 'Courses',
+      amount: value,
+      // Du jour le plus récent vers le début du mois, un achat par jour (puis on reboucle).
+      date: addDays(TODAY, -(k % elapsed)),
+      label: item.label,
+      category,
+      ...(item.tags ? { tags: item.tags } : {}),
     });
+  }
+}
+
+/**
+ * Garantit au moins un budget dépassé (EXCEEDED, 105–125 %) et un en alerte (WARNING,
+ * 80–95 %) ce mois-ci, quel que soit le jour du mois, avec des achats réalistes :
+ *  - EXCEEDED : Loisirs (petit plafond, 100 DT) — sorties de quelques dizaines de dinars ;
+ *  - WARNING : Courses à partir du 10 du mois (plafond de 450 DT, atteint par plusieurs
+ *    courses), sinon Restaurants (150 DT), atteignable en quelques repas en début de mois.
+ */
+function enforceBudgetLevels(txs: SeedTx[]): void {
+  fillBudget(txs, 'Loisirs', 100, 1.05, 1.25, [
+    { label: 'Cinéma Pathé Tunis City', min: 12, max: 18, account: 'card', tags: ['sortie'] },
+    { label: 'Bowling du Lac', min: 18, max: 28, account: 'card', tags: ['sortie'] },
+    { label: 'Escape game Tunis', min: 25, max: 35, account: 'card', tags: ['sortie'] },
+    { label: 'Concert au Théâtre municipal', min: 30, max: 45, account: 'card', tags: ['sortie'] },
+  ]);
+  const day = Number(TODAY.slice(8));
+  if (day >= 10) {
+    fillBudget(txs, 'Courses', 450, 0.8, 0.95, [
+      { label: 'Carrefour La Marsa', min: 20, max: 60, account: 'card' },
+      { label: 'Monoprix Lafayette', min: 15, max: 55, account: 'card' },
+      { label: 'Aziza', min: 15, max: 45, account: 'cash' },
+      { label: 'Magasin Général', min: 20, max: 60, account: 'cash' },
+    ]);
+  } else {
+    fillBudget(txs, 'Restaurants', 150, 0.8, 0.95, [
+      { label: 'Restaurant Le Golfe', min: 30, max: 48, account: 'card', tags: ['sortie'] },
+      { label: 'Pizzeria Napoli', min: 22, max: 40, account: 'card' },
+      { label: 'Plan B Lac', min: 28, max: 45, account: 'card', tags: ['sortie'] },
+      { label: 'Chapati El Bey', min: 18, max: 30, account: 'cash' },
+    ]);
   }
 }
 

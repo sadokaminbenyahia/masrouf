@@ -5,6 +5,7 @@ import {
   buildCategorySlices,
   buildMonthlySeries,
   categoryMonthSums,
+  savingsGroupByMonth,
   comparisonPeriod,
   dailyAllowance,
   relativeChange,
@@ -154,5 +155,25 @@ describe('comparisonPeriod', () => {
       range: { from: '2026-09-01', to: '2026-09-30' },
       label: 'vs septembre',
     });
+  });
+});
+
+describe('savingsGroupByMonth', () => {
+  it('somme les dépenses du groupe SAVINGS par mois (0 si aucune), mois hors liste ignorés', () => {
+    const cats = [
+      { id: 'epargne', group: 'SAVINGS' as const },
+      { id: 'courses', group: 'NEEDS' as const },
+    ];
+    const sums = [
+      { categoryId: 'epargne', date: '2026-10-02', amount: 200_000 },
+      { categoryId: 'epargne', date: '2026-10-20', amount: 50_000 },
+      { categoryId: 'courses', date: '2026-10-05', amount: 90_000 },
+      { categoryId: null, date: '2026-11-01', amount: 10_000 },
+      { categoryId: 'epargne', date: '2026-08-01', amount: 999 },
+    ];
+    expect(savingsGroupByMonth(['2026-10', '2026-11'], sums, cats)).toEqual([
+      { month: '2026-10', amount: 250_000 },
+      { month: '2026-11', amount: 0 },
+    ]);
   });
 });

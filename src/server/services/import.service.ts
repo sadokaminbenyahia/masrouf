@@ -11,6 +11,7 @@ import { withPrismaErrors, type Db } from '@/server/repositories/_shared';
 import * as accountRepo from '@/server/repositories/account.repo';
 import * as categoryRepo from '@/server/repositories/category.repo';
 import * as txRepo from '@/server/repositories/transaction.repo';
+import { aiEngine } from '@/server/ai/engine';
 import { predictCategories, retrainCategorizer } from '@/server/services/ai.service';
 
 /** Nombre minimal de lignes créées pour réentraîner le catégoriseur. */
@@ -70,7 +71,57 @@ async function findExisting(
   return out;
 }
 
-/** Calcule importHash, détecte les doublons (existants + dans le fichier), suggère une catégorie (IA). */
+/** Fenêtre (jours) d'un doublon « possible » : même compte, montant et type, libellé différent. */
+const POSSIBLE_WINDOW_DAYS = 2;
+
+/**
+ * Indices des lignes qui ressemblent à une transaction existante du MÊME compte : même montant,
+ * même type, date à ±2 jours (libellé différent : sinon la ligne est déjà EXISTING).
+ */
+async function findPossible(
+  userId: string,
+  accountId: string,
+  rows: readonly RowKey[],
+  exclude: ReadonlySet<number>,
+): Promise<Set<number>> {
+  const out = new Set<number>();
+  let from: ISODate | null = null;
+  let to: ISODate | null = null;
+  for (const r of rows) {
+    if (from === null || r.date < from) from = r.date;
+    if (to === null || r.date > to) to = r.date;
+  }
+  if (from === null || to === null) return out;
+  const existing = await txRepo.findFlowsForDuplicates(userId, {
+    from: addDays(from, -POSSIBLE_WINDOW_DAYS),
+    to: addDays(to, POSSIBLE_WINDOW_DAYS),
+  });
+  const dates = new Map<string, Set<ISODate>>();
+  for (const e of existing) {
+    if (e.accountId !== accountId) continue;
+    const key = `${e.type}|${e.amount}`;
+    const set = dates.get(key) ?? new Set<ISODate>();
+    set.add(e.date);
+    dates.set(key, set);
+  }
+  rows.forEach((r, i) => {
+    if (exclude.has(i)) return;
+    const set = dates.get(`${r.type}|${r.amount}`);
+    if (!set) return;
+    for (let d = -POSSIBLE_WINDOW_DAYS; d <= POSSIBLE_WINDOW_DAYS; d++) {
+      if (set.has(addDays(r.date, d))) {
+        out.add(i);
+        return;
+      }
+    }
+  });
+  return out;
+}
+
+/**
+ * Calcule importHash, détecte les doublons (existants, dans le fichier, possibles), suggère une
+ * catégorie (IA) et un libellé lisible.
+ */
 export async function previewImport(
   userId: string,
   input: ImportPreviewData,
@@ -83,6 +134,7 @@ export async function previewImport(
   const rows = input.rows;
   const hashes = rows.map((r) => computeImportHash(r));
   const existing = await findExisting(userId, rows, hashes);
+  const possible = await findPossible(userId, input.accountId, rows, existing);
 
   const predictions = await predictCategories(
     userId,
@@ -95,7 +147,13 @@ export async function previewImport(
   return ok(
     rows.map((r, i): ImportPreviewRow => {
       const hash = hashes[i] ?? computeImportHash(r);
-      const duplicate = existing.has(i) ? 'EXISTING' : seen.has(hash) ? 'IN_FILE' : 'NONE';
+      const duplicate = existing.has(i)
+        ? 'EXISTING'
+        : seen.has(hash)
+          ? 'IN_FILE'
+          : possible.has(i)
+            ? 'POSSIBLE'
+            : 'NONE';
       seen.add(hash);
       const p = predictions.value[i] ?? null;
       const category = p ? categories.get(p.categoryId) : undefined;
@@ -111,6 +169,7 @@ export async function previewImport(
         duplicate,
         suggestedCategoryId: valid && p ? p.categoryId : null,
         suggestionConfidence: valid && p ? p.confidence : null,
+        suggestedLabel: aiEngine.cleanLabel(r.label),
       };
     }),
   );
@@ -143,11 +202,13 @@ export async function commitImport(
       }
     }
 
-    // Empreintes recalculées côté serveur : on ne fait pas confiance au client.
-    const hashes = input.rows.map((r) => computeImportHash(r));
+    // Empreintes recalculées côté serveur (on ne fait pas confiance au client), sur le libellé
+    // bancaire d'origine quand un libellé nettoyé a été choisi : dédoublonnage stable.
+    const keys = input.rows.map((r) => ({ ...r, label: r.originalLabel ?? r.label }));
+    const hashes = keys.map((r) => computeImportHash(r));
     const result = await prisma.$transaction(
       async (tx) => {
-        const existing = await findExisting(userId, input.rows, hashes, tx);
+        const existing = await findExisting(userId, keys, hashes, tx);
         const toCreate = input.rows.flatMap((r, i) =>
           existing.has(i)
             ? []
