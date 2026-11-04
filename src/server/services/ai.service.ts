@@ -21,6 +21,7 @@ import type {
   CategorizeInput,
   CategorizerModel,
   CategoryPrediction,
+  FinanceTools,
   HealthScore,
   MonthlySummary,
   ParseEntryResult,
@@ -28,6 +29,7 @@ import type {
   TrainingSample,
   WhatIfResult,
 } from '@/domain/ai/types';
+import { capMerchants } from '@/domain/ai/categorizer';
 import type { Category, MonthTotals, RecurringRule } from '@/domain/types';
 import type { WhatIfActionData } from '@/lib/schemas/ai';
 import { aiEngine } from '@/server/ai/engine';
@@ -63,6 +65,8 @@ export const AUTO_CATEGORIZE_THRESHOLD = 0.55;
 
 const MODEL_KIND = 'categorizer';
 const MAX_CACHED_MODELS = 500;
+/** Nombre maximal de clés de conseils / anomalies ignorées par utilisateur. */
+export const MAX_DISMISSED_KEYS = 1_000;
 const INTERNAL_MESSAGE = 'Une erreur inattendue est survenue.';
 
 // ───────────────────────── Outils internes ─────────────────────────
@@ -88,16 +92,61 @@ function validated<T>(schema: z.ZodType<T>, value: unknown, context: string): Re
   return internal(`sortie invalide (${context})`, parsed.error.issues.slice(0, 5));
 }
 
+function retryIn(retryAfterMs: number): string {
+  const seconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+  return `${seconds} seconde${seconds > 1 ? 's' : ''}`;
+}
+
 function rateLimited(userId: string): Result<never> | null {
   const r = aiLimiter.check(`ai:${userId}`);
   if (r.allowed) return null;
-  const seconds = Math.max(1, Math.ceil(r.retryAfterMs / 1000));
   return err(
     appError(
       'RATE_LIMITED',
-      `Trop de demandes à l’assistant. Réessayez dans ${seconds} seconde${seconds > 1 ? 's' : ''}.`,
+      `Trop de demandes à l’assistant. Réessayez dans ${retryIn(r.retryAfterMs)}.`,
     ),
   );
+}
+
+/**
+ * Limite de débit des opérations IA de masse (catégorisation groupée, aperçu d'import) :
+ * clé `ai:bulk:${userId}`, distincte de celle de l'assistant.
+ */
+export function bulkRateLimited(userId: string): Result<never> | null {
+  const r = aiLimiter.check(`ai:bulk:${userId}`);
+  if (r.allowed) return null;
+  return err(
+    appError(
+      'RATE_LIMITED',
+      `Trop d’opérations groupées. Réessayez dans ${retryIn(r.retryAfterMs)}.`,
+    ),
+  );
+}
+
+/** Outils de l'assistant dont chaque échec est journalisé (puis relancé : l'assistant s'excuse). */
+function loggedTools(tools: FinanceTools): FinanceTools {
+  const log =
+    <A extends unknown[], R>(name: string, fn: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      try {
+        return await fn(...args);
+      } catch (e) {
+        console.error(`[ai] outil de l’assistant en échec (${name})`, e);
+        throw e;
+      }
+    };
+  return {
+    sumTransactions: log('sumTransactions', tools.sumTransactions.bind(tools)),
+    breakdownByCategory: log('breakdownByCategory', tools.breakdownByCategory.bind(tools)),
+    monthlyTotals: log('monthlyTotals', tools.monthlyTotals.bind(tools)),
+    listTransactions: log('listTransactions', tools.listTransactions.bind(tools)),
+    topMerchants: log('topMerchants', tools.topMerchants.bind(tools)),
+    budgetStatus: log('budgetStatus', tools.budgetStatus.bind(tools)),
+    goals: log('goals', tools.goals.bind(tools)),
+    balances: log('balances', tools.balances.bind(tools)),
+    forecast: log('forecast', tools.forecast.bind(tools)),
+    recurring: log('recurring', tools.recurring.bind(tools)),
+  };
 }
 
 const toAiCategory = (c: Category): AiCategory => ({ id: c.id, name: c.name, kind: c.kind });
@@ -168,22 +217,23 @@ function cacheModel(userId: string, model: CategorizerModel): void {
   modelCache.set(userId, model);
 }
 
-async function persistModel(
-  userId: string,
-  model: CategorizerModel,
-): Promise<Result<CategorizerModel>> {
-  const checked = validated(categorizerModelSchema, model, 'modèle entraîné');
-  if (!checked.ok) return checked;
+/**
+ * Persiste le modèle. Il n'est PAS revalidé par Zod ici (coût en O(taille du modèle) à chaque
+ * correction) : il sort du moteur, et la validation a lieu au chargement depuis la base.
+ */
+async function persistModel(userId: string, model: CategorizerModel): Promise<CategorizerModel> {
   modelCache.delete(userId);
-  await saveAiModel(userId, MODEL_KIND, aiEngine.categorizerVersion, JSON.stringify(checked.value));
-  cacheModel(userId, checked.value);
-  return checked;
+  await saveAiModel(userId, MODEL_KIND, aiEngine.categorizerVersion, JSON.stringify(model));
+  cacheModel(userId, model);
+  return model;
 }
 
-function parseJson(data: string): unknown {
+/** JSON du modèle stocké ; null (journalisé) s'il est illisible, ce qui déclenche un réentraînement. */
+function parseStoredModel(userId: string, data: string): unknown {
   try {
     return JSON.parse(data);
-  } catch {
+  } catch (e) {
+    console.warn(`[ai] modèle stocké illisible (JSON) pour ${userId} : réentraînement`, e);
     return null;
   }
 }
@@ -206,11 +256,10 @@ async function rebuildModel(
     const kept = Object.fromEntries(
       Object.entries(legacy.data.merchantMap).filter(([, cid]) => ids.has(cid)),
     );
-    model = { ...model, merchantMap: { ...kept, ...model.merchantMap } };
+    model = capMerchants({ ...model, merchantMap: { ...kept, ...model.merchantMap } });
   }
   const saved = await persistModel(userId, model);
-  if (!saved.ok) return saved;
-  return ok({ model: saved.value, samples: samples.length });
+  return ok({ model: saved, samples: samples.length });
 }
 
 /** Modèle de l'utilisateur : cache mémoire, sinon base (validé Zod), sinon réentraîné. */
@@ -218,7 +267,7 @@ async function getModel(userId: string): Promise<Result<CategorizerModel>> {
   const cached = modelCache.get(userId);
   if (cached) return ok(cached);
   const stored = await loadAiModel(userId, MODEL_KIND);
-  const raw = stored ? parseJson(stored.data) : null;
+  const raw = stored ? parseStoredModel(userId, stored.data) : null;
   if (stored && stored.version === aiEngine.categorizerVersion) {
     const parsed = categorizerModelSchema.safeParse(raw);
     if (parsed.success && parsed.data.version === aiEngine.categorizerVersion) {
@@ -247,12 +296,15 @@ export async function predictCategory(
   });
 }
 
+/** Prédictions en lot (aperçu d'import) : soumis à la limite de débit des opérations de masse. */
 export async function predictCategories(
   userId: string,
   inputs: CategorizeInput[],
 ): Promise<Result<(CategoryPrediction | null)[]>> {
+  if (inputs.length === 0) return ok([]);
+  const limited = bulkRateLimited(userId);
+  if (limited) return limited;
   return guard('predictCategories', async () => {
-    if (inputs.length === 0) return ok([]);
     const [model, cats] = await Promise.all([getModel(userId), aiCategories(userId)]);
     if (!model.ok) return model;
     if (!cats.ok) return cats;
@@ -264,26 +316,44 @@ export async function predictCategories(
   });
 }
 
+export interface CorrectionItem {
+  sample: TrainingSample;
+  previousCategoryId: string | null;
+}
+
+/**
+ * Apprend un lot de corrections : le modèle est chargé une fois, mis à jour en lot (une seule
+ * copie) et persisté UNE fois. Les virements sont ignorés.
+ */
+export async function learnFromCorrections(
+  userId: string,
+  items: readonly CorrectionItem[],
+): Promise<Result<void>> {
+  return guard('learnFromCorrections', async () => {
+    const useful = items.filter((i) => i.sample.type !== 'TRANSFER');
+    if (useful.length === 0) return ok(undefined);
+    const model = await getModel(userId);
+    if (!model.ok) return model;
+    const next = aiEngine.learnCorrections(model.value, useful);
+    if (next !== model.value) await persistModel(userId, next);
+    return ok(undefined);
+  });
+}
+
 export async function learnFromCorrection(
   userId: string,
   sample: TrainingSample,
   previousCategoryId: string | null,
 ): Promise<Result<void>> {
-  return guard('learnFromCorrection', async () => {
-    if (sample.type === 'TRANSFER') return ok(undefined);
-    const model = await getModel(userId);
-    if (!model.ok) return model;
-    const next = aiEngine.learnCorrection(model.value, sample, previousCategoryId);
-    const saved = await persistModel(userId, next);
-    return saved.ok ? ok(undefined) : saved;
-  });
+  return learnFromCorrections(userId, [{ sample, previousCategoryId }]);
 }
 
 /** Réentraîne entièrement le modèle (après import massif, seed…). */
 export async function retrainCategorizer(userId: string): Promise<Result<{ samples: number }>> {
   return guard('retrainCategorizer', async () => {
+    const stored = modelCache.has(userId) ? null : await loadAiModel(userId, MODEL_KIND);
     const previous =
-      modelCache.get(userId) ?? parseJson((await loadAiModel(userId, MODEL_KIND))?.data ?? 'null');
+      modelCache.get(userId) ?? (stored ? parseStoredModel(userId, stored.data) : null);
     const rebuilt = await rebuildModel(userId, previous);
     return rebuilt.ok ? ok({ samples: rebuilt.value.samples }) : rebuilt;
   });
@@ -340,6 +410,16 @@ export async function getAnomalies(userId: string): Promise<Result<Anomaly[]>> {
 
 export async function dismissInsight(userId: string, key: string): Promise<Result<void>> {
   return guard('dismissInsight', async () => {
+    const existing = await listDismissedKeys(userId);
+    if (existing.includes(key)) return ok(undefined);
+    if (existing.length >= MAX_DISMISSED_KEYS) {
+      return err(
+        appError(
+          'VALIDATION',
+          `Vous avez déjà masqué ${MAX_DISMISSED_KEYS} conseils ou alertes : impossible d’en masquer davantage.`,
+        ),
+      );
+    }
     await addDismissedKey(userId, key);
     return ok(undefined);
   });
@@ -426,13 +506,15 @@ export async function askAssistant(
     if (!cats.ok) return cats;
     if (!accounts.ok) return accounts;
     if (!goals.ok) return goals;
-    const tools = createFinanceTools(userId, {
-      forecast: async () => {
-        const r = await getForecast(userId);
-        if (!r.ok) throw new Error(r.error.message);
-        return r.value;
-      },
-    });
+    const tools = loggedTools(
+      createFinanceTools(userId, {
+        forecast: async () => {
+          const r = await getForecast(userId);
+          if (!r.ok) throw new Error(r.error.message);
+          return r.value;
+        },
+      }),
+    );
     const answer = await aiEngine.ask(
       question,
       {

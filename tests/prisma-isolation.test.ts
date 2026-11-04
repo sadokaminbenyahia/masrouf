@@ -98,7 +98,7 @@ function defaultResult(model: string, method: string, args: unknown): unknown {
   switch (method) {
     case 'findFirst':
     case 'findUnique':
-      return model === 'transaction' && method === 'findUnique' ? null : row;
+      return row;
     case 'findMany': {
       // Les recherches par liste d'identifiants renvoient ces identifiants (comptes possédés…).
       const where = isRecord(args) && isRecord(args.where) ? args.where : {};
@@ -162,6 +162,10 @@ const client: Record<string, unknown> = new Proxy<Record<string, unknown>>(
 vi.mock('@/server/db', () => ({ prisma: client }));
 vi.mock('@/server/clock', () => ({ today: () => '2026-11-04', APP_TIMEZONE: 'Africa/Tunis' }));
 const learnFromCorrection = vi.fn(async () => ({ ok: true as const, value: undefined }));
+const learnFromCorrections = vi.fn(async () => ({ ok: true as const, value: undefined }));
+const bulkRateLimited = vi.fn(
+  (): { ok: false; error: { code: 'RATE_LIMITED'; message: string } } | null => null,
+);
 vi.mock('@/server/services/ai.service', () => ({
   AUTO_CATEGORIZE_THRESHOLD: 0.55,
   predictCategory: vi.fn(async () => ({
@@ -169,9 +173,16 @@ vi.mock('@/server/services/ai.service', () => ({
     value: { categoryId: 'cat_courses', confidence: 0.9, source: 'MODEL', alternatives: [] },
   })),
   learnFromCorrection,
+  learnFromCorrections,
+  bulkRateLimited,
 }));
 
 const budgets = await import('@/server/services/budgets.service');
+const accounts = await import('@/server/services/accounts.service');
+const categories = await import('@/server/services/categories.service');
+const goals = await import('@/server/services/goals.service');
+const recurring = await import('@/server/services/recurring.service');
+const { USER_LIMITS } = await import('@/domain/limits');
 const transactions = await import('@/server/services/transactions.service');
 
 /** `where` scopé : `userId` au premier niveau, ou dans un élément de `AND` (jamais dans un `OR`). */
@@ -198,16 +209,9 @@ function nestedTagsScoped(data: Record<string, unknown>, userId: string): boolea
   );
 }
 
-/** Requêtes autorisées sans userId : vérification d'unicité de clé primaire (restauration). */
-function isAllowedGlobal(c: PrismaCall): boolean {
-  if (c.model !== 'transaction' || c.method !== 'findUnique' || !isRecord(c.args)) return false;
-  const select = c.args.select;
-  return isRecord(select) && Object.keys(select).join(',') === 'id';
-}
-
+/** Aucune requête n'est autorisée sans userId (pas même un test d'existence d'identifiant). */
 function unscopedCalls(userId: string): PrismaCall[] {
   return calls.filter((c) => {
-    if (isAllowedGlobal(c)) return false;
     const args = isRecord(c.args) ? c.args : {};
     if (c.method === 'create') {
       return !(
@@ -231,6 +235,7 @@ beforeEach(() => {
   calls.length = 0;
   handlers.clear();
   learnFromCorrection.mockClear();
+  learnFromCorrections.mockClear();
 });
 
 function expectAllScoped(): void {
@@ -385,10 +390,73 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
       recurringId: 'rec_1',
     });
     expect(restored.ok).toBe(true);
+    if (restored.ok) {
+      // L'origine de la catégorie est restituée (ici « AI », confiance 0,8).
+      expect(restored.value).toMatchObject({ categorySource: 'AI', aiConfidence: 0.8 });
+    }
     expect((await transactions.duplicateTransaction(USER, 'tx_1')).ok).toBe(true);
     expectAllScoped();
-    // La seule requête non scopée est la vérification d'unicité de la clé primaire.
-    expect(calls.filter(isAllowedGlobal)).toHaveLength(1);
+    // Aucun test d'existence global de l'identifiant (il servirait d'oracle).
+    expect(calls.some((c) => c.method === 'findUnique' && c.model === 'transaction')).toBe(false);
+  });
+
+  it('restoreTransaction : identifiant déjà pris (P2002) → CONFLICT générique', async () => {
+    const { Prisma } = await import('@prisma/client');
+    handlers.set('transaction.create', () => {
+      throw new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      });
+    });
+    const r = await transactions.restoreTransaction(USER, {
+      id: 'tx_bob',
+      accountId: 'acc_1',
+      type: 'EXPENSE',
+      amount: 1000,
+      date: '2026-11-01',
+      label: 'x',
+      tags: [],
+    });
+    expect(r).toEqual({
+      ok: false,
+      error: { code: 'CONFLICT', message: transactions.RESTORE_CONFLICT_MESSAGE },
+    });
+    expectAllScoped();
+  });
+
+  it('restoreTransaction : instantané sans origine → USER ; restoreTransactions atomique', async () => {
+    const base = {
+      accountId: 'acc_1',
+      categoryId: 'cat_courses',
+      type: 'EXPENSE' as const,
+      amount: 1000,
+      date: '2026-11-01',
+      label: 'x',
+      tags: [],
+    };
+    const one = await transactions.restoreTransaction(USER, { ...base, id: 'tx_7' });
+    expect(one.ok && one.value.categorySource).toBe('USER');
+
+    calls.length = 0;
+    const many = await transactions.restoreTransactions(USER, [
+      { ...base, id: 'tx_a', categorySource: 'IMPORT' },
+      { ...base, id: 'tx_b' },
+    ]);
+    expect(many.ok && many.value.map((t) => t.categorySource)).toEqual(['IMPORT', 'USER']);
+    // Vérifications mémoïsées : une seule lecture de compte et de catégorie pour le lot.
+    expect(calls.filter((c) => c.model === 'category')).toHaveLength(1);
+    expect(calls.filter((c) => c.method === 'create')).toHaveLength(2);
+    expectAllScoped();
+
+    // Un instantané invalide dans le lot : RIEN n'est recréé.
+    calls.length = 0;
+    handlers.set('recurringRule.findFirst', () => null);
+    const bad = await transactions.restoreTransactions(USER, [
+      { ...base, id: 'tx_c' },
+      { ...base, id: 'tx_d', recurringId: 'rec_bob' },
+    ]);
+    expect(bad.ok).toBe(false);
+    expect(calls.some((c) => c.method === 'create')).toBe(false);
   });
 
   it('restoreTransaction : récurrence étrangère → NOT_FOUND', async () => {
@@ -410,7 +478,10 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
   it('bulkDelete, bulkCategorize, getTransactionsInRange, exportTransactionsCsv', async () => {
     expect((await transactions.bulkDeleteTransactions(USER, ['tx_1', 'tx_2'])).ok).toBe(true);
     handlers.set('category.findFirst', () => ({ ...ROWS.category, id: 'cat_resto' }));
-    expect((await transactions.bulkCategorize(USER, ['tx_1'], 'cat_resto')).ok).toBe(true);
+    expect((await transactions.bulkCategorize(USER, ['tx_1', 'tx_2'], 'cat_resto')).ok).toBe(true);
+    // Apprentissage en lot : un seul appel pour toute la sélection.
+    expect(learnFromCorrections).toHaveBeenCalledTimes(1);
+    expect(learnFromCorrection).not.toHaveBeenCalled();
     expect((await transactions.bulkCategorize(USER, ['tx_1'], null)).ok).toBe(true);
     expect(
       (
@@ -425,6 +496,17 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
     expect(csv.ok).toBe(true);
     if (csv.ok) expect(csv.value).toContain('CARREFOUR');
     expectAllScoped();
+  });
+
+  it('bulkCategorize : limité en débit (opération de masse), sans aucune requête', async () => {
+    bulkRateLimited.mockReturnValueOnce({
+      ok: false,
+      error: { code: 'RATE_LIMITED', message: 'Trop d’opérations groupées.' },
+    });
+    const r = await transactions.bulkCategorize(USER, ['tx_1'], 'cat_resto');
+    expect(!r.ok && r.error.code).toBe('RATE_LIMITED');
+    expect(bulkRateLimited).toHaveBeenCalledWith(USER);
+    expect(calls).toEqual([]);
   });
 
   it('période inversée : refus sans aucune requête', async () => {
@@ -450,5 +532,82 @@ describe('transactions.service : chaque requête Prisma filtre par userId', () =
     calls.push({ model: 'transaction', method: 'update', args: { where: { id: 'x' }, data: {} } });
     calls.push({ model: 'budget', method: 'create', args: { data: { amount: 1 } } });
     expect(unscopedCalls(USER)).toHaveLength(3);
+  });
+});
+
+describe('plafonds par utilisateur (création refusée au-delà, message clair)', () => {
+  const cases = [
+    {
+      model: 'account',
+      max: USER_LIMITS.accounts,
+      create: () =>
+        accounts.createAccount(USER, {
+          name: 'Compte',
+          type: 'BANK',
+          initialBalance: 0,
+          color: '#000000',
+        }),
+    },
+    {
+      model: 'category',
+      max: USER_LIMITS.categories,
+      create: () =>
+        categories.createCategory(USER, {
+          name: 'Nouvelle',
+          kind: 'EXPENSE',
+          group: 'WANTS',
+          icon: 'Tag',
+          color: '#000000',
+        }),
+    },
+    {
+      model: 'goal',
+      max: USER_LIMITS.goals,
+      create: () =>
+        goals.createGoal(USER, {
+          name: 'Objectif',
+          targetAmount: 100_000,
+          savedAmount: 0,
+          icon: 'PiggyBank',
+          color: '#000000',
+        }),
+    },
+    {
+      model: 'recurringRule',
+      max: USER_LIMITS.recurringRules,
+      create: () =>
+        recurring.createRecurring(USER, {
+          accountId: 'acc_1',
+          type: 'EXPENSE',
+          amount: 1000,
+          label: 'Salle',
+          frequency: 'MONTHLY',
+          startDate: '2026-11-01',
+          autoCreate: true,
+        }),
+    },
+  ] as const;
+
+  it.each(cases)('$model : refus à $max, création en dessous', async ({ model, max, create }) => {
+    handlers.set('category.findFirst', () => null);
+    handlers.set(`${model}.count`, () => max);
+    const r = await create();
+    expect(!r.ok && r.error.code).toBe('CONFLICT');
+    expect(!r.ok && r.error.message).toContain(`maximum de ${max}`);
+    expect(calls.some((c) => c.method === 'create')).toBe(false);
+    expectAllScoped();
+
+    handlers.set(`${model}.count`, () => max - 1);
+    expect((await create()).ok).toBe(true);
+  });
+
+  it('updateRecurring : prochaine échéance de plus de 366 jours dans le passé → VALIDATION', async () => {
+    const r = await recurring.updateRecurring(USER, 'rec_1', { nextDate: '2025-11-02' });
+    expect(!r.ok && r.error.code).toBe('VALIDATION');
+    expect(!r.ok && r.error.fieldErrors?.nextDate).toBeDefined();
+    expect(calls).toEqual([]);
+    expect((await recurring.updateRecurring(USER, 'rec_1', { nextDate: '2025-11-03' })).ok).toBe(
+      true,
+    );
   });
 });

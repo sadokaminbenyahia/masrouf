@@ -2,7 +2,7 @@
 import 'server-only';
 import { transactionsToCsv } from '@/domain/csv/export';
 import type { DateRange } from '@/domain/dates';
-import { appError, err, ok, type AppError, type Result } from '@/domain/result';
+import { appError, err, ok, type Result } from '@/domain/result';
 import {
   categoryMismatchMessage,
   decideCategoryChange,
@@ -26,6 +26,7 @@ import type {
   TransactionSnapshotData,
 } from '@/lib/schemas/transactions';
 import { today } from '@/server/clock';
+import { prisma } from '@/server/db';
 import { withPrismaErrors } from '@/server/repositories/_shared';
 import * as accountRepo from '@/server/repositories/account.repo';
 import * as categoryRepo from '@/server/repositories/category.repo';
@@ -33,7 +34,9 @@ import * as recurringRepo from '@/server/repositories/recurring.repo';
 import * as txRepo from '@/server/repositories/transaction.repo';
 import {
   AUTO_CATEGORIZE_THRESHOLD,
+  bulkRateLimited,
   learnFromCorrection,
+  learnFromCorrections,
   predictCategory,
 } from '@/server/services/ai.service';
 
@@ -147,7 +150,74 @@ function snapshotOf(t: Transaction): TransactionSnapshotData {
     tags: t.tags,
     transferAccountId: t.transferAccountId,
     recurringId: t.recurringId,
+    categorySource: t.categorySource,
+    aiConfidence: t.aiConfidence,
   };
+}
+
+/** Message volontairement générique : ne révèle pas si l'identifiant existe (autre utilisateur). */
+export const RESTORE_CONFLICT_MESSAGE = 'Impossible de restaurer cette transaction.';
+
+type RestoreData = txRepo.TransactionWriteData & { id: string; tags: string[] };
+
+/** Vérifications mémoïsées le temps d'une restauration (un lot partage souvent comptes et catégories). */
+type CheckCache = Map<string, Promise<Result<void>>>;
+
+function cached(
+  cache: CheckCache,
+  key: string,
+  run: () => Promise<Result<void>>,
+): Promise<Result<void>> {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const p = run();
+  cache.set(key, p);
+  return p;
+}
+
+/**
+ * Valide un instantané (appartenance des comptes, de la catégorie, de la récurrence) et
+ * prépare l'écriture, sans rien écrire. Aucun test d'existence de l'identifiant (il servirait
+ * d'oracle sur les identifiants d'autres utilisateurs) : l'unicité est garantie par la base.
+ */
+async function prepareRestore(
+  userId: string,
+  snapshot: TransactionSnapshotData,
+  cache: CheckCache,
+): Promise<Result<RestoreData>> {
+  const type = snapshot.type;
+  const transferAccountId = type === 'TRANSFER' ? (snapshot.transferAccountId ?? null) : null;
+  const accounts = await cached(cache, `a|${type}|${snapshot.accountId}|${transferAccountId}`, () =>
+    checkAccounts(userId, type, snapshot.accountId, transferAccountId),
+  );
+  if (!accounts.ok) return accounts;
+  const categoryId = type === 'TRANSFER' ? null : (snapshot.categoryId ?? null);
+  if (categoryId !== null) {
+    const c = await cached(cache, `c|${type}|${categoryId}`, () =>
+      checkCategory(userId, type, categoryId),
+    );
+    if (!c.ok) return c;
+  }
+  const recurringId = snapshot.recurringId ?? null;
+  const rec = await cached(cache, `r|${recurringId}`, () => checkRecurring(userId, recurringId));
+  if (!rec.ok) return rec;
+  return ok({
+    id: snapshot.id,
+    accountId: snapshot.accountId,
+    categoryId,
+    type,
+    amount: snapshot.amount,
+    date: snapshot.date,
+    label: snapshot.label.trim(),
+    note: emptyToNull(snapshot.note),
+    transferAccountId,
+    recurringId,
+    importHash: null,
+    // Origine de la catégorie restituée telle quelle (ancien instantané sans ce champ : USER).
+    categorySource: categoryId === null ? null : (snapshot.categorySource ?? 'USER'),
+    aiConfidence: categoryId === null ? null : (snapshot.aiConfidence ?? null),
+    tags: normalizeTags(snapshot.tags),
+  });
 }
 
 const emptyToNull = (s: string | null | undefined): string | null =>
@@ -331,47 +401,46 @@ export async function deleteTransaction(
   });
 }
 
+/** Recrée une transaction supprimée avec le MÊME id (« Annuler »). */
 export async function restoreTransaction(
   userId: string,
   snapshot: TransactionSnapshotData,
 ): Promise<Result<Transaction>> {
   return withPrismaErrors(
     async () => {
-      if (await txRepo.transactionIdExists(snapshot.id)) {
-        return err(appError('CONFLICT', 'Cette transaction existe déjà.'));
-      }
-      const type = snapshot.type;
-      const transferAccountId = type === 'TRANSFER' ? (snapshot.transferAccountId ?? null) : null;
-      const accounts = await checkAccounts(userId, type, snapshot.accountId, transferAccountId);
-      if (!accounts.ok) return accounts;
-      const categoryId = type === 'TRANSFER' ? null : (snapshot.categoryId ?? null);
-      if (categoryId !== null) {
-        const c = await checkCategory(userId, type, categoryId);
-        if (!c.ok) return c;
-      }
-      const recurringId = snapshot.recurringId ?? null;
-      const rec = await checkRecurring(userId, recurringId);
-      if (!rec.ok) return rec;
-      return ok(
-        await txRepo.createTransaction(userId, {
-          id: snapshot.id,
-          accountId: snapshot.accountId,
-          categoryId,
-          type,
-          amount: snapshot.amount,
-          date: snapshot.date,
-          label: snapshot.label.trim(),
-          note: emptyToNull(snapshot.note),
-          transferAccountId,
-          recurringId,
-          importHash: null,
-          categorySource: categoryId === null ? null : 'USER',
-          aiConfidence: null,
-          tags: normalizeTags(snapshot.tags),
-        }),
-      );
+      const data = await prepareRestore(userId, snapshot, new Map());
+      if (!data.ok) return data;
+      return ok(await txRepo.createTransaction(userId, data.value));
     },
-    { conflict: 'Cette transaction existe déjà.' },
+    { conflict: RESTORE_CONFLICT_MESSAGE },
+  );
+}
+
+/**
+ * Restaure un lot d'instantanés de façon ATOMIQUE : tout est vérifié d'abord, puis tout est
+ * recréé dans une seule transaction Prisma (aucune restauration partielle).
+ */
+export async function restoreTransactions(
+  userId: string,
+  snapshots: readonly TransactionSnapshotData[],
+): Promise<Result<Transaction[]>> {
+  return withPrismaErrors(
+    async () => {
+      const cache: CheckCache = new Map();
+      const prepared: RestoreData[] = [];
+      for (const s of snapshots) {
+        const data = await prepareRestore(userId, s, cache);
+        if (!data.ok) return data;
+        prepared.push(data.value);
+      }
+      const restored = await prisma.$transaction(async (tx) => {
+        const out: Transaction[] = [];
+        for (const d of prepared) out.push(await txRepo.createTransaction(userId, d, tx));
+        return out;
+      });
+      return ok(restored);
+    },
+    { conflict: RESTORE_CONFLICT_MESSAGE },
   );
 }
 
@@ -425,6 +494,8 @@ export async function bulkCategorize(
   ids: string[],
   categoryId: string | null,
 ): Promise<Result<{ before: Transaction[]; after: Transaction[] }>> {
+  const limited = bulkRateLimited(userId);
+  if (limited) return limited;
   return withPrismaErrors(async () => {
     const before = await txRepo.findTransactionsByIds(userId, ids);
     if (before.length === 0) return notFound('Aucune transaction trouvée.');
@@ -446,15 +517,16 @@ export async function bulkCategorize(
     const changed = before.filter((t) => decideCategoryChange(t, categoryId).markAsUser);
     if (changed.length === 0) return ok({ before, after: before });
 
-    // Apprentissage AVANT l'écriture : si l'IA échoue, rien n'est modifié.
+    // Apprentissage EN LOT, AVANT l'écriture : si l'IA échoue, rien n'est modifié.
     if (categoryId !== null) {
-      for (const t of changed) {
-        if (!decideCategoryChange(t, categoryId).learn) continue;
-        const learned: Result<void, AppError> = await learn(
-          userId,
-          { label: t.label, amount: t.amount, type: t.type, categoryId },
-          t.categoryId,
-        );
+      const items = changed
+        .filter((t) => decideCategoryChange(t, categoryId).learn)
+        .map((t) => ({
+          sample: { label: t.label, amount: t.amount, type: t.type, categoryId },
+          previousCategoryId: t.categoryId,
+        }));
+      if (items.length > 0) {
+        const learned = await learnFromCorrections(userId, items);
         if (!learned.ok) return learned;
       }
     }

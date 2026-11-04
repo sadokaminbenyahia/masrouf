@@ -621,10 +621,24 @@ function buildRecommendations(p: {
     });
   }
 
-  // Replis : poste variable principal, catégorie sans budget.
+  const chosen: Candidate[] = [];
+  const pick = (list: Candidate[]) => {
+    for (const c of [...list].sort((a, b) => b.gain - a.gain)) {
+      if (chosen.length >= 3) return;
+      if (chosen.some((x) => x.type === c.type)) continue;
+      if (c.categoryId !== null && chosen.some((x) => x.categoryId === c.categoryId)) continue;
+      chosen.push(c);
+    }
+  };
+  pick(main);
+
+  // Replis : poste variable principal, catégorie sans budget. Chacun parcourt TOUTES les
+  // catégories éligibles et retient la première qui n'est pas déjà couverte par une
+  // recommandation, pour garantir 3 recommandations quand les données le permettent.
+  const taken = (id: string | null) =>
+    id !== null && chosen.some((x) => x.categoryId === id);
   const fallback: Candidate[] = [];
-  const variable = curCats.filter(([, s]) => s.count >= 3);
-  const topVar = variable[0];
+  const topVar = curCats.find(([id, s]) => s.count >= 3 && !taken(id));
   if (topVar) {
     const [id, s] = topVar;
     const gain = Math.round(s.total * 0.1);
@@ -639,7 +653,10 @@ function buildRecommendations(p: {
     });
   }
   const budgeted = new Set(input.budgets.map((b) => b.category.id));
-  const unbudgeted = curCats.find(([id, s]) => id !== null && s.count >= 2 && !budgeted.has(id));
+  const unbudgeted = curCats.find(
+    ([id, s]) =>
+      id !== null && s.count >= 2 && !budgeted.has(id) && !taken(id) && id !== topVar?.[0],
+  );
   if (unbudgeted) {
     const [id, s] = unbudgeted;
     const gain = Math.round(s.total * 0.1);
@@ -653,17 +670,6 @@ function buildRecommendations(p: {
       href: '/budgets',
     });
   }
-
-  const chosen: Candidate[] = [];
-  const pick = (list: Candidate[]) => {
-    for (const c of [...list].sort((a, b) => b.gain - a.gain)) {
-      if (chosen.length >= 3) return;
-      if (chosen.some((x) => x.type === c.type)) continue;
-      if (c.categoryId !== null && chosen.some((x) => x.categoryId === c.categoryId)) continue;
-      chosen.push(c);
-    }
-  };
-  pick(main);
   pick(fallback);
   return chosen.map(({ title, detail, impact, href }) => ({ title, detail, impact, href }));
 }

@@ -59,6 +59,10 @@ export async function findCategoryByName(
   return row ? toCategory(row) : null;
 }
 
+export async function countCategories(userId: string, db: Db = prisma): Promise<number> {
+  return db.category.count({ where: { userId } });
+}
+
 export async function nextSortOrder(userId: string, db: Db = prisma): Promise<number> {
   const agg = await db.category.aggregate({ where: { userId }, _max: { sortOrder: true } });
   return (agg._max.sortOrder ?? -1) + 1;

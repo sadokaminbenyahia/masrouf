@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CATEGORY_SOURCES } from '@/domain/types';
 import {
   idSchema,
   isoDateSchema,
@@ -54,9 +55,17 @@ export const transactionPatchSchema = transactionFields
   .refine(transferRule, transferIssue);
 export type TransactionPatch = z.input<typeof transactionPatchSchema>;
 
-/** Instantané renvoyé par la suppression, rejoué par « Annuler ». */
+/**
+ * Instantané renvoyé par la suppression, rejoué par « Annuler ». `categorySource` et
+ * `aiConfidence` restituent l'origine de la catégorie (absents : « USER »).
+ */
 export const transactionSnapshotSchema = baseTransaction
-  .extend({ id: idSchema, recurringId: idSchema.nullable().optional() })
+  .extend({
+    id: idSchema,
+    recurringId: idSchema.nullable().optional(),
+    categorySource: z.enum(CATEGORY_SOURCES).nullable().optional(),
+    aiConfidence: z.number().min(0).max(1).nullable().optional(),
+  })
   .refine(transferRule, transferIssue);
 export type TransactionSnapshot = z.input<typeof transactionSnapshotSchema>;
 

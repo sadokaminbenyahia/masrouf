@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { isISODate, isYearMonth } from '@/domain/dates';
+import { isIconName } from '@/domain/icons';
 import { MAX_AMOUNT_MILLIMES } from '@/domain/money';
 import {
   ACCOUNT_TYPES,
@@ -36,11 +37,12 @@ export const signedMillimesSchema = z
   .min(-MAX_MILLIMES)
   .max(MAX_MILLIMES);
 export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Couleur invalide (#RRGGBB).');
+/** Nom d'icône : uniquement ceux de la liste fermée `ICON_NAMES` (src/domain/icons.ts). */
 export const iconSchema = z
   .string()
   .min(1)
   .max(40)
-  .regex(/^[A-Za-z0-9]+$/, 'Icône invalide.');
+  .refine(isIconName, 'Icône invalide.');
 
 export const accountTypeSchema = z.enum(ACCOUNT_TYPES);
 export const transactionTypeSchema = z.enum(TRANSACTION_TYPES);

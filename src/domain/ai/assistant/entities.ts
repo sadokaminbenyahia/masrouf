@@ -2,7 +2,7 @@
  * Extraction d'entités dans une question normalisée : catégorie (synonymes FR/tunisiens puis
  * correspondance floue par trigrammes/Jaccard), montant et objectif d'épargne.
  */
-import { parseMoneyTerm, type Millimes } from '../../money';
+import { MAX_AMOUNT_MILLIMES, parseMoneyTerm, type Millimes } from '../../money';
 import type { AiCategory } from '../types';
 import { contentWords, normalizeQuestion, wordSimilarity } from './normalize';
 
@@ -264,7 +264,9 @@ export function extractQuestionAmount(text: string): Millimes | null {
       const r = parseMoneyTerm(`${intPart}${frac ? `,${frac}` : ''}${unit ? ` ${unit}` : ''}`);
       value = r.ok ? r.value : null;
     }
+    // Montant hors des entiers sûrs ou au-delà du plafond métier : ignoré (jamais d'entier non sûr).
     if (value === null || value <= 0) continue;
+    if (!Number.isSafeInteger(value) || value > MAX_AMOUNT_MILLIMES) continue;
     if (unit) {
       withUnit ??= value;
     } else if (largest === null || value > largest) {

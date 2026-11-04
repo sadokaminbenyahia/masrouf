@@ -15,8 +15,10 @@ export const CATEGORIZER_VERSION = 1;
 
 /** Lissage de Laplace. */
 const ALPHA = 1;
-/** Au-delà de cette taille, on élague les features de fréquence < 2. */
+/** Au-delà de cette taille, on élague les features de fréquence < 2 (puis les moins fréquentes). */
 export const MAX_VOCABULARY = 20_000;
+/** Plafond de la table marchand → catégorie (les associations les plus anciennes sont évincées). */
+export const MAX_MERCHANTS = 5_000;
 /** Poids des trigrammes de caractères du marchand (tolère « carfour »). */
 const TRIGRAM_WEIGHT = 0.5;
 /** Poids d'une correction de l'utilisateur. */
@@ -174,7 +176,11 @@ function computeVocabulary(tokenCount: Record<string, Record<string, number>>): 
   return vocab.size;
 }
 
-/** Élague les features rares (fréquence totale < 2) si le vocabulaire dépasse le plafond. */
+/**
+ * Élague le vocabulaire s'il dépasse le plafond : d'abord les features rares (fréquence totale
+ * < 2), puis, si cela ne suffit pas, les moins fréquentes jusqu'à 90 % du plafond (marge qui
+ * évite de réélaguer à chaque correction). Renvoie `model` tel quel sous le plafond.
+ */
 export function pruneModel(
   model: CategorizerModel,
   maxVocabulary = MAX_VOCABULARY,
@@ -184,13 +190,22 @@ export function pruneModel(
   for (const counts of Object.values(model.tokenCount)) {
     for (const [k, v] of Object.entries(counts)) freq.set(k, (freq.get(k) ?? 0) + v);
   }
+  let keep = new Set<string>();
+  for (const [k, f] of freq) if (f >= 2) keep.add(k);
+  if (keep.size > maxVocabulary) {
+    const target = Math.max(1, Math.floor(maxVocabulary * 0.9));
+    const ranked = [...keep].sort(
+      (a, b) => (freq.get(b) ?? 0) - (freq.get(a) ?? 0) || (a < b ? -1 : a > b ? 1 : 0),
+    );
+    keep = new Set(ranked.slice(0, target));
+  }
   const tokenCount: Record<string, Record<string, number>> = {};
   const totalTokens: Record<string, number> = {};
   for (const [cat, counts] of Object.entries(model.tokenCount)) {
     const kept: Record<string, number> = {};
     let total = 0;
     for (const [k, v] of Object.entries(counts)) {
-      if ((freq.get(k) ?? 0) >= 2) {
+      if (keep.has(k)) {
         kept[k] = v;
         total += v;
       }
@@ -199,6 +214,26 @@ export function pruneModel(
     totalTokens[cat] = total;
   }
   return { ...model, tokenCount, totalTokens, vocabularySize: computeVocabulary(tokenCount) };
+}
+
+/**
+ * Plafonne la table marchand : au-delà de `max` entrées, les plus anciennes (ordre
+ * d'insertion) sont évincées. Mute `map` (copie de travail) et la renvoie.
+ */
+function capMerchantMap(map: Record<string, string>, max: number): Record<string, string> {
+  const keys = Object.keys(map);
+  if (keys.length <= max) return map;
+  for (const k of keys.slice(0, keys.length - max)) delete map[k];
+  return map;
+}
+
+/** Plafonne la table marchand d'un modèle (immuable : renvoie `model` s'il est sous le plafond). */
+export function capMerchants(
+  model: CategorizerModel,
+  max: number = MAX_MERCHANTS,
+): CategorizerModel {
+  if (Object.keys(model.merchantMap).length <= max) return model;
+  return { ...model, merchantMap: capMerchantMap({ ...model.merchantMap }, max) };
 }
 
 /** Entraîne un modèle à partir d'échantillons confirmés (les virements sont ignorés). */
@@ -229,67 +264,95 @@ function featureInAnyCategory(
   return false;
 }
 
+/** Une correction à apprendre : l'échantillon confirmé et la catégorie qu'il avait avant. */
+export interface CorrectionSample {
+  sample: TrainingSample;
+  previousCategoryId: string | null;
+}
+
 /**
- * Apprend une correction de l'utilisateur, sans modifier `model` (renvoie un nouveau modèle).
- * Retire les comptes de l'ancienne catégorie, ajoute ceux de la nouvelle avec un poids de 3
- * et associe le marchand à la nouvelle catégorie. Coût en O(nombre de features).
+ * Apprend un lot de corrections de l'utilisateur, sans modifier `model` : une seule copie de
+ * travail est faite (copie à l'écriture par catégorie), puis mutée en boucle. Pour chaque
+ * correction : retire les comptes de l'ancienne catégorie, ajoute ceux de la nouvelle avec un
+ * poids de 3 (1 si la catégorie est simplement confirmée) et associe le marchand à la nouvelle
+ * catégorie. La table marchand et le vocabulaire sont plafonnés une fois, à la fin.
+ * Coût en O(nombre total de features × nombre de catégories). Renvoie `model` si rien n'est appris.
  */
-export function learnCorrection(
+export function learnCorrections(
   model: CategorizerModel,
-  sample: TrainingSample,
-  previousCategoryId: string | null,
+  samples: readonly CorrectionSample[],
 ): CategorizerModel {
-  if (sample.type === 'TRANSFER' || sample.categoryId === '') return model;
-  const features = extractFeatures(sample.label, sample.amount, sample.type);
-  const tokenCount = { ...model.tokenCount };
-  const totalTokens = { ...model.totalTokens };
-  const docCount = { ...model.docCount };
-  const touched = new Set<string>(features.keys());
+  const items = samples.filter((s) => s.sample.type !== 'TRANSFER' && s.sample.categoryId !== '');
+  if (items.length === 0) return model;
+
+  const tokenCount: Record<string, Record<string, number>> = { ...model.tokenCount };
+  const totalTokens: Record<string, number> = { ...model.totalTokens };
+  const docCount: Record<string, number> = { ...model.docCount };
+  const merchantMap: Record<string, string> = { ...model.merchantMap };
+  const copied = new Set<string>();
+  /** Comptes d'une catégorie, copiés au premier accès en écriture. */
+  const writable = (categoryId: string): Record<string, number> => {
+    const current = Object.hasOwn(tokenCount, categoryId) ? tokenCount[categoryId] : undefined;
+    if (current !== undefined && copied.has(categoryId)) return current;
+    const copy = { ...(current ?? {}) };
+    tokenCount[categoryId] = copy;
+    copied.add(categoryId);
+    return copy;
+  };
   let vocabularySize = model.vocabularySize;
-  const wasKnown = new Map<string, boolean>();
-  for (const k of touched) wasKnown.set(k, featureInAnyCategory(model.tokenCount, k));
+  let sampleCount = model.sampleCount;
 
-  const moved =
-    previousCategoryId !== null &&
-    previousCategoryId !== sample.categoryId &&
-    Object.hasOwn(model.tokenCount, previousCategoryId);
-  if (moved) {
-    const prev = { ...(model.tokenCount[previousCategoryId] ?? {}) };
-    let removed = 0;
-    for (const [k, w] of features) {
-      const current = prev[k] ?? 0;
-      if (current <= 0) continue;
-      const next = Math.max(0, current - w);
-      removed += current - next;
-      if (next === 0) delete prev[k];
-      else prev[k] = next;
+  for (const { sample, previousCategoryId } of items) {
+    const features = extractFeatures(sample.label, sample.amount, sample.type);
+    const wasKnown = new Map<string, boolean>();
+    for (const k of features.keys()) wasKnown.set(k, featureInAnyCategory(tokenCount, k));
+
+    const moved =
+      previousCategoryId !== null &&
+      previousCategoryId !== sample.categoryId &&
+      Object.hasOwn(tokenCount, previousCategoryId);
+    if (moved) {
+      const prev = writable(previousCategoryId);
+      let removed = 0;
+      for (const [k, w] of features) {
+        const current = prev[k] ?? 0;
+        if (current <= 0) continue;
+        const next = Math.max(0, current - w);
+        removed += current - next;
+        if (next === 0) delete prev[k];
+        else prev[k] = next;
+      }
+      totalTokens[previousCategoryId] = Math.max(
+        0,
+        (totalTokens[previousCategoryId] ?? 0) - removed,
+      );
+      docCount[previousCategoryId] = Math.max(0, (docCount[previousCategoryId] ?? 0) - 1);
     }
-    tokenCount[previousCategoryId] = prev;
-    totalTokens[previousCategoryId] = Math.max(0, (totalTokens[previousCategoryId] ?? 0) - removed);
-    docCount[previousCategoryId] = Math.max(0, (docCount[previousCategoryId] ?? 0) - 1);
-  }
 
-  const reinforcement = previousCategoryId === sample.categoryId ? 1 : CORRECTION_WEIGHT;
-  const next = { ...(model.tokenCount[sample.categoryId] ?? {}) };
-  let added = 0;
-  for (const [k, w] of features) {
-    next[k] = (next[k] ?? 0) + w * reinforcement;
-    added += w * reinforcement;
-  }
-  tokenCount[sample.categoryId] = next;
-  totalTokens[sample.categoryId] = (totalTokens[sample.categoryId] ?? 0) + added;
-  docCount[sample.categoryId] = (docCount[sample.categoryId] ?? 0) + 1;
+    const reinforcement = previousCategoryId === sample.categoryId ? 1 : CORRECTION_WEIGHT;
+    const next = writable(sample.categoryId);
+    let added = 0;
+    for (const [k, w] of features) {
+      next[k] = (next[k] ?? 0) + w * reinforcement;
+      added += w * reinforcement;
+    }
+    totalTokens[sample.categoryId] = (totalTokens[sample.categoryId] ?? 0) + added;
+    docCount[sample.categoryId] = (docCount[sample.categoryId] ?? 0) + 1;
 
-  for (const k of touched) {
-    const known = featureInAnyCategory(tokenCount, k);
-    const before = wasKnown.get(k) ?? false;
-    if (known && !before) vocabularySize++;
-    if (!known && before) vocabularySize--;
-  }
+    for (const [k, before] of wasKnown) {
+      const known = featureInAnyCategory(tokenCount, k);
+      if (known && !before) vocabularySize++;
+      if (!known && before) vocabularySize--;
+    }
 
-  const key = merchantKey(sample.label);
-  const merchantMap =
-    key === '' ? model.merchantMap : { ...model.merchantMap, [key]: sample.categoryId };
+    const key = merchantKey(sample.label);
+    if (key !== '' && key !== '__proto__') {
+      // Supprimer puis réinsérer : la clé devient la plus récente (éviction des plus anciennes).
+      delete merchantMap[key];
+      merchantMap[key] = sample.categoryId;
+    }
+    if (!moved) sampleCount++;
+  }
 
   return pruneModel({
     ...model,
@@ -297,9 +360,21 @@ export function learnCorrection(
     tokenCount,
     totalTokens,
     vocabularySize,
-    merchantMap,
-    sampleCount: moved ? model.sampleCount : model.sampleCount + 1,
+    merchantMap: capMerchantMap(merchantMap, MAX_MERCHANTS),
+    sampleCount,
   });
+}
+
+/**
+ * Apprend une correction de l'utilisateur, sans modifier `model` (renvoie un nouveau modèle).
+ * Délègue à `learnCorrections` (lot d'un seul élément).
+ */
+export function learnCorrection(
+  model: CategorizerModel,
+  sample: TrainingSample,
+  previousCategoryId: string | null,
+): CategorizerModel {
+  return learnCorrections(model, [{ sample, previousCategoryId }]);
 }
 
 // ───────────────────────── Prédiction ─────────────────────────

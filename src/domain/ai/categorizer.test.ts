@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   CATEGORIZER_VERSION,
+  capMerchants,
   categorize,
   extractFeatures,
   learnCorrection,
+  learnCorrections,
+  MAX_MERCHANTS,
   pruneModel,
   ruleScore,
   trainCategorizer,
 } from './categorizer';
 import { CATEGORY_KEYWORDS } from './keywords';
+import { merchantKey } from './text';
 import { DEFAULT_TEST_CATEGORIES, categoryId, categoryKind } from './__fixtures__/categories';
 import { LABELED_LABELS } from './__fixtures__/labeled-labels';
 import type { TrainingSample } from './types';
@@ -243,6 +247,100 @@ describe('learnCorrection', () => {
     expect((next.tokenCount[c]?.['w:aziza'] ?? 0) - (model.tokenCount[c]?.['w:aziza'] ?? 0)).toBe(
       1,
     );
+  });
+});
+
+describe('learnCorrections (lot)', () => {
+  it('équivaut à des corrections successives, sans muter le modèle', () => {
+    const model = trainCategorizer(train);
+    const snapshot = JSON.stringify(model);
+    const items = [
+      {
+        sample: {
+          label: 'Pâtisserie Masmoudi',
+          amount: 35_000,
+          type: 'EXPENSE' as const,
+          categoryId: categoryId('Famille & cadeaux'),
+        },
+        previousCategoryId: categoryId('Cafés'),
+      },
+      {
+        sample: {
+          label: 'Kiosque journaux',
+          amount: 2_000,
+          type: 'EXPENSE' as const,
+          categoryId: categoryId('Divers'),
+        },
+        previousCategoryId: null,
+      },
+      {
+        sample: { label: 'Retrait', amount: 1, type: 'TRANSFER' as const, categoryId: 'x' },
+        previousCategoryId: null,
+      },
+    ];
+    const batch = learnCorrections(model, items);
+    let sequential = model;
+    for (const i of items) sequential = learnCorrection(sequential, i.sample, i.previousCategoryId);
+    expect(JSON.stringify(model)).toBe(snapshot);
+    expect(batch).toEqual(sequential);
+    expect(batch.sampleCount).toBe(model.sampleCount + 1);
+  });
+
+  it('lot vide ou uniquement des virements : modèle inchangé (même référence)', () => {
+    const model = trainCategorizer(train);
+    expect(learnCorrections(model, [])).toBe(model);
+    expect(
+      learnCorrections(model, [
+        {
+          sample: { label: 'x', amount: 1, type: 'TRANSFER', categoryId: 'a' },
+          previousCategoryId: null,
+        },
+      ]),
+    ).toBe(model);
+  });
+
+  it('plafonne la table marchand en évinçant les associations les plus anciennes', () => {
+    const model = trainCategorizer(train);
+    const letter = (n: number) => String.fromCharCode(97 + (n % 26));
+    const label = (i: number) =>
+      `Boutique ${letter(i)}${letter(Math.floor(i / 26))}${letter(Math.floor(i / 676))}`;
+    const items = Array.from({ length: MAX_MERCHANTS + 50 }, (_, i) => ({
+      sample: {
+        label: label(i),
+        amount: 10_000,
+        type: 'EXPENSE' as const,
+        categoryId: categoryId('Divers'),
+      },
+      previousCategoryId: null,
+    }));
+    const next = learnCorrections(model, items);
+    const keys = Object.keys(next.merchantMap);
+    expect(keys.length).toBe(MAX_MERCHANTS);
+    // La plus récente est conservée, la plus ancienne évincée.
+    expect(keys).toContain(merchantKey(label(MAX_MERCHANTS + 49)));
+    expect(keys).not.toContain(merchantKey(label(0)));
+  });
+
+  it('une association corrigée de nouveau devient la plus récente', () => {
+    const map = { alpha: 'c1', beta: 'c2', gamma: 'c3' };
+    const base = { ...trainCategorizer(train), merchantMap: map };
+    const divers = categoryId('Divers');
+    const next = learnCorrections(base, [
+      {
+        sample: { label: 'Alpha', amount: 1_000, type: 'EXPENSE', categoryId: divers },
+        previousCategoryId: null,
+      },
+    ]);
+    expect(Object.keys(next.merchantMap)).toEqual(['beta', 'gamma', 'alpha']);
+    expect(capMerchants(next, 2).merchantMap).toEqual({ gamma: 'c3', alpha: divers });
+    expect(capMerchants(next)).toBe(next);
+  });
+
+  it('élague le vocabulaire sous le plafond même si toutes les features sont fréquentes', () => {
+    const model = trainCategorizer([...train, ...train]);
+    const pruned = pruneModel(model, 50);
+    expect(pruned.vocabularySize).toBeLessThanOrEqual(50);
+    expect(pruned.vocabularySize).toBeGreaterThan(0);
   });
 });
 

@@ -3,7 +3,13 @@
  * Aucune API externe, aucune clé, aucun modèle téléchargé.
  */
 import type { AIEngine } from './engine';
-import { categorize, CATEGORIZER_VERSION, learnCorrection, trainCategorizer } from './categorizer';
+import {
+  categorize,
+  CATEGORIZER_VERSION,
+  learnCorrection,
+  learnCorrections,
+  trainCategorizer,
+} from './categorizer';
 import { merchantKey } from './text';
 import { parseEntry } from './nl-entry';
 import { detectAnomalies } from './anomalies';
@@ -23,6 +29,7 @@ export class LocalAIEngine implements AIEngine {
 
   trainCategorizer = trainCategorizer;
   learnCorrection = learnCorrection;
+  learnCorrections = learnCorrections;
   categorize = categorize;
   parseEntry = parseEntry;
   detectAnomalies = detectAnomalies;

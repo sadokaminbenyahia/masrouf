@@ -1,6 +1,6 @@
 'use server';
 import { z } from 'zod';
-import { ok, type ActionResult } from '@/domain/result';
+import type { ActionResult } from '@/domain/result';
 import type { Transaction } from '@/domain/types';
 import { idSchema, isoDateSchema } from '@/lib/schemas/common';
 import {
@@ -75,15 +75,7 @@ export async function restoreTransactionsAction(
   const r = await validatedAction(
     z.array(transactionSnapshotSchema).min(1).max(500),
     snapshots,
-    async (list, userId) => {
-      const restored: Transaction[] = [];
-      for (const s of list) {
-        const one = await tx.restoreTransaction(userId, s);
-        if (!one.ok) return one;
-        restored.push(one.value);
-      }
-      return ok(restored);
-    },
+    (list, userId) => tx.restoreTransactions(userId, list),
   );
   if (r.ok) revalidateApp();
   return r;

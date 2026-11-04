@@ -46,6 +46,14 @@ export interface AIEngine {
     sample: TrainingSample,
     previousCategoryId: string | null,
   ): CategorizerModel;
+  /**
+   * Apprend un lot de corrections (immuable : une seule copie de travail, renvoie un nouveau
+   * modèle). Préféré à des appels répétés de `learnCorrection` pour les opérations de masse.
+   */
+  learnCorrections(
+    model: CategorizerModel,
+    samples: readonly { sample: TrainingSample; previousCategoryId: string | null }[],
+  ): CategorizerModel;
   /** Prédit une catégorie (null si aucune n'est assez probable). `model` null = règles de démarrage. */
   categorize(
     model: CategorizerModel | null,

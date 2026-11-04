@@ -1,6 +1,7 @@
 // Propriétaire : agent A
 import 'server-only';
 import { withBalances } from '@/domain/accounts';
+import { USER_LIMITS } from '@/domain/limits';
 import { appError, err, ok, type Result } from '@/domain/result';
 import type { Account, AccountWithBalance } from '@/domain/types';
 import type { AccountInputData, AccountPatchData } from '@/lib/schemas/accounts';
@@ -25,6 +26,14 @@ export async function createAccount(
   input: AccountInputData,
 ): Promise<Result<Account>> {
   return withPrismaErrors(async () => {
+    if ((await accountRepo.countAccounts(userId)) >= USER_LIMITS.accounts) {
+      return err(
+        appError(
+          'CONFLICT',
+          `Vous avez atteint le maximum de ${USER_LIMITS.accounts} comptes. Supprimez un compte inutilisé pour en créer un nouveau.`,
+        ),
+      );
+    }
     const sortOrder = await accountRepo.nextSortOrder(userId);
     return ok(
       await accountRepo.createAccount(userId, {

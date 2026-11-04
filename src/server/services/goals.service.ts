@@ -2,6 +2,7 @@
 import 'server-only';
 import { addMonthsYM, monthEnd, monthOf, monthStart, type ISODate } from '@/domain/dates';
 import { applyContribution, completionDate, computeGoalProgress } from '@/domain/goals';
+import { USER_LIMITS } from '@/domain/limits';
 import { appError, err, ok, type Result } from '@/domain/result';
 import { totalsFromTypeSums } from '@/domain/transactions';
 import type { Goal, GoalProgress } from '@/domain/types';
@@ -49,6 +50,14 @@ export async function createGoal(
   input: GoalInputData,
 ): Promise<Result<GoalProgress>> {
   return withPrismaErrors(async () => {
+    if ((await goalRepo.countGoals(userId)) >= USER_LIMITS.goals) {
+      return err(
+        appError(
+          'CONFLICT',
+          `Vous avez atteint le maximum de ${USER_LIMITS.goals} objectifs. Supprimez un objectif terminé pour en créer un nouveau.`,
+        ),
+      );
+    }
     const goal = await goalRepo.createGoal(userId, {
       name: input.name.trim(),
       targetAmount: input.targetAmount,

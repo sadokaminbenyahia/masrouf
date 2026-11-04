@@ -60,6 +60,10 @@ export interface RecurringData {
   autoCreate: boolean;
 }
 
+export async function countRecurring(userId: string): Promise<number> {
+  return prisma.recurringRule.count({ where: { userId } });
+}
+
 export async function createRecurring(userId: string, data: RecurringData): Promise<RecurringRule> {
   return toRecurringRule(await prisma.recurringRule.create({ data: { ...data, userId } }));
 }

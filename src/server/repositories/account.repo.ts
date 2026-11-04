@@ -51,6 +51,11 @@ export async function ownedAccountIds(
   return new Set(rows.map((r) => r.id));
 }
 
+/** Nombre de comptes de l'utilisateur (archivés compris). */
+export async function countAccounts(userId: string, db: Db = prisma): Promise<number> {
+  return db.account.count({ where: { userId } });
+}
+
 export async function nextSortOrder(userId: string, db: Db = prisma): Promise<number> {
   const agg = await db.account.aggregate({ where: { userId }, _max: { sortOrder: true } });
   return (agg._max.sortOrder ?? -1) + 1;

@@ -45,6 +45,10 @@ export interface GoalData {
   completedAt: Date | null;
 }
 
+export async function countGoals(userId: string): Promise<number> {
+  return prisma.goal.count({ where: { userId } });
+}
+
 export async function createGoal(userId: string, data: GoalData): Promise<Goal> {
   return prisma.$transaction(async (tx) => {
     const agg = await tx.goal.aggregate({ where: { userId }, _max: { sortOrder: true } });

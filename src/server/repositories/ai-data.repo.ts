@@ -3,16 +3,19 @@ import 'server-only';
 import type { DateRange, YearMonth } from '@/domain/dates';
 import { monthOf } from '@/domain/dates';
 import type { AiTransaction, TrainingSample } from '@/domain/ai/types';
-import type { CategorySource, TransactionType } from '@/domain/types';
+import { TRANSACTION_TYPES, type CategorySource } from '@/domain/types';
 import { prisma } from '@/server/db';
+import { parseEnum } from './_shared';
 
 /** Sources de catégorie confirmées par l'utilisateur (jamais `AI` seul : pas d'auto-renforcement). */
 export const TRAINING_SOURCES: readonly CategorySource[] = ['USER', 'IMPORT', 'SEED', 'RECURRING'];
 /** Plafond d'échantillons pour un réentraînement complet (les plus récents). */
 export const MAX_TRAINING_SAMPLES = 20_000;
+/** Plafond de transactions lues pour une analyse IA (les plus récentes de la période). */
+export const MAX_AI_TRANSACTIONS = 20_000;
 
-const TRANSACTION_TYPES: readonly TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER'];
-const asType = (t: string): TransactionType => TRANSACTION_TYPES.find((x) => x === t) ?? 'EXPENSE';
+/** Type lu en base : une valeur inconnue est une corruption (DataIntegrityError), jamais masquée. */
+const asType = (t: string) => parseEnum(TRANSACTION_TYPES, t, 'Transaction.type');
 
 const aiSelect = {
   id: true,
@@ -25,17 +28,22 @@ const aiSelect = {
   recurringId: true,
 } as const;
 
-/** Transactions de l'utilisateur sur une période inclusive (tous types ; les algorithmes filtrent). */
+/**
+ * Transactions de l'utilisateur sur une période inclusive (tous types ; les algorithmes
+ * filtrent), en ordre chronologique. Au plus `limit` lignes : les plus récentes sont gardées.
+ */
 export async function listAiTransactions(
   userId: string,
   range: DateRange,
+  limit: number = MAX_AI_TRANSACTIONS,
 ): Promise<AiTransaction[]> {
   const rows = await prisma.transaction.findMany({
     where: { userId, date: { gte: range.from, lte: range.to } },
     select: aiSelect,
-    orderBy: [{ date: 'asc' }, { id: 'asc' }],
+    orderBy: [{ date: 'desc' }, { id: 'desc' }],
+    take: limit,
   });
-  return rows.map((r) => ({ ...r, type: asType(r.type) }));
+  return rows.reverse().map((r) => ({ ...r, type: asType(r.type) }));
 }
 
 /** Date de la première transaction (hors virements), ou null. */

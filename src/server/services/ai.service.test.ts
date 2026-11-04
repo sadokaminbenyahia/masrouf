@@ -17,9 +17,13 @@ vi.mock('@/server/repositories/ai-data.repo', () => ({
   ]),
   listAiTransactions: vi.fn(async () => []),
 }));
+const dismissedKeys: string[] = [];
+const addDismissedKey = vi.fn(async (_userId: string, key: string) => {
+  dismissedKeys.push(key);
+});
 vi.mock('@/server/repositories/dismissed.repo', () => ({
-  listDismissedKeys: vi.fn(async () => []),
-  addDismissedKey: vi.fn(async () => undefined),
+  listDismissedKeys: vi.fn(async () => [...dismissedKeys]),
+  addDismissedKey,
 }));
 vi.mock('@/server/clock', () => ({ today: () => '2026-11-04' }));
 
@@ -80,7 +84,23 @@ vi.mock('./goals.service', () => ({ listGoals: vi.fn(async () => ({ ok: true, va
 vi.mock('./budgets.service', () => ({
   listBudgetProgress: vi.fn(async () => ({ ok: true, value: [] })),
 }));
-vi.mock('./finance-tools', () => ({ createFinanceTools: vi.fn(() => ({})) }));
+const failing = async (): Promise<never> => {
+  throw new Error('base indisponible');
+};
+vi.mock('./finance-tools', () => ({
+  createFinanceTools: vi.fn(() => ({
+    sumTransactions: failing,
+    breakdownByCategory: failing,
+    monthlyTotals: failing,
+    listTransactions: failing,
+    topMerchants: failing,
+    budgetStatus: failing,
+    goals: failing,
+    balances: failing,
+    forecast: failing,
+    recurring: failing,
+  })),
+}));
 
 const ai = await import('./ai.service');
 const { aiLimiter } = await import('@/server/security/rate-limit');
@@ -89,6 +109,9 @@ describe('ai.service', () => {
   beforeEach(() => {
     store.clear();
     saveAiModel.mockClear();
+    addDismissedKey.mockClear();
+    dismissedKeys.length = 0;
+    vi.restoreAllMocks();
   });
 
   it('entraîne paresseusement, sauvegarde, puis sert depuis le cache', async () => {
@@ -166,5 +189,74 @@ describe('ai.service', () => {
       extraMonthlySaving: 0,
     });
     expect(!r.ok && r.error.code).toBe('NOT_FOUND');
+  });
+
+  it('corrections en lot : modèle chargé une fois, persisté UNE fois', async () => {
+    await ai.predictCategory('u10', { label: 'Carrefour', amount: 1000, type: 'EXPENSE' });
+    saveAiModel.mockClear();
+    const items = ['Pizzeria Roma', 'Chez Slah', 'Retrait DAB'].map((label, i) => ({
+      sample: {
+        label,
+        amount: 20_000,
+        type: i === 2 ? ('TRANSFER' as const) : ('EXPENSE' as const),
+        categoryId: 'c_resto',
+      },
+      previousCategoryId: 'c_courses',
+    }));
+    expect(await ai.learnFromCorrections('u10', items)).toEqual({ ok: true, value: undefined });
+    expect(saveAiModel).toHaveBeenCalledTimes(1);
+    for (const label of ['Pizzeria Roma', 'Chez Slah']) {
+      const r = await ai.predictCategory('u10', { label, amount: 20_000, type: 'EXPENSE' });
+      expect(r.ok && r.value).toMatchObject({ categoryId: 'c_resto', source: 'MERCHANT' });
+    }
+    // Lot vide ou uniquement des virements : aucune écriture.
+    expect((await ai.learnFromCorrections('u10', [])).ok).toBe(true);
+    expect((await ai.learnFromCorrections('u10', [items[2] ?? items[0]])).ok).toBe(true);
+    expect(saveAiModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('modèle stocké illisible (JSON) : journalisé puis réentraîné', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    store.set('u11', { version: 1, data: '{pas du json', updatedAt: new Date(0) });
+    const r = await ai.predictCategory('u11', { label: 'Carrefour', amount: 1000, type: 'EXPENSE' });
+    expect(r.ok).toBe(true);
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('illisible'))).toBe(true);
+    expect(saveAiModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('aperçu d’import (prédictions en lot) : limité en débit (clé ai:bulk)', async () => {
+    for (let i = 0; i < 100; i++) aiLimiter.check('ai:bulk:u12');
+    const r = await ai.predictCategories('u12', [{ label: 'x', amount: 1, type: 'EXPENSE' }]);
+    expect(!r.ok && r.error.code).toBe('RATE_LIMITED');
+    expect(ai.bulkRateLimited('u12')?.ok).toBe(false);
+    // L'assistant a sa propre clé : il n'est pas bloqué par les opérations de masse.
+    expect(aiLimiter.check('ai:u12').allowed).toBe(true);
+    expect(await ai.predictCategories('u12', [])).toEqual({ ok: true, value: [] });
+  });
+
+  it('dismissInsight : clé déjà masquée idempotente, plafond de 1 000 clés', async () => {
+    expect((await ai.dismissInsight('u13', 'anomaly:a')).ok).toBe(true);
+    expect((await ai.dismissInsight('u13', 'anomaly:a')).ok).toBe(true);
+    expect(addDismissedKey).toHaveBeenCalledTimes(1);
+    for (let i = dismissedKeys.length; i < ai.MAX_DISMISSED_KEYS; i++) dismissedKeys.push(`k${i}`);
+    const r = await ai.dismissInsight('u13', 'anomaly:b');
+    expect(!r.ok && r.error.code).toBe('VALIDATION');
+    expect(!r.ok && r.error.message).toMatch(/1000|1 000/);
+    expect(addDismissedKey).toHaveBeenCalledTimes(1);
+    // Une clé déjà présente reste acceptée au plafond.
+    expect((await ai.dismissInsight('u13', 'anomaly:a')).ok).toBe(true);
+  });
+
+  it('assistant : l’échec d’un outil est journalisé, la réponse reste une excuse sans chiffre', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const r = await ai.askAssistant('u14', 'quel est mon solde ?');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.understood).toBe(true);
+      expect(r.value.text).not.toMatch(/\d/);
+    }
+    expect(
+      error.mock.calls.some((c) => String(c[0]).includes('outil de l’assistant en échec (balances)')),
+    ).toBe(true);
   });
 });

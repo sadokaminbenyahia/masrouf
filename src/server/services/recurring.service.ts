@@ -1,6 +1,7 @@
 // Propriétaire : agent A
 import 'server-only';
-import type { ISODate } from '@/domain/dates';
+import { addDays, type ISODate } from '@/domain/dates';
+import { MAX_RECURRING_BACKDATE_DAYS, USER_LIMITS } from '@/domain/limits';
 import { dueOccurrences, firstOccurrenceOnOrAfter, sortRules } from '@/domain/recurring';
 import { appError, err, ok, type Result } from '@/domain/result';
 import { categoryMismatchMessage } from '@/domain/transactions';
@@ -51,6 +52,14 @@ export async function createRecurring(
   input: RecurringInputData,
 ): Promise<Result<RecurringRule>> {
   return withPrismaErrors(async () => {
+    if ((await recurringRepo.countRecurring(userId)) >= USER_LIMITS.recurringRules) {
+      return err(
+        appError(
+          'CONFLICT',
+          `Vous avez atteint le maximum de ${USER_LIMITS.recurringRules} dépenses récurrentes. Supprimez une règle inutilisée pour en créer une nouvelle.`,
+        ),
+      );
+    }
     const refs = await checkRefs(userId, input.type, input.accountId, input.categoryId);
     if (!refs.ok) return refs;
     const endDate = input.endDate ?? null;
@@ -79,6 +88,14 @@ export async function updateRecurring(
   patch: RecurringPatchData,
 ): Promise<Result<RecurringRule>> {
   return withPrismaErrors(async () => {
+    if (
+      patch.nextDate !== undefined &&
+      patch.nextDate < addDays(today(), -MAX_RECURRING_BACKDATE_DAYS)
+    ) {
+      // Une échéance très ancienne recréerait des centaines de transactions à la matérialisation.
+      const message = 'La prochaine échéance ne peut pas dater de plus d’un an.';
+      return err(appError('VALIDATION', message, { nextDate: [message] }));
+    }
     const current = await recurringRepo.findRecurring(userId, id);
     if (!current) return notFound();
     const refs = await checkRefs(userId, current.type, patch.accountId, patch.categoryId);

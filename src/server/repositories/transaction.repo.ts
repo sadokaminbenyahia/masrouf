@@ -158,12 +158,6 @@ export async function findTransactionsByIds(
   return out;
 }
 
-/** L'identifiant est-il déjà pris (tous utilisateurs confondus : c'est une clé primaire) ? */
-export async function transactionIdExists(id: string): Promise<boolean> {
-  const row = await prisma.transaction.findUnique({ where: { id }, select: { id: true } });
-  return row !== null;
-}
-
 export interface TransactionWriteData {
   accountId: string;
   categoryId: string | null;

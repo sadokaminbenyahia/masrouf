@@ -9,6 +9,7 @@ import {
   Cake,
   Camera,
   Car,
+  CircleDashed,
   Clapperboard,
   Coffee,
   Coins,
@@ -37,6 +38,7 @@ import {
   Receipt,
   Repeat,
   Scissors,
+  ShieldCheck,
   Shirt,
   ShoppingBag,
   ShoppingCart,
@@ -58,6 +60,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { createElement, type ComponentProps } from 'react';
+import { ICON_NAMES, isIconName, type IconName } from '@/domain/icons';
 import type { Category } from '@/domain/types';
 import { cn } from '@/lib/utils';
 
@@ -119,16 +122,27 @@ const ICONS = {
   TrendingUp,
   Laptop,
   Sparkles,
-} satisfies Record<string, LucideIcon>;
+  ShieldCheck,
+  CircleDashed,
+} satisfies Record<IconName, LucideIcon>;
 
-export type CategoryIconName = keyof typeof ICONS;
+export type CategoryIconName = IconName;
 
-/** Noms proposés dans les sélecteurs d'icône (« Home » est un alias de « House »). */
-export const CATEGORY_ICON_NAMES: string[] = Object.keys(ICONS).filter((n) => n !== 'Home');
+/**
+ * Noms proposés dans les sélecteurs d'icône (« Home » est un alias de « House » ;
+ * « CircleDashed » est réservé à « Sans catégorie »).
+ */
+export const CATEGORY_ICON_NAMES: string[] = ICON_NAMES.filter(
+  (n) => n !== 'Home' && n !== 'CircleDashed',
+);
 
 export function getCategoryIcon(name: string): LucideIcon {
-  return name in ICONS ? ICONS[name as CategoryIconName] : Tag;
+  // Object.hasOwn + liste fermée : « constructor », « __proto__ »… ne sont jamais des icônes.
+  return Object.hasOwn(ICONS, name) && isIconName(name) ? ICONS[name] : Tag;
 }
+
+/** Registre exposé pour les tests (toutes les entrées de ICON_NAMES ont une icône). */
+export const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = ICONS;
 
 /** Icône lucide par nom (repli : Tag). */
 export function IconByName({ name, ...props }: { name: string } & ComponentProps<LucideIcon>) {

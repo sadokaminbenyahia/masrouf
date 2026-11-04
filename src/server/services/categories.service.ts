@@ -1,5 +1,6 @@
 // Propriétaire : agent A
 import 'server-only';
+import { USER_LIMITS } from '@/domain/limits';
 import { appError, err, ok, type Result } from '@/domain/result';
 import type { Category, Tag } from '@/domain/types';
 import type { CategoryInputData, CategoryPatchData } from '@/lib/schemas/categories';
@@ -27,6 +28,14 @@ export async function createCategory(
   return withPrismaErrors(
     async () => {
       if (await categoryRepo.findCategoryByName(userId, name)) return nameTaken(name);
+      if ((await categoryRepo.countCategories(userId)) >= USER_LIMITS.categories) {
+        return err(
+          appError(
+            'CONFLICT',
+            `Vous avez atteint le maximum de ${USER_LIMITS.categories} catégories. Supprimez ou réutilisez une catégorie existante.`,
+          ),
+        );
+      }
       const sortOrder = await categoryRepo.nextSortOrder(userId);
       return ok(
         await categoryRepo.createCategory(userId, {
