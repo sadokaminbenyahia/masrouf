@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
   serverExternalPackages: ['@prisma/client', 'bcryptjs'],
+  // L'import CSV envoie jusqu'à 5000 lignes normalisées en une server action.
+  experimental: { serverActions: { bodySizeLimit: '4mb' } },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
