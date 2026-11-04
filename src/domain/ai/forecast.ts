@@ -16,7 +16,7 @@ import {
 } from '../dates';
 import type { Millimes } from '../money';
 import type { RecurringRule } from '../types';
-import { addPeriod, matchesRule } from './recurring-detect';
+import { addPeriod, ruleMatcher } from './recurring-detect';
 import { clamp, ewma, linearRegression, mean, stdDev } from './stats';
 import type {
   AiTransaction,
@@ -97,7 +97,8 @@ export function forecastBalance(input: ForecastInput): BalanceForecast {
   const current = monthOf(today);
   const activeRules = input.recurring.filter((r) => r.active);
   const history = input.history.filter((t) => t.type !== 'TRANSFER' && t.date <= today);
-  const variable = history.filter((t) => !matchesRule(t, activeRules));
+  const isRecurring = ruleMatcher(activeRules);
+  const variable = history.filter((t) => !isRecurring(t));
 
   let firstDate: ISODate | null = null;
   for (const t of history) if (firstDate === null || t.date < firstDate) firstDate = t.date;

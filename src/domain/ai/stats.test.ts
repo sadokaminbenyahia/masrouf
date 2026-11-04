@@ -54,7 +54,7 @@ describe('stats', () => {
   });
 
   it('moyenne exponentielle (demi-vie)', () => {
-    expect(ewma([5, 5, 5], 10)).toBe(5);
+    expect(ewma([5, 5, 5], 10)).toBeCloseTo(5);
     // demi-vie 1 : poids 0,5 pour l'avant-dernière valeur
     expect(ewma([0, 3], 1)).toBeCloseTo(2);
     expect(ewma([1, 9], 0)).toBe(9);

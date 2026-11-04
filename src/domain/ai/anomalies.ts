@@ -3,7 +3,7 @@
 import { addDays, addMonths, diffDays, monthOf } from '../dates';
 import { formatMoney } from '../money';
 import type { Severity } from '../types';
-import { detectSeries, matchesRule } from './recurring-detect';
+import { detectSeries, ruleMatcher } from './recurring-detect';
 import { mad, median, quantileSorted } from './stats';
 import { merchantKey } from './text';
 import type { AiTransaction, Anomaly, AnomalyInput } from './types';
@@ -42,6 +42,7 @@ function unusualAmounts(
 ): Anomaly[] {
   const out: Anomaly[] = [];
   const globalMedian = median(expenses.map((t) => t.amount));
+  const isRecurring = ruleMatcher(input.recurring);
   const byCategory = new Map<string, AiTransaction[]>();
   for (const t of expenses) {
     const key = t.categoryId ?? '__none__';
@@ -58,7 +59,7 @@ function unusualAmounts(
     const logMad = mad(logs);
     for (const t of list) {
       if (t.date < since || t.date > input.today || t.amount < MIN_UNUSUAL) continue;
-      if (t.recurringId !== null || matchesRule(t, input.recurring)) continue;
+      if (t.recurringId !== null || isRecurring(t)) continue;
       const n = list.length - 1;
       let flagged = false;
       let score = 0;

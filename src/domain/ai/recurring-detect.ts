@@ -131,21 +131,48 @@ export function detectSeries(transactions: readonly AiTransaction[]): DetectedSe
   return out;
 }
 
-/** Une transaction correspond-elle à une règle récurrente (même règle ou même libellé) ? */
-export function matchesRule(
-  t: Pick<AiTransaction, 'label' | 'type' | 'recurringId'>,
-  rules: readonly RecurringRule[],
-): boolean {
-  if (t.recurringId !== null && rules.some((r) => r.id === t.recurringId)) return true;
-  return rules.some((r) => r.type === t.type && labelsMatch(r.label, t.label));
+type RuleTarget = Pick<AiTransaction, 'label' | 'type' | 'recurringId'>;
+
+interface LabelKeys {
+  merchant: string;
+  normalized: string;
+  tokens: string[];
 }
 
-function labelsMatch(a: string, b: string): boolean {
-  const ka = merchantKey(a);
-  if (ka !== '' && ka === merchantKey(b)) return true;
-  const na = normalizeLabel(a);
-  if (na !== '' && na === normalizeLabel(b)) return true;
-  return jaccard(tokenize(a), tokenize(b)) >= 0.6;
+const labelKeys = (label: string): LabelKeys => ({
+  merchant: merchantKey(label),
+  normalized: normalizeLabel(label),
+  tokens: tokenize(label),
+});
+
+function labelsMatch(rule: LabelKeys, tx: LabelKeys): boolean {
+  if (rule.merchant !== '' && rule.merchant === tx.merchant) return true;
+  if (rule.normalized !== '' && rule.normalized === tx.normalized) return true;
+  // Tous les mots de la règle figurent dans le libellé (« Loyer » ⊂ « Loyer novembre »).
+  if (rule.tokens.length > 0 && rule.tokens.every((t) => tx.tokens.includes(t))) return true;
+  return jaccard(rule.tokens, tx.tokens) >= 0.6;
+}
+
+/**
+ * Prépare un test « cette transaction correspond-elle à une règle récurrente ? » (même règle
+ * via `recurringId`, ou même libellé : clé marchand, libellé normalisé, mots de la règle inclus
+ * ou Jaccard ≥ 0,6). Les clés des règles sont calculées une seule fois.
+ */
+export function ruleMatcher(rules: readonly RecurringRule[]): (t: RuleTarget) => boolean {
+  const ids = new Set(rules.map((r) => r.id));
+  const keyed = rules.map((r) => ({ type: r.type, keys: labelKeys(r.label) }));
+  return (t) => {
+    if (t.recurringId !== null && ids.has(t.recurringId)) return true;
+    const candidates = keyed.filter((r) => r.type === t.type);
+    if (candidates.length === 0) return false;
+    const keys = labelKeys(t.label);
+    return candidates.some((r) => labelsMatch(r.keys, keys));
+  };
+}
+
+/** Une transaction correspond-elle à une règle récurrente (même règle ou même libellé) ? */
+export function matchesRule(t: RuleTarget, rules: readonly RecurringRule[]): boolean {
+  return ruleMatcher(rules)(t);
 }
 
 function isCovered(series: DetectedSeries, rules: readonly RecurringRule[]): boolean {
