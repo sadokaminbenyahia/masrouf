@@ -17,8 +17,7 @@ const CAPACITY_MONTHS = 3;
 
 /**
  * Capacité d'épargne mensuelle : (revenus − dépenses) moyens des 3 derniers mois complets,
- * en ajoutant les dépenses déjà classées en épargne n'est pas nécessaire ici (on mesure ce
- * qui reste disponible). null s'il n'y a aucun revenu sur la période.
+ * virements exclus. null s'il n'y a aucun revenu sur la période (capacité inconnue).
  */
 async function monthlyCapacity(userId: string, day: ISODate): Promise<number | null> {
   const last = addMonthsYM(monthOf(day), -1);

@@ -1,5 +1,6 @@
 'use client';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { openQuickAdd } from '@/lib/events';
 import { CommandPalette } from '@/components/command-palette/command-palette';
 import { QuickAddTransaction } from '@/components/transactions/quick-add';
 import { MobileNav } from './mobile-nav';
@@ -21,6 +22,15 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  // Raccourci PWA « Ajouter une dépense » (?nouveau=1) : ouvre l'ajout rapide une fois monté.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('nouveau') !== '1') return;
+    url.searchParams.delete('nouveau');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    openQuickAdd({ prefill: { type: 'EXPENSE' } });
+  }, []);
 
   const toggleSidebar = () => {
     const next = !collapsed;
