@@ -448,12 +448,10 @@ export function categorize(
     const alternatives =
       post.length > 0
         ? alternativesFrom(post, top.id)
-        : rules
-            .slice(1, 1 + MAX_ALTERNATIVES)
-            .map((r) => ({
-              categoryId: r.id,
-              confidence: round3((RULE_CONFIDENCE * r.score) / (2 * top.score)),
-            }));
+        : rules.slice(1, 1 + MAX_ALTERNATIVES).map((r) => ({
+            categoryId: r.id,
+            confidence: round3((RULE_CONFIDENCE * r.score) / (2 * top.score)),
+          }));
     return { categoryId: top.id, confidence: RULE_CONFIDENCE, source: 'RULE', alternatives };
   }
   return null;

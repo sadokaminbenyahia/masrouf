@@ -23,7 +23,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:reset": "prisma db push --force-reset --skip-generate && prisma db seed",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:e2e": "node scripts/prepare-e2e-db.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

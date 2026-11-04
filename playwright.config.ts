@@ -23,7 +23,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /.*\.mobile\.spec\.ts/ },
   ],
   webServer: {
-    command: `npm run db:reset && npx next start -p ${PORT}`,
+    command: `npm run db:e2e && npx next start -p ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
