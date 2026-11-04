@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { detectAnomalies } from './anomalies';
 import { DEFAULT_TEST_CATEGORIES } from './__fixtures__/categories';
-import { RENT_RULE, SALARY_RULE, SERIES_TODAY, cleanHistory, dirtyHistory, tx } from './__fixtures__/series';
+import {
+  RENT_RULE,
+  SALARY_RULE,
+  SERIES_TODAY,
+  cleanHistory,
+  dirtyHistory,
+  tx,
+} from './__fixtures__/series';
 import type { AnomalyInput } from './types';
 
 const base = (transactions: AnomalyInput['transactions']): AnomalyInput => ({
@@ -27,7 +34,10 @@ describe('detectAnomalies', () => {
     expect(found).toHaveLength(3);
 
     const unusual = found.find((a) => a.kind === 'UNUSUAL_AMOUNT');
-    expect(unusual).toMatchObject({ actualAmount: 380_000, title: 'Dépense inhabituelle en Restaurants' });
+    expect(unusual).toMatchObject({
+      actualAmount: 380_000,
+      title: 'Dépense inhabituelle en Restaurants',
+    });
     expect(unusual?.expectedAmount).toBeGreaterThan(20_000);
     expect(unusual?.score).toBeGreaterThan(3.5);
     const price = found.find((a) => a.kind === 'PRICE_INCREASE');
@@ -38,16 +48,24 @@ describe('detectAnomalies', () => {
       expect(a.message.length).toBeGreaterThan(10);
     }
     // Tri par date décroissante
-    expect([...found].map((a) => a.date)).toEqual(found.map((a) => a.date).sort().reverse());
+    expect([...found].map((a) => a.date)).toEqual(
+      found
+        .map((a) => a.date)
+        .sort()
+        .reverse(),
+    );
   });
 
   it('filtre les clés ignorées et respecte `since`', () => {
     const { transactions, injected } = dirtyHistory();
-    const found = detectAnomalies({ ...base(transactions), dismissedKeys: [injected.unusual, injected.price] });
+    const found = detectAnomalies({
+      ...base(transactions),
+      dismissedKeys: [injected.unusual, injected.price],
+    });
     expect(found.map((a) => a.kind)).toEqual(['DUPLICATE']);
-    expect(detectAnomalies({ ...base(transactions), since: '2026-11-01' }).map((a) => a.kind)).toEqual([
-      'DUPLICATE',
-    ]);
+    expect(
+      detectAnomalies({ ...base(transactions), since: '2026-11-01' }).map((a) => a.kind),
+    ).toEqual(['DUPLICATE']);
   });
 
   it('repli IQR quand la catégorie a peu de données', () => {
@@ -61,12 +79,18 @@ describe('detectAnomalies', () => {
     ];
     const found = detectAnomalies(base(txs));
     expect(found).toHaveLength(1);
-    expect(found[0]).toMatchObject({ kind: 'UNUSUAL_AMOUNT', severity: 'DANGER', expectedAmount: 40_000 });
+    expect(found[0]).toMatchObject({
+      kind: 'UNUSUAL_AMOUNT',
+      severity: 'DANGER',
+      expectedAmount: 40_000,
+    });
   });
 
   it('moins de 4 points : comparaison à la médiane globale', () => {
     const txs = [
-      ...Array.from({ length: 10 }, (_, i) => tx(`2026-10-${String(10 + i)}`, 10 + i, `Café ${i}`, 'Cafés')),
+      ...Array.from({ length: 10 }, (_, i) =>
+        tx(`2026-10-${String(10 + i)}`, 10 + i, `Café ${i}`, 'Cafés'),
+      ),
       tx('2026-11-02', 300, 'Opticien', 'Santé'),
       tx('2026-11-02', 30, 'Dentiste', 'Santé'),
       tx('2026-11-03', 250, 'Inconnu', null),
@@ -92,10 +116,16 @@ describe('detectAnomalies', () => {
 
   it('hausse de prix sur une série liée à une règle', () => {
     const txs = ['07', '08', '09', '10'].map((m, i) =>
-      tx(`2026-${m}-05`, i === 3 ? 70 : 60, `Salle de sport ${m}`, 'Loisirs', { recurringId: 'gym' }),
+      tx(`2026-${m}-05`, i === 3 ? 70 : 60, `Salle de sport ${m}`, 'Loisirs', {
+        recurringId: 'gym',
+      }),
     );
     const found = detectAnomalies(base(txs));
     expect(found).toHaveLength(1);
-    expect(found[0]).toMatchObject({ kind: 'PRICE_INCREASE', severity: 'INFO', expectedAmount: 60_000 });
+    expect(found[0]).toMatchObject({
+      kind: 'PRICE_INCREASE',
+      severity: 'INFO',
+      expectedAmount: 60_000,
+    });
   });
 });

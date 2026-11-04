@@ -4,7 +4,13 @@ import { cn } from '@/lib/utils';
 import { pluralize } from './text';
 
 /** Totaux du filtre courant (toutes pages confondues ; virements exclus). */
-export function TotalsBar({ totals, className }: { totals: TransactionTotals; className?: string }) {
+export function TotalsBar({
+  totals,
+  className,
+}: {
+  totals: TransactionTotals;
+  className?: string;
+}) {
   return (
     <section
       aria-label="Totaux du filtre"

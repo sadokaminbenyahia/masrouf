@@ -23,10 +23,7 @@ interface MultiSelectFilterProps {
 }
 
 function normalize(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 /** Filtre multi-sélection : popover avec recherche et cases à cocher. */
@@ -46,9 +43,7 @@ export function MultiSelectFilter({
   const count = selected.length;
 
   function toggle(value: string) {
-    onChange(
-      selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value],
-    );
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
   }
 
   return (

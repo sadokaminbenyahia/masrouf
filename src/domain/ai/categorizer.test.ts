@@ -86,27 +86,57 @@ describe('categorize', () => {
   const model = trainCategorizer(samples);
 
   it('respecte le sens de la transaction', () => {
-    const p = categorize(model, { label: 'Remboursement Sami', amount: 150_000, type: 'INCOME' }, DEFAULT_TEST_CATEGORIES);
+    const p = categorize(
+      model,
+      { label: 'Remboursement Sami', amount: 150_000, type: 'INCOME' },
+      DEFAULT_TEST_CATEGORIES,
+    );
     expect(p?.categoryId).toBe(categoryId('Autres revenus'));
-    const e = categorize(model, { label: 'Netflix', amount: 39_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES);
+    const e = categorize(
+      model,
+      { label: 'Netflix', amount: 39_000, type: 'EXPENSE' },
+      DEFAULT_TEST_CATEGORIES,
+    );
     expect(e?.categoryId).toBe(categoryId('Abonnements'));
-    expect(categorize(model, { label: 'Netflix', amount: 1, type: 'TRANSFER' }, DEFAULT_TEST_CATEGORIES)).toBeNull();
+    expect(
+      categorize(model, { label: 'Netflix', amount: 1, type: 'TRANSFER' }, DEFAULT_TEST_CATEGORIES),
+    ).toBeNull();
   });
 
   it('renvoie null quand rien ne correspond', () => {
-    expect(categorize(model, { label: 'zzqx wywy', amount: 5_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES)).toBeNull();
-    expect(categorize(null, { label: 'zzqx', amount: 5_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES)).toBeNull();
-    expect(categorize(model, { label: '  ', amount: 5_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES)).toBeNull();
-    expect(categorize(model, { label: 'Carrefour', amount: 5_000, type: 'EXPENSE' }, [])).toBeNull();
+    expect(
+      categorize(
+        model,
+        { label: 'zzqx wywy', amount: 5_000, type: 'EXPENSE' },
+        DEFAULT_TEST_CATEGORIES,
+      ),
+    ).toBeNull();
+    expect(
+      categorize(null, { label: 'zzqx', amount: 5_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES),
+    ).toBeNull();
+    expect(
+      categorize(model, { label: '  ', amount: 5_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES),
+    ).toBeNull();
+    expect(
+      categorize(model, { label: 'Carrefour', amount: 5_000, type: 'EXPENSE' }, []),
+    ).toBeNull();
   });
 
   it('tolère les fautes de frappe sur un marchand connu (trigrammes)', () => {
-    const p = categorize(model, { label: 'CARFOUR MARSA', amount: 60_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES);
+    const p = categorize(
+      model,
+      { label: 'CARFOUR MARSA', amount: 60_000, type: 'EXPENSE' },
+      DEFAULT_TEST_CATEGORIES,
+    );
     expect(p?.categoryId).toBe(categoryId('Courses'));
   });
 
   it('source MODEL avec alternatives, confiance dans [0, 1]', () => {
-    const p = categorize(model, { label: 'Monoprix Lac', amount: 40_000, type: 'EXPENSE' }, DEFAULT_TEST_CATEGORIES);
+    const p = categorize(
+      model,
+      { label: 'Monoprix Lac', amount: 40_000, type: 'EXPENSE' },
+      DEFAULT_TEST_CATEGORIES,
+    );
     expect(p?.source).toBe('MODEL');
     expect(p?.confidence).toBeGreaterThanOrEqual(0.6);
     expect(p?.confidence).toBeLessThanOrEqual(1);
@@ -126,9 +156,18 @@ describe('categorize', () => {
   });
 
   it("n'utilise pas une catégorie sans données pour le modèle", () => {
-    const tiny = trainCategorizer([{ label: 'Salaire', amount: 2_000_000, type: 'INCOME', categoryId: categoryId('Salaire') }]);
-    const cats = [...DEFAULT_TEST_CATEGORIES, { id: 'new', name: 'Location Airbnb', kind: 'INCOME' as const }];
-    const p = categorize(tiny, { label: 'Virement inconnu xyz', amount: 300_000, type: 'INCOME' }, cats);
+    const tiny = trainCategorizer([
+      { label: 'Salaire', amount: 2_000_000, type: 'INCOME', categoryId: categoryId('Salaire') },
+    ]);
+    const cats = [
+      ...DEFAULT_TEST_CATEGORIES,
+      { id: 'new', name: 'Location Airbnb', kind: 'INCOME' as const },
+    ];
+    const p = categorize(
+      tiny,
+      { label: 'Virement inconnu xyz', amount: 300_000, type: 'INCOME' },
+      cats,
+    );
     expect(p).toBeNull();
   });
 });
@@ -142,7 +181,11 @@ describe('learnCorrection', () => {
     expect(before?.categoryId).toBe(categoryId('Cafés'));
 
     const target = categoryId('Famille & cadeaux');
-    const next = learnCorrection(model, { ...input, categoryId: target }, before?.categoryId ?? null);
+    const next = learnCorrection(
+      model,
+      { ...input, categoryId: target },
+      before?.categoryId ?? null,
+    );
     expect(JSON.stringify(model)).toBe(snapshot);
     const after = categorize(next, input, DEFAULT_TEST_CATEGORIES);
     expect(after).toMatchObject({ categoryId: target, source: 'MERCHANT', confidence: 0.98 });
@@ -154,7 +197,12 @@ describe('learnCorrection', () => {
     const model = trainCategorizer(train);
     const next = learnCorrection(
       model,
-      { label: 'Kiosque journaux', amount: 2_000, type: 'EXPENSE', categoryId: categoryId('Divers') },
+      {
+        label: 'Kiosque journaux',
+        amount: 2_000,
+        type: 'EXPENSE',
+        categoryId: categoryId('Divers'),
+      },
       null,
     );
     expect(next.sampleCount).toBe(model.sampleCount + 1);
@@ -164,9 +212,18 @@ describe('learnCorrection', () => {
   });
 
   it('retire les comptes de la catégorie précédente', () => {
-    const s = { label: 'Agil', amount: 50_000, type: 'EXPENSE' as const, categoryId: categoryId('Carburant') };
+    const s = {
+      label: 'Agil',
+      amount: 50_000,
+      type: 'EXPENSE' as const,
+      categoryId: categoryId('Carburant'),
+    };
     const model = trainCategorizer([s]);
-    const next = learnCorrection(model, { ...s, categoryId: categoryId('Transport') }, s.categoryId);
+    const next = learnCorrection(
+      model,
+      { ...s, categoryId: categoryId('Transport') },
+      s.categoryId,
+    );
     expect(next.tokenCount[s.categoryId]?.['w:agil']).toBeUndefined();
     expect(next.docCount[s.categoryId]).toBe(0);
     expect(next.totalTokens[s.categoryId]).toBe(0);
@@ -174,10 +231,18 @@ describe('learnCorrection', () => {
 
   it('ignore les virements et renforce une catégorie confirmée', () => {
     const model = trainCategorizer(train);
-    expect(learnCorrection(model, { label: 'x', amount: 1, type: 'TRANSFER', categoryId: 'a' }, null)).toBe(model);
+    expect(
+      learnCorrection(model, { label: 'x', amount: 1, type: 'TRANSFER', categoryId: 'a' }, null),
+    ).toBe(model);
     const c = categoryId('Courses');
-    const next = learnCorrection(model, { label: 'Aziza', amount: 10_000, type: 'EXPENSE', categoryId: c }, c);
-    expect((next.tokenCount[c]?.['w:aziza'] ?? 0) - (model.tokenCount[c]?.['w:aziza'] ?? 0)).toBe(1);
+    const next = learnCorrection(
+      model,
+      { label: 'Aziza', amount: 10_000, type: 'EXPENSE', categoryId: c },
+      c,
+    );
+    expect((next.tokenCount[c]?.['w:aziza'] ?? 0) - (model.tokenCount[c]?.['w:aziza'] ?? 0)).toBe(
+      1,
+    );
   });
 });
 
@@ -193,8 +258,12 @@ describe('features et règles', () => {
   });
 
   it('les expressions de plusieurs mots priment', () => {
-    expect(ruleScore('Courses', 'eau minérale')).toBeGreaterThan(ruleScore('Factures', 'eau minérale'));
-    expect(ruleScore('Restaurants', 'Baguette & Baguette')).toBeGreaterThan(ruleScore('Courses', 'Baguette & Baguette'));
+    expect(ruleScore('Courses', 'eau minérale')).toBeGreaterThan(
+      ruleScore('Factures', 'eau minérale'),
+    );
+    expect(ruleScore('Restaurants', 'Baguette & Baguette')).toBeGreaterThan(
+      ruleScore('Courses', 'Baguette & Baguette'),
+    );
     expect(ruleScore('Courses', '')).toBe(0);
   });
 });

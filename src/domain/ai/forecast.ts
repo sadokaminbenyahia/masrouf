@@ -49,8 +49,7 @@ export function completeHistoryMonths(
   const current = monthOf(today);
   const last = addMonthsYM(current, -1);
   const firstMonth = monthOf(firstDate);
-  const firstComplete =
-    parseISODate(firstDate).day <= 7 ? firstMonth : addMonthsYM(firstMonth, 1);
+  const firstComplete = parseISODate(firstDate).day <= 7 ? firstMonth : addMonthsYM(firstMonth, 1);
   const earliest = addMonthsYM(current, -max);
   const from = diffMonthsYM(earliest, firstComplete) > 0 ? firstComplete : earliest;
   if (diffMonthsYM(from, last) < 0) return [];
@@ -200,7 +199,10 @@ export function forecastBalance(input: ForecastInput): BalanceForecast {
 
   // ── Graphique : soldes réels reconstitués à rebours
   const chart: ForecastChartPoint[] = [];
-  const pastMonths = listMonths(addMonthsYM(current, -HISTORY_CHART_MONTHS), addMonthsYM(current, -1));
+  const pastMonths = listMonths(
+    addMonthsYM(current, -HISTORY_CHART_MONTHS),
+    addMonthsYM(current, -1),
+  );
   const sortedDesc = [...history].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   for (const ym of pastMonths) {
     const cutoff = monthEnd(ym);

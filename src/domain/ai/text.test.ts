@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { charTrigrams, foldText, jaccard, merchantKey, nameKey, normalizeLabel, stem, tokenize } from './text';
+import {
+  charTrigrams,
+  foldText,
+  jaccard,
+  merchantKey,
+  nameKey,
+  normalizeLabel,
+  stem,
+  tokenize,
+} from './text';
 
 describe('normalizeLabel', () => {
   it.each([
@@ -27,7 +36,11 @@ describe('normalizeLabel', () => {
 
 describe('tokenize', () => {
   it('retire les mots vides et les tokens d’un caractère', () => {
-    expect(tokenize('Courses de la semaine à Carrefour')).toEqual(['courses', 'semaine', 'carrefour']);
+    expect(tokenize('Courses de la semaine à Carrefour')).toEqual([
+      'courses',
+      'semaine',
+      'carrefour',
+    ]);
     expect(tokenize('Plan B')).toEqual(['plan']);
     expect(tokenize('')).toEqual([]);
   });

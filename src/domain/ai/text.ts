@@ -83,6 +83,21 @@ const DATE_RE = /\b\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?\b/g;
 const TIME_RE = /\b\d{1,2}[:h]\d{2}\b/g;
 const CARD_RE = /[x*]{2,}\d{2,4}\b/g;
 const REFERENCE_RE = /\b\d{4,}\b/g;
+// Caches bornés (les libellés se répètent beaucoup) : fonctions pures, résultat identique.
+const CACHE_LIMIT = 5000;
+const normalizeCache = new Map<string, string>();
+const tokenCache = new Map<string, string[]>();
+const merchantCache = new Map<string, string>();
+
+function memo<T>(cache: Map<string, T>, key: string, compute: (k: string) => T): T {
+  const hit = cache.get(key);
+  if (hit !== undefined) return hit;
+  const value = compute(key);
+  if (cache.size >= CACHE_LIMIT) cache.clear();
+  cache.set(key, value);
+  return value;
+}
+
 const SEPARATOR_RE = /[^a-z0-9؀-ۿ]+/g;
 
 /**
@@ -121,6 +136,10 @@ function stripNoise(s: string): string {
  * Si le retrait des préfixes vide le libellé (« RETRAIT DAB »), on garde ces mots.
  */
 export function normalizeLabel(raw: string): string {
+  return memo(normalizeCache, raw, computeNormalizedLabel);
+}
+
+function computeNormalizedLabel(raw: string): string {
   const folded = foldText(raw);
   const withoutPrefixes = collapse(stripNoise(folded.replace(BANK_PREFIX_RE, ' ')));
   if (withoutPrefixes !== '') return withoutPrefixes;
@@ -139,6 +158,10 @@ export function stem(token: string): string {
 
 /** Tokens significatifs (sans mots vides), d'au moins 2 caractères. */
 export function tokenize(raw: string): string[] {
+  return [...memo(tokenCache, raw, computeTokens)];
+}
+
+function computeTokens(raw: string): string[] {
   const normalized = normalizeLabel(raw);
   if (normalized === '') return [];
   return normalized.split(' ').filter((t) => t.length >= 2 && !STOPWORDS.has(t));
@@ -150,6 +173,10 @@ export function tokenize(raw: string): string[] {
  * « MONOPRIX LAC 2 » → « monoprix ». Si tout est retiré, on garde les tokens bruts.
  */
 export function merchantKey(raw: string): string {
+  return memo(merchantCache, raw, computeMerchantKey);
+}
+
+function computeMerchantKey(raw: string): string {
   const tokens = tokenize(raw);
   const significant = tokens.filter((t) => !TUNISIAN_PLACES.has(t) && !/^\d+$/.test(t));
   const chosen = significant.length > 0 ? significant : tokens;

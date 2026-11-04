@@ -50,7 +50,11 @@ function textFeatures(label: string, out: FeatureCounts): void {
 }
 
 /** Features complètes d'une transaction : texte + tranche de montant + sens. */
-export function extractFeatures(label: string, amount: number, type: TransactionType): FeatureCounts {
+export function extractFeatures(
+  label: string,
+  amount: number,
+  type: TransactionType,
+): FeatureCounts {
   const out: FeatureCounts = new Map();
   textFeatures(label, out);
   add(out, amountBucket(amount), 1);
@@ -171,7 +175,10 @@ function computeVocabulary(tokenCount: Record<string, Record<string, number>>): 
 }
 
 /** Élague les features rares (fréquence totale < 2) si le vocabulaire dépasse le plafond. */
-export function pruneModel(model: CategorizerModel, maxVocabulary = MAX_VOCABULARY): CategorizerModel {
+export function pruneModel(
+  model: CategorizerModel,
+  maxVocabulary = MAX_VOCABULARY,
+): CategorizerModel {
   if (model.vocabularySize <= maxVocabulary) return model;
   const freq = new Map<string, number>();
   for (const counts of Object.values(model.tokenCount)) {
@@ -258,10 +265,7 @@ export function learnCorrection(
       else prev[k] = next;
     }
     tokenCount[previousCategoryId] = prev;
-    totalTokens[previousCategoryId] = Math.max(
-      0,
-      (totalTokens[previousCategoryId] ?? 0) - removed,
-    );
+    totalTokens[previousCategoryId] = Math.max(0, (totalTokens[previousCategoryId] ?? 0) - removed);
     docCount[previousCategoryId] = Math.max(0, (docCount[previousCategoryId] ?? 0) - 1);
   }
 
@@ -284,7 +288,8 @@ export function learnCorrection(
   }
 
   const key = merchantKey(sample.label);
-  const merchantMap = key === '' ? model.merchantMap : { ...model.merchantMap, [key]: sample.categoryId };
+  const merchantMap =
+    key === '' ? model.merchantMap : { ...model.merchantMap, [key]: sample.categoryId };
 
   return pruneModel({
     ...model,
@@ -445,7 +450,10 @@ export function categorize(
         ? alternativesFrom(post, top.id)
         : rules
             .slice(1, 1 + MAX_ALTERNATIVES)
-            .map((r) => ({ categoryId: r.id, confidence: round3((RULE_CONFIDENCE * r.score) / (2 * top.score)) }));
+            .map((r) => ({
+              categoryId: r.id,
+              confidence: round3((RULE_CONFIDENCE * r.score) / (2 * top.score)),
+            }));
     return { categoryId: top.id, confidence: RULE_CONFIDENCE, source: 'RULE', alternatives };
   }
   return null;

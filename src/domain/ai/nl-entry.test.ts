@@ -81,7 +81,11 @@ describe('parseEntry : avertissements et cas limites', () => {
 
   it('libellé par défaut quand il ne reste rien', () => {
     const r = parseEntry('50 dt hier', ctx);
-    expect(r.ok && r.entry).toMatchObject({ label: 'Dépense', categoryId: null, date: '2026-11-03' });
+    expect(r.ok && r.entry).toMatchObject({
+      label: 'Dépense',
+      categoryId: null,
+      date: '2026-11-03',
+    });
     const inc = parseEntry('+80', ctx);
     expect(inc.ok && inc.entry).toMatchObject({ label: 'Revenu', type: 'INCOME' });
   });

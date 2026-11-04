@@ -45,7 +45,10 @@ export function TransactionCardList({
       : [{ date: null, items, income: 0, expense: 0, net: 0 }];
 
   return (
-    <div className={cn('grid gap-4 transition-opacity', busy && 'opacity-60')} aria-busy={busy || undefined}>
+    <div
+      className={cn('grid gap-4 transition-opacity', busy && 'opacity-60')}
+      aria-busy={busy || undefined}
+    >
       {groups.map((g) => {
         const headingId = `${baseId}-${g.date ?? 'all'}`;
         return (
@@ -72,7 +75,10 @@ export function TransactionCardList({
                 return (
                   <li
                     key={t.id}
-                    className={cn('flex items-center gap-3 py-2 pr-1 pl-3', selected && 'bg-accent/50')}
+                    className={cn(
+                      'flex items-center gap-3 py-2 pr-1 pl-3',
+                      selected && 'bg-accent/50',
+                    )}
                   >
                     <Checkbox
                       checked={selected}
@@ -136,7 +142,11 @@ export function TransactionCardList({
                         </div>
                       )}
                     </div>
-                    <Money value={t.amount} type={t.type} className="shrink-0 text-sm font-semibold" />
+                    <Money
+                      value={t.amount}
+                      type={t.type}
+                      className="shrink-0 text-sm font-semibold"
+                    />
                     <RowActions t={t} handlers={handlers} />
                   </li>
                 );

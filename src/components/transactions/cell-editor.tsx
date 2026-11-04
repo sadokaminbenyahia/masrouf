@@ -30,7 +30,14 @@ const fieldClass =
   'border-input bg-background h-9 w-full min-w-0 rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive';
 
 /** Éditeur inline d'une cellule : Entrée valide, Échap annule, Tab passe à la suivante. */
-export function CellEditor({ t, column, categories, accounts, onCommit, onCancel }: CellEditorProps) {
+export function CellEditor({
+  t,
+  column,
+  categories,
+  accounts,
+  onCommit,
+  onCancel,
+}: CellEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(t.amount);
   const doneRef = useRef(false);
@@ -108,7 +115,9 @@ export function CellEditor({ t, column, categories, accounts, onCommit, onCancel
       );
       break;
     case 'date':
-      field = <input {...common} type="date" defaultValue={t.date} autoFocus className={fieldClass} />;
+      field = (
+        <input {...common} type="date" defaultValue={t.date} autoFocus className={fieldClass} />
+      );
       break;
     case 'amount':
       field = (

@@ -339,7 +339,10 @@ export function TransactionsTable({
               <p className="flex items-center gap-1.5 truncate font-medium">
                 <span className="truncate">{t.label}</span>
                 {t.recurringId && (
-                  <Repeat className="text-muted-foreground size-3.5 shrink-0" aria-label="Récurrente" />
+                  <Repeat
+                    className="text-muted-foreground size-3.5 shrink-0"
+                    aria-label="Récurrente"
+                  />
                 )}
               </p>
               {t.note && <p className="text-muted-foreground truncate text-xs">{t.note}</p>}
@@ -465,7 +468,8 @@ export function TransactionsTable({
                   return <TableHead key={header.id}>{label}</TableHead>;
                 }
                 const sorted = header.column.getIsSorted();
-                const Icon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown;
+                const Icon =
+                  sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown;
                 return (
                   <TableHead
                     key={header.id}

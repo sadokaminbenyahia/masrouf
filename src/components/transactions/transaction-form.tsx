@@ -39,10 +39,7 @@ import { addDays, type ISODate } from '@/domain/dates';
 import type { Transaction, TransactionType } from '@/domain/types';
 import { useCategories, useTags } from '@/lib/hooks/use-reference-data';
 import { ActionError, errorMessage, queryKeys, unwrap } from '@/lib/query';
-import {
-  transactionInputSchema,
-  type TransactionInput,
-} from '@/lib/schemas/transactions';
+import { transactionInputSchema, type TransactionInput } from '@/lib/schemas/transactions';
 import { cn } from '@/lib/utils';
 import { useAllAccounts } from '@/components/accounts/use-all-accounts';
 import { invalidateFinanceQueries } from './cache';
@@ -141,8 +138,7 @@ export function TransactionForm({
 
   const kind = type === 'TRANSFER' ? null : type;
   const kindCategories = useMemo(
-    () =>
-      categories.filter((c) => c.kind === kind).sort((a, b) => a.sortOrder - b.sortOrder),
+    () => categories.filter((c) => c.kind === kind).sort((a, b) => a.sortOrder - b.sortOrder),
     [categories, kind],
   );
 
@@ -160,7 +156,11 @@ export function TransactionForm({
   );
 
   // Catégories fréquentes : répartition des 90 derniers jours.
-  const breakdownParams = { from: addDays(today, -90), to: today, type: kind ?? 'EXPENSE' } as const;
+  const breakdownParams = {
+    from: addDays(today, -90),
+    to: today,
+    type: kind ?? 'EXPENSE',
+  } as const;
   const breakdown = useQuery({
     queryKey: queryKeys.breakdown(breakdownParams),
     queryFn: async () => unwrap(await getCategoryBreakdownAction(breakdownParams)),
@@ -181,7 +181,11 @@ export function TransactionForm({
     let cancelled = false;
     const flowType = type;
     const timer = window.setTimeout(() => {
-      suggestCategoryAction({ label: text, amount: amount ?? SUGGEST_FALLBACK_AMOUNT, type: flowType })
+      suggestCategoryAction({
+        label: text,
+        amount: amount ?? SUGGEST_FALLBACK_AMOUNT,
+        type: flowType,
+      })
         .then((r) => {
           if (cancelled || !r.ok) return;
           setSuggestion(r.value ? { prediction: r.value, type: flowType } : null);
@@ -343,7 +347,9 @@ export function TransactionForm({
   if (activeAccounts.length === 0 && mode === 'create') {
     return (
       <div className="grid gap-3 text-sm">
-        <p>Créez d&apos;abord un compte (espèces, banque ou carte) pour enregistrer une transaction.</p>
+        <p>
+          Créez d&apos;abord un compte (espèces, banque ou carte) pour enregistrer une transaction.
+        </p>
         <Button asChild variant="outline" className="justify-self-start">
           <Link href="/comptes">Gérer mes comptes</Link>
         </Button>
@@ -404,7 +410,12 @@ export function TransactionForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Montant" htmlFor={ids.amount} error={errors.amount} errorId={errorId('amount')}>
+        <Field
+          label="Montant"
+          htmlFor={ids.amount}
+          error={errors.amount}
+          errorId={errorId('amount')}
+        >
           <AmountInput
             id={ids.amount}
             value={amount}
@@ -486,7 +497,11 @@ export function TransactionForm({
               clearError('categoryId');
             }}
           >
-            <SelectTrigger id={ids.categoryId} className="min-h-11 w-full" {...fieldProps('categoryId')}>
+            <SelectTrigger
+              id={ids.categoryId}
+              className="min-h-11 w-full"
+              {...fieldProps('categoryId')}
+            >
               <SelectValue placeholder="Automatique" />
             </SelectTrigger>
             <SelectContent>
@@ -548,7 +563,11 @@ export function TransactionForm({
               clearError('accountId');
             }}
           >
-            <SelectTrigger id={ids.accountId} className="min-h-11 w-full" {...fieldProps('accountId')}>
+            <SelectTrigger
+              id={ids.accountId}
+              className="min-h-11 w-full"
+              {...fieldProps('accountId')}
+            >
               <SelectValue placeholder="Choisir un compte" />
             </SelectTrigger>
             <SelectContent>
@@ -627,7 +646,12 @@ export function TransactionForm({
         <span className="text-muted-foreground hidden text-xs sm:inline">
           <kbd className="font-sans">Ctrl</kbd> + <kbd className="font-sans">Entrée</kbd>
         </span>
-        <Button ref={submitRef} type="submit" disabled={mutation.isPending} className="min-h-11 min-w-32">
+        <Button
+          ref={submitRef}
+          type="submit"
+          disabled={mutation.isPending}
+          className="min-h-11 min-w-32"
+        >
           {mutation.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           Enregistrer
         </Button>

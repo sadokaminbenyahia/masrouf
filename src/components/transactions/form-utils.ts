@@ -78,8 +78,6 @@ export function pickFrequent(
   limit: number,
 ): Category[] {
   return [...kindCategories]
-    .sort(
-      (a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.sortOrder - b.sortOrder,
-    )
+    .sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.sortOrder - b.sortOrder)
     .slice(0, limit);
 }

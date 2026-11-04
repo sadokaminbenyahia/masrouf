@@ -17,7 +17,8 @@ const EXCLUDED_NAMES = new Set(['epargne']);
 
 /**
  * Un budget par catégorie de dépense ayant au moins 2 mois de données sur la fenêtre :
- * 70e centile des totaux mensuels (mois sans dépense comptés à 0), arrondi au 5 DT supérieur.
+ * 70e centile des totaux mensuels depuis le premier mois de dépense de la catégorie (mois
+ * sans dépense ensuite comptés à 0), arrondi au 5 DT supérieur.
  * Si la somme dépasse 90 % du revenu mensuel, les montants sont réduits proportionnellement
  * (arrondis au 5 DT inférieur, 5 DT au minimum). Tri par montant décroissant.
  */
@@ -42,25 +43,25 @@ export function suggestBudgets(input: BudgetSuggestInput): BudgetSuggestion[] {
     totals.set(t.categoryId, row);
   }
 
-  const suggestions: (BudgetSuggestion & { avg: number })[] = [];
+  const suggestions: (BudgetSuggestion & { avg: number; months: number })[] = [];
   for (const c of input.categories) {
     if (c.kind !== 'EXPENSE' || EXCLUDED_NAMES.has(nameKey(c.name))) continue;
-    const row = totals.get(c.id);
-    if (!row || row.filter((v) => v > 0).length < MIN_MONTHS_WITH_DATA) continue;
+    const full = totals.get(c.id);
+    if (!full || full.filter((v) => v > 0).length < MIN_MONTHS_WITH_DATA) continue;
+    // Fenêtre propre à la catégorie : à partir de son premier mois de dépense.
+    const row = full.slice(full.findIndex((v) => v > 0));
     const amount = ceilTo(quantile(row, PERCENTILE), STEP);
     if (amount <= 0) continue;
-    suggestions.push({ categoryId: c.id, amount, basis: '', avg: mean(row) });
+    suggestions.push({ categoryId: c.id, amount, basis: '', avg: mean(row), months: row.length });
   }
 
   const total = sum(suggestions.map((s) => s.amount));
   const income = input.monthlyIncome;
   const reduce = income !== null && income > 0 && total > MAX_INCOME_SHARE * income;
   const factor = reduce ? (MAX_INCOME_SHARE * income) / total : 1;
-  const n = months.length;
-  const window = n === 1 ? 'de votre dernier mois complet' : `de vos ${n} derniers mois complets`;
-
   return suggestions
-    .map(({ categoryId, amount, avg }) => {
+    .map(({ categoryId, amount, avg, months: n }) => {
+      const window = `de vos ${n} derniers mois complets`;
       const final = reduce ? Math.max(STEP, floorTo(amount * factor, STEP)) : amount;
       const avgText = formatMoney(Math.round(avg), { decimals: 0 });
       const basis = reduce

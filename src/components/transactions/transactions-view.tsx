@@ -193,7 +193,11 @@ export function TransactionsView({
         title="Cette page est vide"
         description={`Les résultats tiennent sur ${last} page${last > 1 ? 's' : ''}.`}
         action={
-          <Button type="button" variant="outline" onClick={() => navigate({ ...query, page: last })}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ ...query, page: last })}
+          >
             Aller à la page {last}
           </Button>
         }

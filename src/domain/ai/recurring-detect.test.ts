@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { addPeriod, classifyPeriod, detectRecurring, isBillLabel, matchesRule } from './recurring-detect';
-import { RENT_RULE, SALARY_RULE, SERIES_TODAY, cleanHistory, rule, tx } from './__fixtures__/series';
+import {
+  addPeriod,
+  classifyPeriod,
+  detectRecurring,
+  isBillLabel,
+  matchesRule,
+} from './recurring-detect';
+import {
+  RENT_RULE,
+  SALARY_RULE,
+  SERIES_TODAY,
+  cleanHistory,
+  rule,
+  tx,
+} from './__fixtures__/series';
 
 describe('detectRecurring', () => {
   it('trouve les abonnements non déclarés et ignore les règles existantes', () => {
@@ -28,7 +41,9 @@ describe('detectRecurring', () => {
     const found = detectRecurring({
       today: SERIES_TODAY,
       transactions: cleanHistory(),
-      existing: [rule({ id: 'r_net', label: 'Netflix.com', amount: 39_000, nextDate: '2026-11-15' })],
+      existing: [
+        rule({ id: 'r_net', label: 'Netflix.com', amount: 39_000, nextDate: '2026-11-15' }),
+      ],
     });
     expect(found.map((c) => c.merchantKey)).toEqual(['ooredoo internet']);
   });
@@ -40,7 +55,9 @@ describe('detectRecurring', () => {
     const weekly = ['2026-10-07', '2026-10-14', '2026-10-21', '2026-10-28', '2026-11-04'].map((d) =>
       tx(d, 20, 'Cours de piano', 'Éducation'),
     );
-    const yearly = ['2023-09-15', '2024-09-14', '2025-09-15'].map((d) => tx(d, 300, 'Assurance auto', 'Divers'));
+    const yearly = ['2023-09-15', '2024-09-14', '2025-09-15'].map((d) =>
+      tx(d, 300, 'Assurance auto', 'Divers'),
+    );
     const stopped = ['2026-01-05', '2026-02-05', '2026-03-05', '2026-04-05'].map((d) =>
       tx(d, 15, 'Anghami', 'Abonnements'),
     );
@@ -59,18 +76,32 @@ describe('detectRecurring', () => {
 
   it('rejette les montants trop variables et les intervalles irréguliers', () => {
     const variable = ['2026-07-01', '2026-08-01', '2026-09-01', '2026-10-01'].map((d, i) =>
-      tx(d, [10, 30, 11.4, 29] [i] ?? 10, 'Kiosque', 'Divers'),
+      tx(d, [10, 30, 11.4, 29][i] ?? 10, 'Kiosque', 'Divers'),
     );
-    const irregular = ['2026-08-01', '2026-08-04', '2026-09-20', '2026-10-01', '2026-10-30'].map((d) =>
-      tx(d, 25, 'Lavage auto', 'Transport'),
+    const irregular = ['2026-08-01', '2026-08-04', '2026-09-20', '2026-10-01', '2026-10-30'].map(
+      (d) => tx(d, 25, 'Lavage auto', 'Transport'),
     );
-    expect(detectRecurring({ today: SERIES_TODAY, transactions: [...variable, ...irregular], existing: [] })).toEqual([]);
+    expect(
+      detectRecurring({
+        today: SERIES_TODAY,
+        transactions: [...variable, ...irregular],
+        existing: [],
+      }),
+    ).toEqual([]);
   });
 
   it('reporte nextDate dans le futur et suffixe les clés en doublon', () => {
-    const a = ['2026-07-02', '2026-08-02', '2026-09-02', '2026-10-02'].map((d) => tx(d, 10, 'Club', 'Loisirs'));
-    const b = ['2026-07-20', '2026-08-20', '2026-09-20', '2026-10-20'].map((d) => tx(d, 50, 'Club', 'Loisirs'));
-    const found = detectRecurring({ today: SERIES_TODAY, transactions: [...a, ...b], existing: [] });
+    const a = ['2026-07-02', '2026-08-02', '2026-09-02', '2026-10-02'].map((d) =>
+      tx(d, 10, 'Club', 'Loisirs'),
+    );
+    const b = ['2026-07-20', '2026-08-20', '2026-09-20', '2026-10-20'].map((d) =>
+      tx(d, 50, 'Club', 'Loisirs'),
+    );
+    const found = detectRecurring({
+      today: SERIES_TODAY,
+      transactions: [...a, ...b],
+      existing: [],
+    });
     expect(found.map((c) => c.key).sort()).toEqual([
       'recurring:EXPENSE:club:MONTHLY',
       'recurring:EXPENSE:club:MONTHLY:2',

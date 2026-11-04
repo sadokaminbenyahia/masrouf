@@ -1,6 +1,14 @@
 // Propriétaire : agent J. Saisie en langage naturel (règles + regex, AI-DESIGN §2).
 // Ordre : montant → date → type → compte → catégorie ; le reste devient le libellé.
-import { addDays, daysInMonth, diffDays, isISODate, isoWeekday, parseISODate, toISODate } from '../dates';
+import {
+  addDays,
+  daysInMonth,
+  diffDays,
+  isISODate,
+  isoWeekday,
+  parseISODate,
+  toISODate,
+} from '../dates';
 import type { ISODate } from '../dates';
 import type { Millimes } from '../money';
 import { categorize } from './categorizer';
@@ -88,17 +96,29 @@ const WEEKDAYS: Record<string, number> = {
   samedi: 6,
   dimanche: 7,
 };
-const SMALL_NUMBERS: Record<string, number> = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5 };
+const SMALL_NUMBERS: Record<string, number> = {
+  un: 1,
+  une: 1,
+  deux: 2,
+  trois: 3,
+  quatre: 4,
+  cinq: 5,
+};
 
-const NUMERIC_DATE_RE = /(?<![\d/.,-])(\d{1,2})(?:([/-])(\d{1,2})(?:\2(\d{2}|\d{4}))?|\.(\d{1,2})\.(\d{2}|\d{4}))(?![\d/.,-])/gu;
+const NUMERIC_DATE_RE =
+  /(?<![\d/.,-])(\d{1,2})(?:([/-])(\d{1,2})(?:\2(\d{2}|\d{4}))?|\.(\d{1,2})\.(\d{2}|\d{4}))(?![\d/.,-])/gu;
 const DAY_MONTH_RE = new RegExp(
   `(?<![\\p{L}\\d])(?:le\\s+)?(1er|\\d{1,2})\\s+(${MONTH_ALT})\\.?(?:\\s+(\\d{4}))?(?![\\p{L}\\d])`,
   'gu',
 );
-const AGO_RE = /(?<![\p{L}\d])il\s+y\s+a\s+(\d{1,3}|une?|deux|trois|quatre|cinq)\s+(jours?|semaines?)(?![\p{L}\d])/gu;
-const DAY_OF_MONTH_RE = /(?<![\p{L}\d])(?:le\s+(\d{1,2})(?:er)?|(\d{1,2})er)(?![\p{L}\d]|[.,/]\d)/gu;
-const RELATIVE_RE = /(?<![\p{L}\d])(avant[\s-]hier|aujourd\s?'?\s?hui|auj|ce\s+(?:matin|midi|soir)|hier(?:\s+soir)?)(?![\p{L}\d])/gu;
-const WEEKDAY_RE = /(?<![\p{L}\d])(?:(?:ce|le)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)(?:\s+dernier)?(?![\p{L}\d])/gu;
+const AGO_RE =
+  /(?<![\p{L}\d])il\s+y\s+a\s+(\d{1,3}|une?|deux|trois|quatre|cinq)\s+(jours?|semaines?)(?![\p{L}\d])/gu;
+const DAY_OF_MONTH_RE =
+  /(?<![\p{L}\d])(?:le\s+(\d{1,2})(?:er)?|(\d{1,2})er)(?![\p{L}\d]|[.,/]\d)/gu;
+const RELATIVE_RE =
+  /(?<![\p{L}\d])(avant[\s-]hier|aujourd\s?'?\s?hui|auj|ce\s+(?:matin|midi|soir)|hier(?:\s+soir)?)(?![\p{L}\d])/gu;
+const WEEKDAY_RE =
+  /(?<![\p{L}\d])(?:(?:ce|le)\s+)?(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)(?:\s+dernier)?(?![\p{L}\d])/gu;
 
 /** Dernière occurrence passée (ou aujourd'hui) du jour `day` du mois, en remontant au besoin. */
 function lastDayOfMonth(today: ISODate, day: number): ISODate | null {
@@ -246,7 +266,8 @@ export function extractAmount(text: string): AmountMatch | null {
   const score = (c: AmountCandidate) => (c.hasUnit ? 2 : 0) + (c.hasDecimals ? 1 : 0);
   let best: AmountCandidate | null = null;
   for (const c of candidates) {
-    if (!best || score(c) > score(best) || (score(c) === score(best) && c.amount > best.amount)) best = c;
+    if (!best || score(c) > score(best) || (score(c) === score(best) && c.amount > best.amount))
+      best = c;
   }
   return best ? { amount: best.amount, start: best.start, end: best.end } : null;
 }
@@ -403,11 +424,21 @@ export function parseEntry(text: string, ctx: ParseEntryContext): ParseEntryResu
   const label = cleanLabel(source, removed);
   let type: 'EXPENSE' | 'INCOME' = explicitIncome ? 'INCOME' : 'EXPENSE';
   let prediction =
-    label === '' ? null : categorize(ctx.model, { label, amount: amount.amount, type }, ctx.categories);
+    label === ''
+      ? null
+      : categorize(ctx.model, { label, amount: amount.amount, type }, ctx.categories);
   if (!explicitIncome && !explicitExpense && label !== '') {
     // Sans indice explicite, un libellé reconnu comme revenu (« chahriya ») bascule en revenu.
-    const asIncome = categorize(ctx.model, { label, amount: amount.amount, type: 'INCOME' }, ctx.categories);
-    if (asIncome && asIncome.confidence > (prediction?.confidence ?? 0) && asIncome.source !== 'RULE') {
+    const asIncome = categorize(
+      ctx.model,
+      { label, amount: amount.amount, type: 'INCOME' },
+      ctx.categories,
+    );
+    if (
+      asIncome &&
+      asIncome.confidence > (prediction?.confidence ?? 0) &&
+      asIncome.source !== 'RULE'
+    ) {
       type = 'INCOME';
       prediction = asIncome;
     } else if (asIncome && !prediction) {

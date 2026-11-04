@@ -196,7 +196,10 @@ export function withFilters(query: TransactionQueryData, patch: FilterPatch): Tr
   const next: TransactionQueryData = { ...query, page: 1 };
   for (const [key, value] of Object.entries(patch) as [keyof FilterPatch, unknown][]) {
     const empty =
-      value === undefined || value === '' || value === false || (Array.isArray(value) && !value.length);
+      value === undefined ||
+      value === '' ||
+      value === false ||
+      (Array.isArray(value) && !value.length);
     if (empty) delete next[key];
     else (next as Record<string, unknown>)[key] = value;
   }

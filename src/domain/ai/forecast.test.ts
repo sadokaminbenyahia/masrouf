@@ -70,17 +70,30 @@ describe('forecastBalance', () => {
       expect(c.actual).toBe(initialBalance + total(upTo));
     }
     expect(past[5]).toMatchObject({ expected: past[5]?.actual, low: past[5]?.actual });
-    expect(f.chart[6]).toMatchObject({ month: '2026-10', actual: null, expected: f.endOfMonth.expected });
+    expect(f.chart[6]).toMatchObject({
+      month: '2026-10',
+      actual: null,
+      expected: f.endOfMonth.expected,
+    });
   });
 
   it('ajoute les récurrences restantes du mois et des mois suivants', () => {
     const history = cleanHistory();
-    const variable = forecastBalance({ today: SERIES_TODAY, currentBalance: 5_000_000, history, recurring: [] });
+    const variable = forecastBalance({
+      today: SERIES_TODAY,
+      currentBalance: 5_000_000,
+      history,
+      recurring: [],
+    });
     const withRules = forecastBalance({
       today: SERIES_TODAY,
       currentBalance: 5_000_000,
       history,
-      recurring: [SALARY_RULE, RENT_RULE, rule({ id: 'x', label: 'Gym', amount: 60_000, nextDate: '2026-11-20' })],
+      recurring: [
+        SALARY_RULE,
+        RENT_RULE,
+        rule({ id: 'x', label: 'Gym', amount: 60_000, nextDate: '2026-11-20' }),
+      ],
     });
     expectWellFormed(withRules);
     expect(variable.reliability).not.toBe('LOW');
@@ -90,8 +103,16 @@ describe('forecastBalance', () => {
   });
 
   it('historique court : fiabilité LOW, récurrences seules', () => {
-    const history = [tx('2026-10-28', 20, 'Taxi', 'Transport'), tx('2026-11-02', 50, 'Courses', 'Courses')];
-    const f = forecastBalance({ today: SERIES_TODAY, currentBalance: 1_000_000, history, recurring: [RENT_RULE] });
+    const history = [
+      tx('2026-10-28', 20, 'Taxi', 'Transport'),
+      tx('2026-11-02', 50, 'Courses', 'Courses'),
+    ];
+    const f = forecastBalance({
+      today: SERIES_TODAY,
+      currentBalance: 1_000_000,
+      history,
+      recurring: [RENT_RULE],
+    });
     expectWellFormed(f);
     expect(f.reliability).toBe('LOW');
     expect(f.monthlyNetEstimate).toBe(0);
@@ -101,7 +122,12 @@ describe('forecastBalance', () => {
   });
 
   it('aucun historique', () => {
-    const f = forecastBalance({ today: SERIES_TODAY, currentBalance: 0, history: [], recurring: [] });
+    const f = forecastBalance({
+      today: SERIES_TODAY,
+      currentBalance: 0,
+      history: [],
+      recurring: [],
+    });
     expectWellFormed(f);
     expect(f.reliability).toBe('LOW');
     expect(f.endOfMonth).toEqual({ date: '2026-11-30', expected: 0, low: 0, high: 0 });
@@ -110,11 +136,21 @@ describe('forecastBalance', () => {
   it('3 à 5 mois : moyenne et fiabilité MEDIUM ; < 3 mois : rythme journalier', () => {
     const { history } = linearSeries();
     const recent = history.filter((t) => t.date >= '2026-06-01');
-    const f = forecastBalance({ today: LINEAR_TODAY, currentBalance: 0, history: recent, recurring: [] });
+    const f = forecastBalance({
+      today: LINEAR_TODAY,
+      currentBalance: 0,
+      history: recent,
+      recurring: [],
+    });
     expectWellFormed(f);
     expect(f.reliability).toBe('MEDIUM');
     const short = history.filter((t) => t.date >= '2026-09-01');
-    const g = forecastBalance({ today: '2026-10-20', currentBalance: 0, history: short, recurring: [] });
+    const g = forecastBalance({
+      today: '2026-10-20',
+      currentBalance: 0,
+      history: short,
+      recurring: [],
+    });
     expectWellFormed(g);
     expect(g.reliability).toBe('LOW');
     expect(g.explanation).toMatch(/rythme/);
@@ -123,7 +159,12 @@ describe('forecastBalance', () => {
   it('saisonnalité à partir de 13 mois', () => {
     const { history, future } = linearSeries();
     const all = [...history, ...future];
-    const f = forecastBalance({ today: '2027-01-31', currentBalance: 0, history: all, recurring: [] });
+    const f = forecastBalance({
+      today: '2027-01-31',
+      currentBalance: 0,
+      history: all,
+      recurring: [],
+    });
     expectWellFormed(f);
     expect(f.reliability).toBe('HIGH');
   });
@@ -131,7 +172,11 @@ describe('forecastBalance', () => {
 
 describe('utilitaires', () => {
   it('completeHistoryMonths', () => {
-    expect(completeHistoryMonths('2026-11-04', '2026-08-03', 6)).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(completeHistoryMonths('2026-11-04', '2026-08-03', 6)).toEqual([
+      '2026-08',
+      '2026-09',
+      '2026-10',
+    ]);
     expect(completeHistoryMonths('2026-11-04', '2026-08-20', 6)).toEqual(['2026-09', '2026-10']);
     expect(completeHistoryMonths('2026-11-04', '2020-01-01', 2)).toEqual(['2026-09', '2026-10']);
     expect(completeHistoryMonths('2026-11-04', '2026-11-01', 6)).toEqual([]);
@@ -139,9 +184,19 @@ describe('utilitaires', () => {
   });
 
   it('recurringBetween respecte la fin et l’état des règles', () => {
-    const r = rule({ id: 'a', label: 'Club', amount: 10_000, nextDate: '2026-11-01', frequency: 'WEEKLY', endDate: '2026-11-20' });
+    const r = rule({
+      id: 'a',
+      label: 'Club',
+      amount: 10_000,
+      nextDate: '2026-11-01',
+      frequency: 'WEEKLY',
+      endDate: '2026-11-20',
+    });
     expect(recurringBetween([r], '2026-11-01', '2026-11-30')).toEqual({ total: -30_000, count: 3 });
     expect(recurringBetween([{ ...r, active: false }], '2026-11-01', '2026-11-30').count).toBe(0);
-    expect(recurringBetween([SALARY_RULE], '2026-12-01', '2026-12-31')).toEqual({ total: 2_600_000, count: 1 });
+    expect(recurringBetween([SALARY_RULE], '2026-12-01', '2026-12-31')).toEqual({
+      total: 2_600_000,
+      count: 1,
+    });
   });
 });

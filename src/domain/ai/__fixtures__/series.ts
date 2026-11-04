@@ -1,6 +1,13 @@
 // Séries synthétiques déterministes (PRNG à graine fixe) pour les anomalies, les récurrences
 // et les prévisions. Aujourd'hui = 2026-11-04.
-import { addDays, addMonthsYM, daysInMonth, monthEnd, parseYearMonth, toISODate } from '../../dates';
+import {
+  addDays,
+  addMonthsYM,
+  daysInMonth,
+  monthEnd,
+  parseYearMonth,
+  toISODate,
+} from '../../dates';
 import type { RecurringRule } from '../../types';
 import type { AiTransaction } from '../types';
 import { categoryId } from './categories';
@@ -41,7 +48,9 @@ export function tx(
   };
 }
 
-export function rule(partial: Partial<RecurringRule> & Pick<RecurringRule, 'id' | 'label' | 'amount' | 'nextDate'>): RecurringRule {
+export function rule(
+  partial: Partial<RecurringRule> & Pick<RecurringRule, 'id' | 'label' | 'amount' | 'nextDate'>,
+): RecurringRule {
   return {
     accountId: 'acc_bank',
     categoryId: null,
@@ -62,7 +71,12 @@ export const SALARY_RULE = rule({
   amount: 2_600_000,
   nextDate: '2026-12-01',
 });
-export const RENT_RULE = rule({ id: 'rec_loyer', label: 'Loyer', amount: 750_000, nextDate: '2026-12-03' });
+export const RENT_RULE = rule({
+  id: 'rec_loyer',
+  label: 'Loyer',
+  amount: 750_000,
+  nextDate: '2026-12-03',
+});
 
 /**
  * Six mois « propres » (mai → 4 novembre 2026) : salaire et loyer déclarés, internet Ooredoo
@@ -82,12 +96,16 @@ export function cleanHistory(): AiTransaction[] {
     out.push(tx(d, 1.5 + Math.round(rand() * 3000) / 1000, 'Café', 'Cafés'));
     // Courses 2 à 3 fois par semaine
     if (rand() < 0.4) {
-      const shop = ['CARREFOUR MARSA', 'MONOPRIX LAC', 'AZIZA ARIANA', 'MAGASIN GENERAL'][Math.floor(rand() * 4)] ?? 'MONOPRIX';
+      const shop =
+        ['CARREFOUR MARSA', 'MONOPRIX LAC', 'AZIZA ARIANA', 'MAGASIN GENERAL'][
+          Math.floor(rand() * 4)
+        ] ?? 'MONOPRIX';
       out.push(tx(d, 30 + Math.round(rand() * 90_000) / 1000, shop, 'Courses'));
     }
     // Restaurant une fois par semaine environ
     if (rand() < 0.15) {
-      const resto = ['Plan B', 'Pizza Hut', 'Restaurant Le Golfe'][Math.floor(rand() * 3)] ?? 'Resto';
+      const resto =
+        ['Plan B', 'Pizza Hut', 'Restaurant Le Golfe'][Math.floor(rand() * 3)] ?? 'Resto';
       out.push(tx(d, 25 + Math.round(rand() * 35_000) / 1000, resto, 'Restaurants'));
     }
     // Taxi un jour sur trois
@@ -97,7 +115,10 @@ export function cleanHistory(): AiTransaction[] {
 }
 
 /** Historique propre + 3 anomalies injectées : restaurant 380 DT, café en double, Ooredoo 49 DT. */
-export function dirtyHistory(): { transactions: AiTransaction[]; injected: { unusual: string; duplicate: string[]; price: string } } {
+export function dirtyHistory(): {
+  transactions: AiTransaction[];
+  injected: { unusual: string; duplicate: string[]; price: string };
+} {
   const base = cleanHistory();
   // Hausse d'abonnement : dernier prélèvement Ooredoo (10 octobre) à 49 DT.
   const transactions = base.map((t) =>

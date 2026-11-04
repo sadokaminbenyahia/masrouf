@@ -169,7 +169,8 @@ function priceIncreases(input: AnomalyInput, expenses: AiTransaction[], since: s
     if (!last || last.date < since || last.date > input.today) continue;
     const previous = list.slice(-4, -1).map((t) => t.amount);
     const ref = median(previous);
-    if (!(last.amount > ref * PRICE_INCREASE_RATIO && last.amount - ref >= PRICE_INCREASE_MIN)) continue;
+    if (!(last.amount > ref * PRICE_INCREASE_RATIO && last.amount - ref >= PRICE_INCREASE_MIN))
+      continue;
     const mk = merchantKey(last.label);
     const key = `anomaly:price:${mk}:${monthOf(last.date)}`;
     if (out.has(key)) continue;
@@ -204,7 +205,8 @@ export function detectAnomalies(input: AnomalyInput): Anomaly[] {
   const expenses = txs.filter((t) => t.type === 'EXPENSE');
   const recentExpenses = expenses.filter((t) => t.date >= sixMonthsAgo);
   const names = new Map(input.categories.map((c) => [c.id, c.name]));
-  const categoryName = (id: string | null) => (id ? (names.get(id) ?? 'cette catégorie') : 'Sans catégorie');
+  const categoryName = (id: string | null) =>
+    id ? (names.get(id) ?? 'cette catégorie') : 'Sans catégorie';
 
   const dismissed = new Set(input.dismissedKeys);
   const all = [

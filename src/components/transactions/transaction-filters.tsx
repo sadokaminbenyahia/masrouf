@@ -64,9 +64,10 @@ export function TransactionFilters({
     setSyncedSearch(external);
     if (searchText.trim() !== external) setSearchText(external);
   }
-  const pushSearch = useEffectEvent((value: string) =>
-    onChange(withFilters(query, { search: value || undefined })),
-  );
+  function commitSearch(value: string) {
+    onChange(withFilters(query, { search: value || undefined }));
+  }
+  const pushSearch = useEffectEvent(commitSearch);
   useEffect(() => {
     const value = searchText.trim();
     if (value === external) return;
@@ -86,8 +87,8 @@ export function TransactionFilters({
     { value: 'TRANSFER', label: TYPE_LABELS.TRANSFER },
   ];
 
-  const sortedCategories = [...categories].sort(
-    (a, b) => (a.kind === b.kind ? a.sortOrder - b.sortOrder : a.kind === 'EXPENSE' ? -1 : 1),
+  const sortedCategories = [...categories].sort((a, b) =>
+    a.kind === b.kind ? a.sortOrder - b.sortOrder : a.kind === 'EXPENSE' ? -1 : 1,
   );
 
   return (
@@ -103,7 +104,8 @@ export function TransactionFilters({
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') pushSearch(searchText.trim());
+              if (e.key === 'Enter' && searchText.trim() !== external)
+                commitSearch(searchText.trim());
             }}
             aria-label="Rechercher une transaction"
             placeholder="Rechercher une transaction"
@@ -170,7 +172,11 @@ export function TransactionFilters({
       </div>
 
       {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5" aria-label="Filtres actifs" role="group">
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          aria-label="Filtres actifs"
+          role="group"
+        >
           {chips.map((chip) => (
             <span
               key={chip.id}
@@ -216,7 +222,10 @@ function PeriodFilter({
   const label = describePeriod(query.from, query.to, today);
   const value: Period =
     query.from && query.to
-      ? { preset: detectPreset({ from: query.from, to: query.to }, today), range: { from: query.from, to: query.to } }
+      ? {
+          preset: detectPreset({ from: query.from, to: query.to }, today),
+          range: { from: query.from, to: query.to },
+        }
       : { preset: 'THIS_MONTH', range: resolvePeriod('THIS_MONTH', today) };
   const active = label !== null;
   return (

@@ -48,7 +48,10 @@ export function headerCheckState(
 }
 
 /** Tout sélectionner / tout désélectionner (lignes visibles). */
-export function toggleAll(selection: Selection, rowIds: readonly string[]): Record<string, boolean> {
+export function toggleAll(
+  selection: Selection,
+  rowIds: readonly string[],
+): Record<string, boolean> {
   if (headerCheckState(selection, rowIds) === true) return {};
   return Object.fromEntries(rowIds.map((id) => [id, true]));
 }

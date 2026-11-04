@@ -10,22 +10,8 @@ import { parseEntryAction } from '@/app/actions/ai';
 import { deleteTransactionAction } from '@/app/actions/transactions';
 import { AiBadge } from '@/components/shared/ai-badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DEFAULT_TIMEZONE, todayInTimeZone, type ISODate } from '@/domain/dates';
 import type { Transaction } from '@/domain/types';
@@ -35,8 +21,8 @@ import { errorMessage, unwrap } from '@/lib/query';
 import type { TransactionInput } from '@/lib/schemas/transactions';
 import { toastError, toastSuccess, toastUndo } from '@/lib/toast';
 import { invalidateFinanceQueries } from './cache';
+import { ResponsiveDialog } from './edit-transaction-dialog';
 import { TransactionForm } from './transaction-form';
-import { useMediaQuery } from '@/lib/hooks/use-media-query';
 
 const DEFAULT_EXAMPLES = ['café 3,500 hier', 'courses carrefour 87,250', 'salaire 2600 le 1er'];
 
@@ -50,7 +36,6 @@ type InitialFocus = 'amount' | 'submit' | 'none';
 
 export function QuickAddTransaction() {
   const queryClient = useQueryClient();
-  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [open, setOpen] = useState(false);
   const [today, setToday] = useState<ISODate>(() => todayInTimeZone(DEFAULT_TIMEZONE));
   const [text, setText] = useState('');
@@ -235,8 +220,6 @@ export function QuickAddTransaction() {
     </div>
   );
 
-  const description = 'Saisissez-la en langage naturel ou remplissez le formulaire.';
-
   return (
     <>
       <Tooltip>
@@ -257,27 +240,14 @@ export function QuickAddTransaction() {
         </TooltipContent>
       </Tooltip>
 
-      {isDesktop ? (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Nouvelle transaction</DialogTitle>
-              <DialogDescription>{description}</DialogDescription>
-            </DialogHeader>
-            {body}
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-2xl px-4 pb-6">
-            <SheetHeader className="px-0">
-              <SheetTitle>Nouvelle transaction</SheetTitle>
-              <SheetDescription>{description}</SheetDescription>
-            </SheetHeader>
-            {body}
-          </SheetContent>
-        </Sheet>
-      )}
+      <ResponsiveDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Nouvelle transaction"
+        description="Saisissez-la en langage naturel ou remplissez le formulaire."
+      >
+        {body}
+      </ResponsiveDialog>
     </>
   );
 }

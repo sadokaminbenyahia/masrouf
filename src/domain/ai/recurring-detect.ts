@@ -16,6 +16,10 @@ export const FREQUENCY_DAYS: Record<Frequency, number> = {
 
 const MIN_OCCURRENCES = 3;
 const MIN_REGULARITY = 0.7;
+/** Part minimale des intervalles proches de la période (ou d'un multiple : échéance manquée). */
+const MIN_ON_PERIOD_SHARE = 0.75;
+/** Part minimale de la série parmi les achats du marchand sur la même période (cafés, courses…). */
+const MIN_MERCHANT_SHARE = 0.3;
 const AMOUNT_CLUSTER_TOLERANCE = 0.15;
 const MAX_CV = 0.15;
 const MAX_CV_BILLS = 0.4;
@@ -88,17 +92,27 @@ function analyseCluster(
   cluster: AiTransaction[],
   bill: boolean,
 ): DetectedSeries | null {
-  const txs = [...cluster].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id.localeCompare(b.id)));
+  const txs = [...cluster].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : a.id.localeCompare(b.id),
+  );
   const dates = [...new Set(txs.map((t) => t.date))];
   if (dates.length < MIN_OCCURRENCES) return null;
   const intervals: number[] = [];
-  for (let i = 1; i < dates.length; i++) intervals.push(diffDays(dates[i - 1] ?? '', dates[i] ?? ''));
+  for (let i = 1; i < dates.length; i++)
+    intervals.push(diffDays(dates[i - 1] ?? '', dates[i] ?? ''));
   const m = median(intervals);
   if (m <= 0) return null;
   const regularity = 1 - mad(intervals) / m;
   if (regularity < MIN_REGULARITY) return null;
   const frequency = classifyPeriod(m);
   if (frequency === null) return null;
+  const period = FREQUENCY_DAYS[frequency];
+  const tolerance = Math.max(3, 0.1 * period);
+  const onPeriod = intervals.filter((d) => {
+    const k = Math.max(1, Math.round(d / period));
+    return k <= 3 && Math.abs(d - k * period) <= tolerance * k;
+  }).length;
+  if (onPeriod < MIN_ON_PERIOD_SHARE * intervals.length) return null;
   const cv = coefficientOfVariation(txs.map((t) => t.amount));
   if (cv >= (bill ? MAX_CV_BILLS : MAX_CV)) return null;
   return { merchantKey: mk, type, frequency, transactions: txs, regularity, cv, bill };
@@ -109,7 +123,10 @@ function analyseCluster(
  * Groupement par marchand, puis par grappe de montants (±15 %), régularité ≥ 0,7.
  */
 export function detectSeries(transactions: readonly AiTransaction[]): DetectedSeries[] {
-  const groups = new Map<string, { mk: string; type: 'EXPENSE' | 'INCOME'; txs: AiTransaction[] }>();
+  const groups = new Map<
+    string,
+    { mk: string; type: 'EXPENSE' | 'INCOME'; txs: AiTransaction[] }
+  >();
   for (const t of transactions) {
     if (t.type === 'TRANSFER' || t.amount <= 0) continue;
     const mk = merchantKey(t.label);
@@ -120,12 +137,19 @@ export function detectSeries(transactions: readonly AiTransaction[]): DetectedSe
     else groups.set(key, { mk, type: t.type, txs: [t] });
   }
   const out: DetectedSeries[] = [];
-  for (const g of [...groups.values()].sort((a, b) => a.mk.localeCompare(b.mk) || a.type.localeCompare(b.type))) {
+  for (const g of [...groups.values()].sort(
+    (a, b) => a.mk.localeCompare(b.mk) || a.type.localeCompare(b.type),
+  )) {
     if (g.txs.length < MIN_OCCURRENCES) continue;
     const bill = g.txs.some((t) => isBillLabel(t.label));
     for (const cluster of clusterByAmount(g.txs, bill)) {
       const s = analyseCluster(g.mk, g.type, cluster, bill);
-      if (s) out.push(s);
+      if (!s) continue;
+      const first = s.transactions[0]?.date ?? '';
+      const last = s.transactions[s.transactions.length - 1]?.date ?? '';
+      const sameSpan = g.txs.filter((t) => t.date >= first && t.date <= last).length;
+      if (s.transactions.length < MIN_MERCHANT_SHARE * sameSpan) continue;
+      out.push(s);
     }
   }
   return out;
@@ -215,7 +239,8 @@ export function detectRecurring(input: RecurringDetectInput): RecurringCandidate
     if (isCovered(s, input.existing)) continue;
 
     let nextDate = addPeriod(last.date, s.frequency);
-    for (let k = 2; nextDate < input.today && k < 60; k++) nextDate = addPeriod(last.date, s.frequency, k);
+    for (let k = 2; nextDate < input.today && k < 60; k++)
+      nextDate = addPeriod(last.date, s.frequency, k);
 
     const amounts = s.transactions.map((t) => t.amount);
     const amount = s.bill ? Math.round(median(amounts)) : last.amount;
@@ -223,11 +248,15 @@ export function detectRecurring(input: RecurringDetectInput): RecurringCandidate
     const cvScore = 1 - s.cv / (s.bill ? MAX_CV_BILLS : MAX_CV);
     const confidence =
       Math.round(
-        Math.min(0.99, 0.5 * s.regularity + 0.3 * cvScore + 0.2 * Math.min(occurrences, 12) / 12) * 100,
+        Math.min(
+          0.99,
+          0.5 * s.regularity + 0.3 * cvScore + (0.2 * Math.min(occurrences, 12)) / 12,
+        ) * 100,
       ) / 100;
 
     let key = `recurring:${s.type}:${s.merchantKey}:${s.frequency}`;
-    for (let i = 2; usedKeys.has(key); i++) key = `recurring:${s.type}:${s.merchantKey}:${s.frequency}:${i}`;
+    for (let i = 2; usedKeys.has(key); i++)
+      key = `recurring:${s.type}:${s.merchantKey}:${s.frequency}:${i}`;
     usedKeys.add(key);
 
     out.push({

@@ -130,16 +130,16 @@ function buildMessage(p: {
   const levers: string[] = p.applied.map(
     (a) => `réduisant ${a.name} de ${String(a.percent).replace('.', ',')} %`,
   );
-  if (p.extra > 0) levers.push(`épargnant ${formatMoney(p.extra)} de plus par mois`);
+  if (p.extra > 0) levers.push(`épargnant ${formatMoney(p.extra, { decimals: 0 })} de plus par mois`);
   const hasScenario = levers.length > 0;
   const intro = hasScenario
     ? `En ${joinFr(levers)}`
-    : `À votre rythme actuel (${formatMoney(p.baseline)} d'épargne par mois)`;
+    : `À votre rythme actuel (${formatMoney(p.baseline, { decimals: 0 })} d'épargne par mois)`;
 
   let sentence: string;
   if (p.scenarioDate === null) {
     sentence = hasScenario
-      ? `${intro}, votre épargne mensuelle resterait de ${formatMoney(p.scenario)} : ${goal} ne serait pas atteint. Essayez d'ajuster d'autres catégories.`
+      ? `${intro}, votre épargne mensuelle resterait de ${formatMoney(p.scenario, { decimals: 0 })} : ${goal} ne serait pas atteint. Essayez d'ajuster d'autres catégories.`
       : `${intro}, ${goal} ne serait pas atteint. Réduire quelques dépenses vous permettrait d'avancer.`;
   } else {
     const when = formatMonthFR(monthOf(p.scenarioDate));

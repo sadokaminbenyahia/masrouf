@@ -72,8 +72,11 @@ export function TagInput({
     }
   }
 
-  const available = suggestions.filter((s) => !value.some((t) => t.toLowerCase() === s.toLowerCase()));
-  const describedByIds = [describedBy, error ? errorId : null].filter(Boolean).join(' ') || undefined;
+  const available = suggestions.filter(
+    (s) => !value.some((t) => t.toLowerCase() === s.toLowerCase()),
+  );
+  const describedByIds =
+    [describedBy, error ? errorId : null].filter(Boolean).join(' ') || undefined;
 
   return (
     <div>

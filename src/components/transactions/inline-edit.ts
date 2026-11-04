@@ -41,8 +41,7 @@ export type TableEditAction =
       direction: 1 | -1;
       rowIds: readonly string[];
       isEditable: IsEditable;
-    }
-  ;
+    };
 
 /** Cellule active effective (repli sur la première ligne). */
 export function resolveActive(state: TableEditState, rowIds: readonly string[]): CellRef | null {
@@ -116,7 +115,12 @@ export function tableEditReducer(state: TableEditState, action: TableEditAction)
       return state.editing ? { active: state.editing, editing: null } : state;
     case 'editNext': {
       if (!state.editing) return state;
-      const next = nextEditableCell(state.editing, action.direction, action.rowIds, action.isEditable);
+      const next = nextEditableCell(
+        state.editing,
+        action.direction,
+        action.rowIds,
+        action.isEditable,
+      );
       return next ? { active: next, editing: next } : { active: state.editing, editing: null };
     }
   }
