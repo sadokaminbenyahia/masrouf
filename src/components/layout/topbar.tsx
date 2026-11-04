@@ -15,7 +15,7 @@ export function Topbar({ user }: { user: ShellUser }) {
   const isApple = useIsApplePlatform();
   const mod = isApple ? '⌘' : 'Ctrl';
   return (
-    <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-30 border-b backdrop-blur">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/90 sticky top-0 z-30 border-b backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           href="/tableau-de-bord"
