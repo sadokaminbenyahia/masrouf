@@ -1,2 +1,329 @@
 @import 'tailwindcss';
 /* Propriétaire : agent F (design system, tokens clair/sombre) */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Palette vérifiée WCAG 2.1 AA (contraste calculé) :
+ *  - texte principal ≥ 13:1 ; texte secondaire ≥ 5.3:1 sur fond, surface et « muted » ;
+ *  - primaire / revenu / dépense / alerte ≥ 4.5:1 en texte sur fond, surface et « muted » ;
+ *  - bordure des champs (--input) ≥ 3:1 sur la surface (composants d'interface, 1.4.11) ;
+ *  - --chart-1..8 ≥ 3:1 sur la surface dans les deux thèmes.
+ *  Revenu clair ajusté #15803D → #137A3A (4.43 → 4.79:1 sur « muted »).
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: #fafaf7;
+  --foreground: #1a1d21;
+  --card: #ffffff;
+  --card-foreground: #1a1d21;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d21;
+  --primary: #1f5fad;
+  --primary-foreground: #ffffff;
+  --secondary: #eeece6;
+  --secondary-foreground: #1a1d21;
+  --muted: #f2f1ec;
+  --muted-foreground: #5b6470;
+  --accent: #efede7;
+  --accent-foreground: #1a1d21;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #e4e2dc;
+  --input: #878d96;
+  --ring: #1f5fad;
+
+  --income: #137a3a;
+  --expense: #b42318;
+  --warning: #b54708;
+  --success: #137a3a;
+
+  --chart-1: #1f5fad;
+  --chart-2: #0e7c6b;
+  --chart-3: #c2600c;
+  --chart-4: #7c3aed;
+  --chart-5: #be185d;
+  --chart-6: #4d7c0f;
+  --chart-7: #475569;
+  --chart-8: #0e7490;
+
+  --sidebar: #f5f4ef;
+  --brand-tint: #e8eff8;
+  /* part de la couleur de catégorie dans l'encre des icônes (le reste : --foreground) */
+  --category-ink: 82%;
+
+  --shadow-color: 30 20% 20%;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0f1216;
+  --foreground: #ecedee;
+  --card: #171b21;
+  --card-foreground: #ecedee;
+  --popover: #1b2027;
+  --popover-foreground: #ecedee;
+  --primary: #6aa6f0;
+  --primary-foreground: #0f1216;
+  --secondary: #232930;
+  --secondary-foreground: #ecedee;
+  --muted: #20252c;
+  --muted-foreground: #9aa3ae;
+  --accent: #252b33;
+  --accent-foreground: #ecedee;
+  --destructive: #f97066;
+  --destructive-foreground: #1a0b0a;
+  --border: #2a3038;
+  --input: #646d78;
+  --ring: #6aa6f0;
+
+  --income: #4ade80;
+  --expense: #f97066;
+  --warning: #fdb022;
+  --success: #4ade80;
+
+  --chart-1: #6aa6f0;
+  --chart-2: #2dd4bf;
+  --chart-3: #fb923c;
+  --chart-4: #a78bfa;
+  --chart-5: #f472b6;
+  --chart-6: #a3e635;
+  --chart-7: #94a3b8;
+  --chart-8: #22d3ee;
+
+  --sidebar: #12161b;
+  --brand-tint: #16263a;
+  --category-ink: 62%;
+
+  --shadow-color: 220 40% 2%;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans:
+    var(--font-plex), 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-sidebar: var(--sidebar);
+  --color-brand-tint: var(--brand-tint);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: calc(var(--radius) - 2px);
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 4px);
+
+  --shadow-card:
+    0 1px 2px 0 hsl(var(--shadow-color) / 0.06), 0 1px 3px 0 hsl(var(--shadow-color) / 0.04);
+  --shadow-overlay:
+    0 12px 32px -8px hsl(var(--shadow-color) / 0.22),
+    0 4px 10px -4px hsl(var(--shadow-color) / 0.12);
+}
+
+/* La bordure par défaut suit le token (compatibilité shadcn). */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: 'kern', 'liga';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+
+  /* Focus visible pour les éléments sans anneau personnalisé (liens, éléments focusables). */
+  :where(a, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
+  }
+}
+
+/* ---------- Animations d'entrée/sortie (équivalent tw-animate-css, utilisées par Radix) ---------- */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1));
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@utility animate-in {
+  animation: enter var(--tw-duration, 150ms) var(--tw-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@utility animate-out {
+  animation: exit var(--tw-duration, 150ms) var(--tw-ease, ease-in) both;
+}
+@utility fade-in-* {
+  --tw-enter-opacity: calc(--value(integer) / 100);
+}
+@utility fade-out-* {
+  --tw-exit-opacity: calc(--value(integer) / 100);
+}
+@utility zoom-in-* {
+  --tw-enter-scale: calc(--value(integer) / 100);
+}
+@utility zoom-out-* {
+  --tw-exit-scale: calc(--value(integer) / 100);
+}
+@utility slide-in-from-top-* {
+  --tw-enter-translate-y: calc(var(--spacing) * --value(integer) * -1);
+}
+@utility slide-in-from-bottom-* {
+  --tw-enter-translate-y: calc(var(--spacing) * --value(integer));
+}
+@utility slide-in-from-left-* {
+  --tw-enter-translate-x: calc(var(--spacing) * --value(integer) * -1);
+}
+@utility slide-in-from-right-* {
+  --tw-enter-translate-x: calc(var(--spacing) * --value(integer));
+}
+@utility slide-out-to-top-* {
+  --tw-exit-translate-y: calc(var(--spacing) * --value(integer) * -1);
+}
+@utility slide-out-to-bottom-* {
+  --tw-exit-translate-y: calc(var(--spacing) * --value(integer));
+}
+@utility slide-out-to-left-* {
+  --tw-exit-translate-x: calc(var(--spacing) * --value(integer) * -1);
+}
+@utility slide-out-to-right-* {
+  --tw-exit-translate-x: calc(var(--spacing) * --value(integer));
+}
+@utility slide-in-from-top {
+  --tw-enter-translate-y: -100%;
+}
+@utility slide-in-from-bottom {
+  --tw-enter-translate-y: 100%;
+}
+@utility slide-in-from-left {
+  --tw-enter-translate-x: -100%;
+}
+@utility slide-in-from-right {
+  --tw-enter-translate-x: 100%;
+}
+@utility slide-out-to-top {
+  --tw-exit-translate-y: -100%;
+}
+@utility slide-out-to-bottom {
+  --tw-exit-translate-y: 100%;
+}
+@utility slide-out-to-left {
+  --tw-exit-translate-x: -100%;
+}
+@utility slide-out-to-right {
+  --tw-exit-translate-x: 100%;
+}
+
+/* Chiffres alignés (montants). */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Zone de sécurité iOS pour la barre de navigation mobile. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------- Respect de prefers-reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
