@@ -2,109 +2,66 @@
 /**
  * Taux d'épargne mensuel (net / revenus), avec le repère des 20 % de la règle 50/30/20.
  * Graphique séparé des montants : jamais deux échelles sur un même graphique.
+ * Le mois en cours, incomplet, est exclu de la courbe (signalé « en cours » dans les données).
  */
+import dynamic from 'next/dynamic';
 import { useMemo } from 'react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import type { YearMonth } from '@/domain/dates';
 import type { MonthTotals } from '@/domain/types';
 import { cn } from '@/lib/utils';
-import { computeSavingsRates, describeSavingsRates, type SavingsRateDatum } from './chart-data';
+import {
+  computeSavingsRates,
+  describeSavingsRates,
+  savingsRateTicks,
+  type SavingsRateDatum,
+} from './chart-data';
 import { ChartDataTable } from './chart-data-table';
-import { ChartTooltip } from './chart-tooltip';
-import { GRID_COLOR, MUTED_COLOR, NET_COLOR } from './colors';
 import { formatPercent } from './format';
-import { useChartAnimation } from './hooks';
+import { PlotSkeleton } from './plot-skeleton';
+
+const SavingsRatePlot = dynamic(
+  () => import('./savings-rate-plot').then((m) => m.SavingsRatePlot),
+  { ssr: false, loading: PlotSkeleton },
+);
 
 export interface SavingsRateChartProps {
   months: MonthTotals[];
+  /** Mois en cours (incomplet) : exclu de la courbe */
+  currentMonth?: YearMonth;
   height?: number;
   className?: string;
 }
 
-const TICK = { fontSize: 12, fill: MUTED_COLOR };
 export const SAVINGS_TARGET = 0.2;
 
-export function SavingsRateChart({ months, height = 220, className }: SavingsRateChartProps) {
-  const animate = useChartAnimation();
-  const data = useMemo(() => computeSavingsRates(months), [months]);
-  const byLabel = useMemo(() => new Map(data.map((d) => [d.label, d])), [data]);
+export function SavingsRateChart({
+  months,
+  currentMonth,
+  height = 220,
+  className,
+}: SavingsRateChartProps) {
+  const data = useMemo(() => computeSavingsRates(months, currentMonth), [months, currentMonth]);
+  const ticks = useMemo(() => savingsRateTicks(data, SAVINGS_TARGET), [data]);
+  const partial = data.find((d) => d.partial);
+
+  if (data.every((d) => d.rate === null)) {
+    return (
+      <p className={cn('text-muted-foreground py-6 text-center text-sm', className)}>
+        Le taux d&apos;épargne apparaîtra après un premier mois complet avec des revenus.
+      </p>
+    );
+  }
 
   return (
     <div className={cn('space-y-3', className)}>
       <div role="img" aria-label={describeSavingsRates(data)} style={{ height }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-            accessibilityLayer={false}
-          >
-            <CartesianGrid vertical={false} stroke={GRID_COLOR} strokeOpacity={0.7} />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tick={TICK}
-              minTickGap={8}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tickFormatter={(v: number) => formatPercent(v)}
-              tickLine={false}
-              axisLine={false}
-              tick={TICK}
-              width={52}
-              domain={[
-                (min: number) => Math.min(0, min),
-                (max: number) => Math.max(SAVINGS_TARGET + 0.1, max),
-              ]}
-            />
-            <ReferenceLine y={0} stroke={MUTED_COLOR} strokeOpacity={0.6} />
-            <ReferenceLine
-              y={SAVINGS_TARGET}
-              stroke="var(--success)"
-              strokeDasharray="4 4"
-              label={{
-                value: 'Repère 20 %',
-                position: 'insideTopRight',
-                fill: MUTED_COLOR,
-                fontSize: 11,
-              }}
-            />
-            <Tooltip
-              isAnimationActive={false}
-              content={(p) => (
-                <ChartTooltip
-                  {...p}
-                  format="percent"
-                  title={(label) =>
-                    typeof label === 'string' ? (byLabel.get(label)?.longLabel ?? label) : label
-                  }
-                />
-              )}
-            />
-            <Line
-              type="monotone"
-              dataKey="rate"
-              name="Taux d'épargne"
-              stroke={NET_COLOR}
-              strokeWidth={2}
-              dot={{ r: 3, strokeWidth: 2, fill: 'var(--card)' }}
-              activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-              connectNulls={false}
-              isAnimationActive={animate}
-              animationDuration={500}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+          <SavingsRatePlot data={data} ticks={ticks} target={SAVINGS_TARGET} />
       </div>
+      {partial ? (
+        <p className="text-muted-foreground text-xs">
+          {`Mois en cours (${partial.longLabel}) non représenté : son taux sera calculé une fois le mois terminé.`}
+        </p>
+      ) : null}
       <ChartDataTable<SavingsRateDatum>
         caption="Taux d'épargne par mois"
         rows={data}
@@ -114,7 +71,8 @@ export function SavingsRateChart({ months, height = 220, className }: SavingsRat
           {
             header: "Taux d'épargne",
             align: 'right',
-            cell: (d) => (d.rate === null ? 'Aucun revenu' : formatPercent(d.rate)),
+            cell: (d) =>
+              d.partial ? 'Mois en cours' : d.rate === null ? 'Aucun revenu' : formatPercent(d.rate),
           },
         ]}
       />

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { plural } from '@/components/import/import-logic';
-import { frequencyLabel } from './recurring-math';
+import { cleanSuggestionLabel, frequencyLabel } from './recurring-math';
 import {
   invalidateRecurringDependents,
   useAcceptSuggestion,
@@ -117,7 +117,7 @@ export function RecurringSuggestions() {
                 <div className="flex items-start justify-between gap-3">
                   <p id={suggestionId(c.key)} className="text-sm">
                     Nous avons repéré un paiement régulier :{' '}
-                    <span className="font-semibold">{c.label}</span> ·{' '}
+                    <span className="font-semibold">{cleanSuggestionLabel(c.label)}</span> ·{' '}
                     <Money
                       value={c.amount}
                       decimals={c.amount % 1000 === 0 ? 0 : 3}
@@ -131,6 +131,7 @@ export function RecurringSuggestions() {
                   <Button
                     type="button"
                     size="sm"
+                    className="h-11 md:h-8"
                     onClick={() => onAccept(c)}
                     aria-describedby={suggestionId(c.key)}
                   >
@@ -141,6 +142,7 @@ export function RecurringSuggestions() {
                     type="button"
                     size="sm"
                     variant="ghost"
+                    className="h-11 md:h-8"
                     onClick={() => onDismiss(c)}
                     aria-describedby={suggestionId(c.key)}
                   >

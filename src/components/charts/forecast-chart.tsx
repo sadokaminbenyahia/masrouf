@@ -2,36 +2,36 @@
 /**
  * Prévision du solde : solde réel (ligne pleine), prévision (ligne pointillée) et intervalle
  * de confiance à 80 % (aire « range » [bas, haut]). Une ligne de référence à 0 apparaît si le
- * solde prévu risque de passer sous zéro.
+ * solde prévu risque de passer sous zéro. Le solde réel va jusqu'au solde du jour (point « auj. »)
+ * quand le domaine le fournit, et la prévision part de ce point. Sans historique (nouvel
+ * utilisateur), un état vide remplace la courbe plate inventée.
  */
+import { ChartLine } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useMemo } from 'react';
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import type { BalanceForecast } from '@/domain/ai/types';
 import { Badge } from '@/components/ui/badge';
 import { Money } from '@/components/shared/money';
 import { cn } from '@/lib/utils';
 import {
   describeForecast,
+  forecastIsEmpty,
   forecastMayGoNegative,
+  moneyTicks,
   prepareForecastData,
   RELIABILITY_LABELS,
   type ForecastDatum,
 } from './chart-data';
 import { ChartDataTable } from './chart-data-table';
 import { ChartLegend } from './chart-legend';
-import { ChartTooltip } from './chart-tooltip';
-import { EXPENSE_COLOR, GRID_COLOR, MUTED_COLOR, NET_COLOR } from './colors';
-import { useChartAnimation, useChartMoney } from './hooks';
+import { NET_COLOR } from './colors';
+import { useChartMoney } from './hooks';
+import { PlotSkeleton } from './plot-skeleton';
+
+const ForecastPlot = dynamic(() => import('./forecast-plot').then((m) => m.ForecastPlot), {
+  ssr: false,
+  loading: PlotSkeleton,
+});
 
 export interface ForecastChartProps {
   forecast: BalanceForecast;
@@ -42,7 +42,6 @@ export interface ForecastChartProps {
   className?: string;
 }
 
-const TICK = { fontSize: 12, fill: MUTED_COLOR };
 const RELIABILITY_VARIANT = { LOW: 'warning', MEDIUM: 'secondary', HIGH: 'success' } as const;
 
 export function ForecastReliabilityBadge({
@@ -55,18 +54,44 @@ export function ForecastReliabilityBadge({
   );
 }
 
+/** État vide : pas encore d'historique, la prévision n'aurait aucun sens. */
+export function ForecastEmpty({ height, className }: { height: number; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'text-muted-foreground flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 text-center text-sm',
+        className,
+      )}
+      style={{ minHeight: height }}
+    >
+      <ChartLine aria-hidden className="size-5" />
+      <p className="text-foreground font-medium">Pas encore de prévision</p>
+      <p className="max-w-sm">
+        Elle apparaîtra après quelques semaines d&apos;opérations, ou dès l&apos;import d&apos;un
+        relevé.
+      </p>
+    </div>
+  );
+}
+
 export function ForecastChart({
   forecast,
   height = 280,
   showLegend = true,
   className,
 }: ForecastChartProps) {
-  const animate = useChartAnimation();
-  const { text, axis } = useChartMoney();
+  const { text } = useChartMoney();
   const data = useMemo(() => prepareForecastData(forecast.chart), [forecast.chart]);
-  const byLabel = useMemo(() => new Map(data.map((d) => [d.label, d])), [data]);
   const negative = forecastMayGoNegative(forecast);
   const compact = height < 200;
+  const ticks = useMemo(
+    () => moneyTicks(data.flatMap((d) => [d.actual, d.expected, d.low, d.high]), negative),
+    [data, negative],
+  );
+
+  if (forecastIsEmpty(forecast)) {
+    return <ForecastEmpty height={height} className={className} />;
+  }
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -83,102 +108,12 @@ export function ForecastChart({
         </div>
       ) : null}
       <div role="img" aria-label={describeForecast(forecast, text)} style={{ height }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={data}
-            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-            accessibilityLayer={false}
-          >
-            <CartesianGrid vertical={false} stroke={GRID_COLOR} strokeOpacity={0.7} />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tick={TICK}
-              minTickGap={12}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              hide={compact}
-              tickFormatter={axis}
-              tickLine={false}
-              axisLine={false}
-              tick={TICK}
-              width={60}
-              domain={['auto', 'auto']}
-            />
-            {negative ? (
-              <ReferenceLine
-                y={0}
-                stroke={EXPENSE_COLOR}
-                strokeDasharray="4 4"
-                label={
-                  compact
-                    ? undefined
-                    : {
-                        value: 'Solde nul',
-                        position: 'insideBottomLeft',
-                        fill: EXPENSE_COLOR,
-                        fontSize: 11,
-                      }
-                }
-              />
-            ) : null}
-            <Tooltip
-              isAnimationActive={false}
-              content={(p) => (
-                <ChartTooltip
-                  {...p}
-                  title={(label) =>
-                    typeof label === 'string' ? (byLabel.get(label)?.longLabel ?? label) : label
-                  }
-                />
-              )}
-            />
-            <Area
-              type="monotone"
-              dataKey="band"
-              name="Intervalle 80 %"
-              stroke="none"
-              fill={NET_COLOR}
-              fillOpacity={0.14}
-              activeDot={false}
-              connectNulls={false}
-              isAnimationActive={animate}
-              animationDuration={600}
-            />
-            <Line
-              type="monotone"
-              dataKey="actual"
-              name="Solde réel"
-              stroke={NET_COLOR}
-              strokeWidth={2}
-              dot={compact ? false : { r: 3, strokeWidth: 2, fill: 'var(--card)' }}
-              activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-              connectNulls={false}
-              isAnimationActive={animate}
-              animationDuration={600}
-            />
-            <Line
-              type="monotone"
-              dataKey="expected"
-              name="Prévision"
-              stroke={NET_COLOR}
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              dot={false}
-              activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-              connectNulls={false}
-              isAnimationActive={animate}
-              animationDuration={600}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+          <ForecastPlot data={data} ticks={ticks} negative={negative} compact={compact} />
       </div>
       <ChartDataTable<ForecastDatum>
         caption="Solde réel et prévu par mois"
         rows={data}
-        rowKey={(d) => d.month}
+        rowKey={(d) => d.key}
         columns={[
           { header: 'Mois', cell: (d) => d.longLabel },
           {

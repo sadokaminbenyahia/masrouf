@@ -57,7 +57,7 @@ export function PeriodPicker({
 
   const chipClass = (active: boolean) =>
     cn(
-      'inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+      'inline-flex h-11 items-center rounded-full border px-3.5 text-sm md:h-9 font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
       active
         ? 'border-primary bg-primary text-primary-foreground shadow-xs'
         : 'border-border bg-card text-muted-foreground hover:border-input hover:text-foreground',

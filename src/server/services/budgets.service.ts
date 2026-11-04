@@ -1,7 +1,7 @@
 // Propriétaire : agent A
 import 'server-only';
 import { computeAllBudgetProgress } from '@/domain/budgets';
-import { monthRange, type YearMonth } from '@/domain/dates';
+import { addMonthsYM, monthEnd, monthOf, monthRange, monthStart, type YearMonth } from '@/domain/dates';
 import { appError, err, ok, type Result } from '@/domain/result';
 import type { Budget, BudgetProgress } from '@/domain/types';
 import type { BudgetUpsertData } from '@/lib/schemas/budgets';
@@ -12,25 +12,47 @@ import * as categoryRepo from '@/server/repositories/category.repo';
 import * as txRepo from '@/server/repositories/transaction.repo';
 
 const notFound = () => err(appError('NOT_FOUND', 'Budget introuvable.'));
+/** Mois précédents servant de référence au plafond de la projection. */
+const HISTORY_MONTHS = 3;
 
 export async function listBudgetProgress(
   userId: string,
   month: YearMonth,
 ): Promise<Result<BudgetProgress[]>> {
-  const [budgets, categories, sums] = await Promise.all([
+  const day = today();
+  // Moyenne des 3 mois précédents : ne sert qu'à plafonner la projection du mois courant.
+  const isCurrent = monthOf(day) === month;
+  const [budgets, categories, sums, history] = await Promise.all([
     budgetRepo.listBudgets(userId),
     categoryRepo.listCategories(userId),
     txRepo.sumByCategory(userId, monthRange(month), 'EXPENSE'),
+    isCurrent
+      ? txRepo.sumByCategory(
+          userId,
+          {
+            from: monthStart(addMonthsYM(month, -HISTORY_MONTHS)),
+            to: monthEnd(addMonthsYM(month, -1)),
+          },
+          'EXPENSE',
+        )
+      : Promise.resolve([]),
   ]);
   const spentByCategory = new Map<string, number>();
   for (const s of sums) if (s.categoryId !== null) spentByCategory.set(s.categoryId, s.amount);
+  const historicalAverageByCategory = new Map<string, number>();
+  for (const s of history) {
+    if (s.categoryId !== null) {
+      historicalAverageByCategory.set(s.categoryId, Math.round(s.amount / HISTORY_MONTHS));
+    }
+  }
   return ok(
     computeAllBudgetProgress({
       budgets,
       categories: new Map(categories.map((c) => [c.id, c])),
       spentByCategory,
       month,
-      today: today(),
+      today: day,
+      historicalAverageByCategory,
     }),
   );
 }

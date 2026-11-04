@@ -7,6 +7,7 @@ import type { DateRange, ISODate, YearMonth } from '../dates';
 import type {
   BudgetProgress,
   Category,
+  CategoryGroup,
   CategoryKind,
   Frequency,
   GoalProgress,
@@ -33,6 +34,8 @@ export interface AiCategory {
   id: string;
   name: string;
   kind: CategoryKind;
+  /** Groupe 50/30/20 (optionnel) : sert au taux d'épargne (groupe SAVINGS = épargne) */
+  group?: CategoryGroup;
 }
 
 // ───────────────────────── Catégorisation ─────────────────────────
@@ -357,6 +360,11 @@ export interface WhatIfInput {
   adjustments: { categoryId: string; percent: number }[];
   /** Épargne mensuelle supplémentaire (optionnelle) */
   extraMonthlySaving: Millimes;
+  /**
+   * Dépenses mensuelles vers les catégories du groupe Épargne (optionnel) : comptées comme de
+   * l'épargne dans l'épargne mensuelle de référence (voir src/domain/savings.ts).
+   */
+  savingsGroupByMonth?: { month: YearMonth; amount: Millimes }[];
 }
 
 export interface WhatIfResult {

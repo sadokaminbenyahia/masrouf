@@ -54,7 +54,11 @@ describe('parsePeriod', () => {
   it('rejette les valeurs invalides', () => {
     expect(p('le 31/13').unit).toBe('month');
     expect(p('depuis le 25 décembre 2030').label).not.toMatch(/depuis/);
-    expect(p('depuis décembre 2030').label).toBe('en décembre 2030');
+    // « depuis » une date future : période par défaut, avec une remarque (jamais une période future).
+    expect(p('depuis décembre 2030')).toMatchObject({
+      label: 'ce mois-ci',
+      note: 'Décembre 2030 est dans le futur : je vous réponds pour ce mois-ci.',
+    });
   });
 
   it('plusieurs périodes dans l’ordre du texte', () => {

@@ -8,13 +8,16 @@ import {
   type YearMonth,
 } from '../dates';
 import { formatMoney, type Millimes } from '../money';
+import { savedAmount, withSavingsGroup } from '../savings';
 import type { MonthTotals } from '../types';
 import type { WhatIfInput, WhatIfResult } from './types';
 
 /** Plafond de la projection, en mois. */
 export const MAX_SIMULATION_MONTHS = 120;
 /** Longueur minimale de la projection, en mois. */
-export const MIN_TIMELINE_MONTHS = 12;
+export const MIN_TIMELINE_MONTHS = 6;
+/** Mois affichés après la dernière date d'atteinte. */
+const TIMELINE_TAIL_MONTHS = 2;
 
 function median(values: readonly number[]): number {
   if (values.length === 0) return 0;
@@ -26,16 +29,24 @@ function median(values: readonly number[]): number {
 }
 
 /**
- * Épargne mensuelle de référence : médiane de (revenus − dépenses) sur les 3 derniers mois,
- * complets si possible (le mois de `today` est écarté s'il existe des mois antérieurs).
+ * Épargne mensuelle de référence : médiane de l'épargne (définition unique de
+ * src/domain/savings.ts : revenus − dépenses hors groupe Épargne) sur les 3 derniers mois,
+ * complets si possible (le mois de `today`, partiel, est écarté s'il existe des mois antérieurs).
  */
-export function baselineMonthlySaving(monthly: readonly MonthTotals[], today: ISODate): Millimes {
+export function baselineMonthlySaving(
+  monthly: readonly MonthTotals[],
+  today: ISODate,
+  savingsGroupByMonth: readonly { month: YearMonth; amount: Millimes }[] = [],
+): Millimes {
   const current = monthOf(today);
   const sorted = [...monthly].sort((a, b) => (a.month < b.month ? -1 : 1));
   const complete = sorted.filter((m) => m.month < current);
   const pool = complete.length > 0 ? complete : sorted.filter((m) => m.month <= current);
   const last3 = pool.slice(-3);
-  return Math.round(median(last3.map((m) => m.income - m.expense)));
+  const groups = new Map(savingsGroupByMonth.map((g) => [g.month, g.amount]));
+  return Math.round(
+    median(withSavingsGroup(last3, groups).map((m) => savedAmount(m))),
+  );
 }
 
 /** Nombre de mois pour combler `remaining` au rythme `saving` (null si jamais). */
@@ -53,7 +64,7 @@ function joinFr(items: readonly string[]): string {
 
 export function simulateWhatIf(input: WhatIfInput): WhatIfResult {
   const { today, goal } = input;
-  const baseline = baselineMonthlySaving(input.monthly, today);
+  const baseline = baselineMonthlySaving(input.monthly, today, input.savingsGroupByMonth);
 
   const spending = new Map(input.categorySpending.map((c) => [c.categoryId, c]));
   const applied: { name: string; percent: number; gain: Millimes }[] = [];
@@ -74,15 +85,17 @@ export function simulateWhatIf(input: WhatIfInput): WhatIfResult {
   const scenarioDate = scenMonths === null ? null : addMonths(today, scenMonths);
   const monthsSaved = baseMonths !== null && scenMonths !== null ? baseMonths - scenMonths : null;
 
-  // Projection cumulée : ≥ 12 mois, ou jusqu'à atteinte, plafonnée à 120.
+  // Projection cumulée : part du montant déjà épargné (mois courant) et s'arrête 2 mois après
+  // la dernière date d'atteinte (scénario ou rythme actuel), entre 6 et 120 mois.
+  const reached = [baseMonths, scenMonths].filter((n): n is number => n !== null);
   const horizon = Math.min(
     MAX_SIMULATION_MONTHS,
-    Math.max(MIN_TIMELINE_MONTHS, baseMonths ?? 0, scenMonths ?? 0),
+    Math.max(MIN_TIMELINE_MONTHS, reached.length > 0 ? Math.max(...reached) + TIMELINE_TAIL_MONTHS : 0),
   );
   const start: YearMonth = monthOf(today);
   const timeline: WhatIfResult['timeline'] = [];
   const cap = Math.max(goal.targetAmount, goal.savedAmount);
-  for (let k = 1; k <= horizon; k++) {
+  for (let k = 0; k <= horizon; k++) {
     timeline.push({
       month: addMonthsYM(start, k),
       baseline: Math.min(cap, goal.savedAmount + k * Math.max(0, baseline)),

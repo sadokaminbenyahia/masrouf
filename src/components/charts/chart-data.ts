@@ -2,9 +2,10 @@
  * Préparation PURE des données de graphiques (testée). Les séries restent en millimes :
  * le formatage a lieu dans les tickFormatter / infobulles via formatMoney ou <Money>.
  */
-import { formatMonthFR, type YearMonth } from '@/domain/dates';
+import { formatMonthFR, type ISODate, type YearMonth } from '@/domain/dates';
 import type { Millimes } from '@/domain/money';
 import type { BalanceForecast, ForecastChartPoint } from '@/domain/ai/types';
+import { averageSavingsRate, savingsRate, withSavingsGroup } from '@/domain/savings';
 import type { CategorySlice, MonthTotals } from '@/domain/types';
 import { categoryColor, OTHER_COLOR } from './colors';
 import { formatPercent } from './format';
@@ -89,7 +90,85 @@ export function describeBreakdown(data: readonly DonutDatum[], money: MoneyText)
   return `Répartition des dépenses, total ${money(total)} : ${parts}${more}.`;
 }
 
+// ───────────────────────── Graduations ─────────────────────────
+
+export interface NiceTicksOptions {
+  /** Plus petit pas autorisé, dans l'unité des données (ex. 1000 millimes = 1 DT, 0.1 = 10 %) */
+  unit: number;
+  /** Nombre maximal de graduations (défaut 6) */
+  maxTicks?: number;
+  /** Autorise les pas en « 2,5 » (25, 250…) ; défaut true */
+  allowQuarter?: boolean;
+}
+
+/** Pas « ronds » successifs, en multiples entiers de l'unité : 1, 2, 5, 10, 20, (25), 50, 100… */
+function* niceSteps(allowQuarter: boolean): Generator<number> {
+  for (let magnitude = 1; magnitude <= 1e12; magnitude *= 10) {
+    yield magnitude;
+    yield 2 * magnitude;
+    if (allowQuarter && magnitude >= 10) yield 2.5 * magnitude;
+    yield 5 * magnitude;
+  }
+}
+
+/**
+ * Graduations rondes couvrant [min, max] : multiples d'un pas « rond » de l'unité, la première
+ * ≤ min et la dernière ≥ max. Sert à la fois de `ticks` et de `domain` recharts, pour éviter les
+ * graduations du type « 1,1 k DT » ou « 27 % ».
+ */
+export function niceTicks(min: number, max: number, options: NiceTicksOptions): number[] {
+  const { unit, maxTicks = 6, allowQuarter = true } = options;
+  let lo = Math.min(min, max) / unit;
+  let hi = Math.max(min, max) / unit;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [0];
+  if (lo === hi) {
+    lo = Math.min(lo, 0);
+    hi = Math.max(hi, 0);
+    if (lo === hi) hi = lo + 1;
+  }
+  const clean = (v: number) => Number((v * unit).toFixed(10));
+  for (const step of niceSteps(allowQuarter)) {
+    const first = Math.floor(lo / step) * step;
+    const last = Math.ceil(hi / step) * step;
+    const count = Math.round((last - first) / step) + 1;
+    if (count <= maxTicks) {
+      return Array.from({ length: count }, (_, i) => clean(first + i * step));
+    }
+  }
+  return [clean(lo), clean(hi)];
+}
+
+/** Bornes [min, max] d'une liste de valeurs (les null sont ignorés). */
+export function extent(values: readonly (number | null)[]): [number, number] | null {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const v of values) {
+    if (v === null || !Number.isFinite(v)) continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return min <= max ? [min, max] : null;
+}
+
+/** Graduations monétaires (millimes), au dinar près au minimum. */
+export function moneyTicks(values: readonly (number | null)[], includeZero = true): number[] {
+  const e = extent(includeZero ? [...values, 0] : values) ?? [0, 0];
+  return niceTicks(e[0], e[1], { unit: 1000, maxTicks: 6 });
+}
+
 // ───────────────────────── Revenus / dépenses mensuels ─────────────────────────
+
+/**
+ * Retire les mois vides (ni revenu ni dépense) qui précèdent le premier mois avec des données :
+ * un nouvel utilisateur ne voit pas de faux « 0 DT » sur les mois où il n'utilisait pas l'app.
+ */
+export function trimLeadingEmptyMonths<T extends Pick<MonthTotals, 'month' | 'income' | 'expense'>>(
+  months: readonly T[],
+): T[] {
+  const sorted = [...months].sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
+  const first = sorted.findIndex((m) => m.income !== 0 || m.expense !== 0);
+  return first === -1 ? [] : sorted.slice(first);
+}
 
 export interface MonthlyBarDatum {
   month: YearMonth;
@@ -143,34 +222,55 @@ export interface SavingsRateDatum {
   month: YearMonth;
   label: string;
   longLabel: string;
-  /** (revenus − dépenses) / revenus ; null si aucun revenu */
+  /** Épargne / revenus (domaine) ; null si aucun revenu ou mois en cours */
   rate: number | null;
+  /** Mois en cours (partiel) : exclu de la courbe */
+  partial: boolean;
 }
 
-/** Taux d'épargne d'un mois : net / revenus, null si les revenus sont nuls. */
-export function savingsRate(m: Pick<MonthTotals, 'income' | 'net'>): number | null {
-  return m.income > 0 ? m.net / m.income : null;
+/**
+ * Taux d'épargne par mois, à partir du premier mois avec des données, selon la définition
+ * unique du domaine (`src/domain/savings.ts` : les versements vers le groupe « Épargne » ne
+ * réduisent pas le taux ; `groupSpendingByMonth` les fournit, 0 à défaut).
+ * Le mois en cours (`currentMonth`), incomplet, est marqué `partial` et sans taux : ses revenus
+ * (salaire déjà versé, dépenses à venir) donneraient un taux trompeur.
+ */
+export function computeSavingsRates(
+  months: readonly MonthTotals[],
+  currentMonth?: YearMonth,
+  groupSpendingByMonth: ReadonlyMap<YearMonth, Millimes> = new Map(),
+): SavingsRateDatum[] {
+  const trimmed = trimLeadingEmptyMonths(months);
+  const totals = new Map(withSavingsGroup(trimmed, groupSpendingByMonth).map((m) => [m.month, m]));
+  return prepareMonthlyBars(trimmed).map((d) => {
+    const partial = d.month === currentMonth;
+    const t = totals.get(d.month);
+    return {
+      month: d.month,
+      label: d.label,
+      longLabel: d.longLabel,
+      rate: partial || !t ? null : savingsRate(t),
+      partial,
+    };
+  });
 }
 
-export function computeSavingsRates(months: readonly MonthTotals[]): SavingsRateDatum[] {
-  return prepareMonthlyBars(months).map((d) => ({
-    month: d.month,
-    label: d.label,
-    longLabel: d.longLabel,
-    rate: savingsRate(d),
-  }));
+/** Graduations en % entiers, par pas de 10 % au minimum ; inclut 0 et le repère de 20 %. */
+export function savingsRateTicks(data: readonly SavingsRateDatum[], target: number): number[] {
+  const e = extent([...data.map((d) => d.rate), 0, target + 0.1]) ?? [0, target + 0.1];
+  return niceTicks(e[0], e[1], { unit: 0.1, maxTicks: 7, allowQuarter: false });
 }
 
-/** Taux d'épargne global de la période (Σ net / Σ revenus) ; null sans revenu. */
-export function averageSavingsRate(months: readonly MonthTotals[]): number | null {
-  let income = 0;
-  let net = 0;
-  for (const m of months) {
-    if (m.income <= 0) continue;
-    income += m.income;
-    net += m.net;
-  }
-  return income > 0 ? net / income : null;
+/**
+ * Taux d'épargne moyen des mois complets (Σ épargne / Σ revenus, définition du domaine) : le
+ * mois en cours est exclu, comme sur la courbe. null sans revenu.
+ */
+export function periodSavingsRate(
+  months: readonly MonthTotals[],
+  today: ISODate,
+  groupSpendingByMonth: ReadonlyMap<YearMonth, Millimes> = new Map(),
+): number | null {
+  return averageSavingsRate(withSavingsGroup(months, groupSpendingByMonth), { today });
 }
 
 export function describeSavingsRates(data: readonly SavingsRateDatum[]): string {
@@ -195,7 +295,11 @@ export function describeSavingsRates(data: readonly SavingsRateDatum[]): string 
 // ───────────────────────── Prévision du solde ─────────────────────────
 
 export interface ForecastDatum {
+  /** Clé unique (le point « aujourd'hui » partage le mois courant) */
+  key: string;
   month: YearMonth;
+  /** Point du solde du jour (mois courant en cours) */
+  today: boolean;
   label: string;
   longLabel: string;
   actual: Millimes | null;
@@ -206,31 +310,71 @@ export interface ForecastDatum {
   band: [Millimes, Millimes] | null;
 }
 
+export const TODAY_LABEL = 'auj.';
+
 /**
- * Prépare les points du graphique de prévision. Pour que la ligne pointillée parte du dernier
- * solde réel, le dernier point réel reçoit expected = actual (et une bande de largeur nulle)
- * lorsqu'il n'a pas de prévision propre.
+ * Prépare les points du graphique de prévision :
+ *  - la prévision (pointillés + bande) ne commence qu'au dernier solde réel ;
+ *  - si ce dernier point réel est le mois courant et porte aussi la prévision de fin de mois
+ *    (solde du jour + solde attendu), il est dédoublé : un point « auj. » (solde réel du jour,
+ *    départ de la prévision) puis le point de fin de mois prévu ;
+ *  - sinon, le dernier point réel reçoit expected = actual (et une bande de largeur nulle)
+ *    pour que la ligne pointillée en parte.
  */
 export function prepareForecastData(chart: readonly ForecastChartPoint[]): ForecastDatum[] {
   const sorted = [...chart].sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
-  const out: ForecastDatum[] = sorted.map((p) => {
-    const low = p.low;
-    const high = p.high;
-    return {
-      month: p.month,
-      label: formatMonthFR(p.month, 'short'),
-      longLabel: formatMonthFR(p.month, 'long'),
-      actual: p.actual,
-      expected: p.expected,
-      low,
-      high,
-      band: low !== null && high !== null ? [Math.min(low, high), Math.max(low, high)] : null,
-    };
+  const band = (low: Millimes | null, high: Millimes | null): [Millimes, Millimes] | null =>
+    low !== null && high !== null ? [Math.min(low, high), Math.max(low, high)] : null;
+  const datum = (p: ForecastChartPoint): ForecastDatum => ({
+    key: p.month,
+    month: p.month,
+    today: false,
+    label: formatMonthFR(p.month, 'short'),
+    longLabel: formatMonthFR(p.month, 'long'),
+    actual: p.actual,
+    expected: p.expected,
+    low: p.low,
+    high: p.high,
+    band: band(p.low, p.high),
   });
+
   let lastActual = -1;
-  for (let i = 0; i < out.length; i++) if (out[i]?.actual !== null) lastActual = i;
-  const anchor = out[lastActual];
-  const next = out[lastActual + 1];
+  for (let i = 0; i < sorted.length; i++) if (sorted[i]?.actual !== null) lastActual = i;
+
+  const out: ForecastDatum[] = [];
+  sorted.forEach((p, i) => {
+    const d = datum(p);
+    if (i < lastActual) {
+      // Avant le dernier solde réel : pas de prévision (évite un pointillé sous la ligne pleine)
+      d.expected = null;
+      d.low = null;
+      d.high = null;
+      d.band = null;
+      out.push(d);
+      return;
+    }
+    if (i === lastActual && d.actual !== null && d.expected !== null && d.expected !== d.actual) {
+      const actual = d.actual;
+      out.push({
+        ...d,
+        key: `${p.month}-today`,
+        today: true,
+        label: TODAY_LABEL,
+        longLabel: "Aujourd'hui",
+        expected: actual,
+        low: null,
+        high: null,
+        band: [actual, actual],
+      });
+      out.push({ ...d, actual: null });
+      return;
+    }
+    out.push(d);
+  });
+
+  const anchorIndex = out.findLastIndex((d) => d.actual !== null);
+  const anchor = out[anchorIndex];
+  const next = out[anchorIndex + 1];
   if (
     anchor &&
     anchor.actual !== null &&
@@ -242,6 +386,19 @@ export function prepareForecastData(chart: readonly ForecastChartPoint[]): Forec
     anchor.band ??= [anchor.actual, anchor.actual];
   }
   return out;
+}
+
+/**
+ * Vrai si la prévision repose sur un historique réel (au moins un solde réel non nul). Sinon
+ * (nouvel utilisateur), le graphique n'aurait qu'une ligne plate à 0 DT inventée.
+ */
+export function forecastHasHistory(forecast: Pick<BalanceForecast, 'chart'>): boolean {
+  return forecast.chart.some((p) => p.actual !== null && p.actual !== 0);
+}
+
+/** Prévision sans données : fiabilité faible et aucun historique réel. */
+export function forecastIsEmpty(forecast: Pick<BalanceForecast, 'chart' | 'reliability'>): boolean {
+  return forecast.reliability === 'LOW' && !forecastHasHistory(forecast);
 }
 
 /** Vrai si le solde prévu (ou la borne basse de l'intervalle) passe sous zéro. */

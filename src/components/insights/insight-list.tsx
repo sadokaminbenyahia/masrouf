@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SEVERITY_STYLES, bySeverity } from './severity';
 import { useDismissible } from './use-dismiss';
+import { useMaskedText } from './use-masked-text';
 
 export interface InsightListProps {
   insights: Insight[];
@@ -29,6 +30,7 @@ export function InsightList({
   className,
 }: InsightListProps) {
   const reduce = useReducedMotion() === true;
+  const mask = useMaskedText();
   const { visible, dismiss } = useDismissible(
     insights,
     insightKey,
@@ -75,8 +77,8 @@ export function InsightList({
                 </span>
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className={cn('text-xs font-medium', sev.text)}>{sev.label}</p>
-                  <h3 className="text-sm font-medium">{insight.title}</h3>
-                  <p className="text-muted-foreground text-sm">{insight.message}</p>
+                  <h3 className="text-sm font-medium">{mask(insight.title)}</h3>
+                  <p className="text-muted-foreground text-sm">{mask(insight.message)}</p>
                   <div className="flex flex-wrap items-center gap-x-2">
                     {insight.href ? (
                       <Button asChild variant="link" size="sm" className="h-11 px-0">
@@ -92,7 +94,7 @@ export function InsightList({
                       size="sm"
                       className="h-11"
                       onClick={() => dismiss(insight.key)}
-                      aria-label={`Ignorer le conseil « ${insight.title} »`}
+                      aria-label={`Ignorer le conseil « ${mask(insight.title)} »`}
                     >
                       <EyeOff aria-hidden />
                       Ignorer

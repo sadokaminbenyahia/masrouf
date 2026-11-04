@@ -2,7 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import { CSV_BOM, CSV_HEADERS, transactionsToCsv } from '@/domain/csv/export';
 import { detectDelimiter, findIrregularRows, parseCsv } from '@/domain/csv/parse';
-import { applyMapping, guessMapping, MAX_LABEL_LENGTH } from '@/domain/csv/mapping';
+import {
+  applyMapping,
+  guessMapping,
+  MAX_LABEL_LENGTH,
+  unneutralizeFormula,
+} from '@/domain/csv/mapping';
 import { computeImportHash } from '@/domain/csv/hash';
 import { addDays } from '@/domain/dates';
 import { MAX_AMOUNT_MILLIMES } from '@/domain/money';
@@ -207,6 +212,26 @@ describe('sécurité et format du fichier exporté', () => {
       expect(amount).toBe('-1,000');
     }
     expect(cells).toHaveLength(evil.length);
+  });
+
+  it('aller-retour : l’apostrophe de neutralisation est retirée à la relecture (texte conservé)', () => {
+    const texts = ['=1+1', '+SUM(A1:A9)', '-2+3', '@cmd', "'déjà cité", 'normal'];
+    const rows = texts.map((label) =>
+      txn({ type: 'EXPENSE', amount: 1000, label, note: `${label} (note)` }),
+    );
+    const { rows: back, errors } = roundTrip(rows);
+    expect(errors).toEqual([]);
+    expect(back.map((r) => r.label)).toEqual(texts);
+    expect(back.map((r) => r.note)).toEqual(texts.map((t) => `${t} (note)`));
+    // Ré-export : la neutralisation est de nouveau appliquée.
+    const again = transactionsToCsv(
+      back.map((r) => txn({ type: r.type, amount: r.amount, label: r.label })),
+      LOOKUPS,
+    );
+    expect(again).toContain(";'=1+1;");
+    expect(unneutralizeFormula("'=x")).toBe('=x');
+    expect(unneutralizeFormula("'abc")).toBe("'abc");
+    expect(unneutralizeFormula("''=x")).toBe("''=x");
   });
 
   it('libellés avec « ; », guillemets et retours ligne : une seule ligne logique chacun', () => {

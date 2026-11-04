@@ -42,6 +42,11 @@ function input(over: Partial<WhatIfInput> = {}): WhatIfInput {
 }
 
 describe('baselineMonthlySaving', () => {
+  it('les versements vers le groupe Épargne comptent comme de l’épargne', () => {
+    // nets 300 000, 400 000, 350 000 ; + 100 000 versés en Épargne chaque mois.
+    const groups = MONTHLY.map((m) => ({ month: m.month, amount: 100_000 }));
+    expect(baselineMonthlySaving(MONTHLY, TODAY, groups)).toBe(450_000);
+  });
   it('médiane des 3 derniers mois complets (mois courant exclu)', () => {
     // nets : 300 000, 400 000, 350 000 → médiane 350 000
     expect(baselineMonthlySaving(MONTHLY, TODAY)).toBe(350_000);
@@ -75,10 +80,13 @@ describe('simulateWhatIf', () => {
     expect(r.baselineDate).toBe('2026-06-18');
     expect(r.scenarioDate).toBe('2026-05-18');
     expect(r.monthsSaved).toBe(1);
-    expect(r.timeline).toHaveLength(12);
-    expect(r.timeline[0]).toEqual({ month: '2026-04', baseline: 950_000, scenario: 1_050_000 });
-    expect(r.timeline[1]).toEqual({ month: '2026-05', baseline: 1_300_000, scenario: 1_500_000 });
-    expect(r.timeline[2]?.baseline).toBe(1_500_000);
+    // Part du montant déjà épargné (mois courant), jusqu'à max(3, 2) + 2 mois, au moins 6 mois.
+    expect(r.timeline).toHaveLength(7);
+    expect(r.timeline[0]).toEqual({ month: '2026-03', baseline: 600_000, scenario: 600_000 });
+    expect(r.timeline[1]).toEqual({ month: '2026-04', baseline: 950_000, scenario: 1_050_000 });
+    expect(r.timeline[2]).toEqual({ month: '2026-05', baseline: 1_300_000, scenario: 1_500_000 });
+    expect(r.timeline[3]?.baseline).toBe(1_500_000);
+    expect(r.timeline.at(-1)?.month).toBe('2026-09');
     expect(r.message).toBe(
       `En réduisant Restaurants de 20 % et épargnant ${formatMoney(60_000, { decimals: 0 })} de plus par mois, vous atteignez « Voyage à Djerba » en mai 2026, 1 mois plus tôt.`,
     );
@@ -96,7 +104,7 @@ describe('simulateWhatIf', () => {
     expect(r.baselineDate).toBeNull();
     expect(r.scenarioDate).toBeNull();
     expect(r.monthsSaved).toBeNull();
-    expect(r.timeline).toHaveLength(12);
+    expect(r.timeline).toHaveLength(7);
     expect(r.timeline.every((p) => p.baseline === 600_000)).toBe(true);
     expect(r.message).toMatch(/ne serait pas atteint/);
   });
@@ -207,8 +215,10 @@ describe('simulateWhatIf', () => {
         extraMonthlySaving: 0,
       }),
     );
-    // 10 500 000 / 350 000 = 30 mois
-    expect(long.timeline).toHaveLength(30);
+    // 10 500 000 / 350 000 = 30 mois, + 2 mois de marge, + le mois courant (point de départ).
+    expect(long.timeline).toHaveLength(33);
+    expect(long.timeline[0]?.baseline).toBe(600_000);
+    expect(long.timeline[30]?.baseline).toBe(11_100_000);
     const never = simulateWhatIf(
       input({
         goal: {
@@ -223,6 +233,6 @@ describe('simulateWhatIf', () => {
       }),
     );
     expect(never.baselineDate).toBeNull();
-    expect(never.timeline).toHaveLength(12);
+    expect(never.timeline).toHaveLength(7);
   });
 });

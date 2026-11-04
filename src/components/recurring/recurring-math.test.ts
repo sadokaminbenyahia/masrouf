@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RecurringRule } from '@/domain/types';
 import {
   FREQUENCY_OPTIONS,
+  cleanSuggestionLabel,
   dueLabelFR,
   frequencyLabel,
   isRuleCurrent,
@@ -181,5 +182,17 @@ describe('sortRules', () => {
       rule({ id: 'first', nextDate: '2026-03-11' }),
     ]);
     expect(sorted.map((r) => r.id)).toEqual(['first', 'a2', 'b', 'off']);
+  });
+});
+
+describe('cleanSuggestionLabel', () => {
+  it('retire le domaine et met en casse de titre les libellés en majuscules', () => {
+    expect(cleanSuggestionLabel('NETFLIX.COM')).toBe('Netflix');
+    expect(cleanSuggestionLabel('Netflix.com')).toBe('Netflix');
+    expect(cleanSuggestionLabel('SALLE DE SPORT  GYM-ONE')).toBe('Salle de Sport Gym-One');
+  });
+  it('garde un libellé déjà lisible', () => {
+    expect(cleanSuggestionLabel('Internet Ooredoo')).toBe('Internet Ooredoo');
+    expect(cleanSuggestionLabel('.com')).toBe('.com');
   });
 });

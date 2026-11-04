@@ -3,10 +3,16 @@
  * évolution des dépenses, reste à dépenser.
  */
 import {
+  addMonthsYM,
   daysInMonth,
+  formatMonthFR,
+  monthEnd,
   monthOf,
+  monthStart,
   parseISODate,
   parseYearMonth,
+  toISODate,
+  type DateRange,
   type ISODate,
   type YearMonth,
 } from './dates';
@@ -144,4 +150,25 @@ export function categoryMonthSums(
     else map.set(key, { categoryId: r.categoryId, month, amount: r.amount });
   }
   return [...map.values()];
+}
+
+/**
+ * Période de comparaison du mois affiché. Pour le mois en cours, le mois précédent « à date »
+ * (mêmes jours : du 1er au jour d'aujourd'hui, borné à la fin du mois) : « vs 1–4 octobre ».
+ * Pour un mois terminé, le mois précédent entier : « vs octobre ».
+ */
+export function comparisonPeriod(
+  month: YearMonth,
+  today: ISODate,
+): { range: DateRange; label: string } {
+  const prev = addMonthsYM(month, -1);
+  const prevName = formatMonthFR(prev, 'monthOnly');
+  if (monthOf(today) !== month) {
+    return { range: { from: monthStart(prev), to: monthEnd(prev) }, label: `vs ${prevName}` };
+  }
+  const { year, month: m } = parseYearMonth(prev);
+  const day = Math.min(parseISODate(today).day, daysInMonth(year, m));
+  const range = { from: monthStart(prev), to: toISODate(year, m, day) };
+  const label = day === daysInMonth(year, m) ? `vs ${prevName}` : `vs ${day === 1 ? '1er' : `1–${day}`} ${prevName}`;
+  return { range, label };
 }

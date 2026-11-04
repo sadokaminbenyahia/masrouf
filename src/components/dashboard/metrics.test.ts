@@ -20,6 +20,13 @@ describe('describeExpenseChange', () => {
     expect(d?.srText).toContain('baisse de 25 %');
   });
 
+  it('cite la période de comparaison fournie par le service (mois partiel)', () => {
+    const d = describeExpenseChange(-0.45, '2026-11', 'vs 1–4 octobre');
+    expect(d?.text).toBe('−45 % vs 1–4 octobre');
+    expect(d?.srText).toBe('Dépenses en baisse de 45 % (comparaison : 1–4 octobre).');
+    expect(describeExpenseChange(0.1, '2026-11', 'vs octobre')?.text).toBe('+10 % vs octobre');
+  });
+
   it('stable et sans référence', () => {
     expect(describeExpenseChange(0.001, '2026-11')).toMatchObject({
       trend: 'flat',

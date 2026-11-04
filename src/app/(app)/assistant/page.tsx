@@ -9,7 +9,7 @@ import { requireUserId } from '@/server/auth/session';
 import { today as getToday } from '@/server/clock';
 import { getExampleQuestions, getMonthlySummary } from '@/server/services/ai.service';
 
-export const metadata: Metadata = { title: 'Assistant · Masrouf' };
+export const metadata: Metadata = { title: 'Assistant' };
 
 /** Mois du résumé par défaut : le mois précédent avant le 5, sinon le mois courant. */
 function defaultSummaryMonth(today: ISODate): YearMonth {

@@ -425,6 +425,20 @@ function cleanText(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Retire l'apostrophe de neutralisation ajoutée par notre export devant = + - @ (« '=1+1 » →
+ * « =1+1 »). Sans danger côté application : la valeur reste un TEXTE, jamais évaluée ; elle
+ * sera de nouveau neutralisée à l'export suivant.
+ */
+export function unneutralizeFormula(value: string): string {
+  return /^'[=+\-@]/.test(value) ? value.slice(1) : value;
+}
+
+/** Texte d'une cellule libellé / note : espaces normalisés, neutralisation d'export retirée. */
+function readText(raw: string): string {
+  return unneutralizeFormula(cleanText(raw)).trim();
+}
+
 type CellRead =
   { kind: 'empty' } | { kind: 'value'; value: Millimes } | { kind: 'invalid'; raw: string };
 
@@ -453,7 +467,7 @@ function mapRow(row: readonly string[], index: number, mapping: ColumnMapping): 
     };
   }
 
-  const label = cleanText(row[mapping.label] ?? '').slice(0, MAX_LABEL_LENGTH);
+  const label = readText(row[mapping.label] ?? '').slice(0, MAX_LABEL_LENGTH);
   if (label === '') return { ok: false, message: 'Libellé vide.' };
 
   let amount: Millimes;
@@ -492,7 +506,7 @@ function mapRow(row: readonly string[], index: number, mapping: ColumnMapping): 
 
   const result: ImportRow = { index, date, label, amount, type };
   if (mapping.note !== null) {
-    const note = cleanText(row[mapping.note] ?? '').slice(0, MAX_NOTE_LENGTH);
+    const note = readText(row[mapping.note] ?? '').slice(0, MAX_NOTE_LENGTH);
     if (note !== '') result.note = note;
   }
   return { ok: true, row: result };

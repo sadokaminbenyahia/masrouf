@@ -158,7 +158,9 @@ export function OnboardingDialog({ userName, accounts, categories }: OnboardingD
           />
         </div>
 
-        <div className="relative min-h-[19rem] overflow-hidden px-6 py-5">
+        {/* Hauteur stable d'une étape à l'autre (dimensionnée sur l'étape la plus haute) ; au-delà,
+            le contenu défile dans le dialog. */}
+        <div className="relative max-h-[calc(100dvh-14rem)] min-h-[min(31rem,calc(100dvh-14rem))] overflow-x-hidden overflow-y-auto px-6 py-5 sm:min-h-[min(23.5rem,calc(100dvh-14rem))]">
           <AnimatePresence mode="wait" initial={false} custom={direction}>
             <motion.div
               key={step}
@@ -236,11 +238,13 @@ export function OnboardingDialog({ userName, accounts, categories }: OnboardingD
   );
 }
 
-function StepHeading({ title, text }: { title: string; text: string }) {
+function StepHeading({ title, text, textId }: { title: string; text: string; textId?: string }) {
   return (
     <div className="mb-4">
       <h3 className="text-base font-semibold">{title}</h3>
-      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{text}</p>
+      <p id={textId} className="text-muted-foreground mt-1 text-sm leading-relaxed">
+        {text}
+      </p>
     </div>
   );
 }
@@ -299,6 +303,7 @@ function AccountsStep({
     <div>
       <StepHeading
         title="Vos soldes de départ"
+        textId="onboarding-soldes-aide"
         text="Indiquez ce que contient chaque compte aujourd'hui. Laissez vide pour commencer à zéro ; vous pourrez tout modifier dans « Comptes »."
       />
       {accounts.length === 0 ? (
@@ -333,6 +338,8 @@ function AccountsStep({
                   id={id}
                   value={balances[a.id] ?? null}
                   onChange={(v) => onChange(a.id, v)}
+                  placeholder="ex. 1 250"
+                  aria-describedby="onboarding-soldes-aide"
                   className="sm:w-40"
                 />
               </li>
@@ -370,11 +377,11 @@ function IncomeStep({
           id="onboarding-revenu"
           value={income}
           onChange={onIncome}
-          placeholder="2 400"
+          placeholder="ex. 2 400"
           aria-describedby="onboarding-revenu-aide"
         />
         <p id="onboarding-revenu-aide" className="text-muted-foreground text-xs">
-          Facultatif. Exemple : 2400 ou 2 400,500.
+          Facultatif. Saisissez par exemple 2400 ou 2 400,500.
         </p>
       </div>
 

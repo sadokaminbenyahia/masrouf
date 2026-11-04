@@ -12,6 +12,7 @@ import { Money } from '@/components/shared/money';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sparkline } from '@/components/charts/sparkline';
+import { trimLeadingEmptyMonths } from '@/components/charts/chart-data';
 import { EXPENSE_COLOR, INCOME_COLOR } from '@/components/charts/colors';
 import { cn } from '@/lib/utils';
 import { AnimatedMoney } from './animated-money';
@@ -26,6 +27,7 @@ export type KpiData = Pick<
   | 'current'
   | 'previous'
   | 'expenseChange'
+  | 'comparisonLabel'
   | 'remainingToSpend'
   | 'dailyAllowance'
   | 'monthly'
@@ -148,8 +150,14 @@ const TONE_CLASSES = {
 } as const;
 
 function MonthExpenseKpi({ data }: { data: KpiData }) {
-  const change = describeExpenseChange(data.expenseChange, data.month);
-  const last6 = data.monthly.slice(-6).map((m) => m.expense);
+  const change = describeExpenseChange(
+    data.expenseChange,
+    data.month,
+    data.comparisonLabel,
+  );
+  const last6 = trimLeadingEmptyMonths(data.monthly)
+    .slice(-6)
+    .map((m) => m.expense);
   const Icon = change ? TREND_ICONS[change.trend] : Minus;
   return (
     <Card data-testid="kpi-month-expense" className="min-w-0">
@@ -174,7 +182,9 @@ function MonthExpenseKpi({ data }: { data: KpiData }) {
 }
 
 function MonthIncomeKpi({ data }: { data: KpiData }) {
-  const last6 = data.monthly.slice(-6).map((m) => m.income);
+  const last6 = trimLeadingEmptyMonths(data.monthly)
+    .slice(-6)
+    .map((m) => m.income);
   return (
     <Card className="min-w-0">
       <CardContent className="flex h-full flex-col gap-1">

@@ -10,7 +10,9 @@ import {
   type YearMonth,
 } from '../dates';
 import { formatMoney, type Millimes } from '../money';
-import { capitalize, fnv1a, formatPercent } from './assistant/normalize';
+import { formatPercent } from '../format';
+import { savedAmount, savingsRate } from '../savings';
+import { capitalize, fnv1a } from './assistant/normalize';
 import type {
   AiTransaction,
   AssistantHighlight,
@@ -18,6 +20,10 @@ import type {
   MonthlySummaryInput,
   Recommendation,
 } from './types';
+
+/** Pourcentages des textes générés : une décimale seulement sous 1 % (« 0,5 % », « 12 % »). */
+const PERCENT = { decimals: 'auto' } as const;
+const PERCENT_SIGNED = { decimals: 'auto', signed: true } as const;
 
 type FactType =
   'TOTAL' | 'VS_PREV' | 'VS_AVG' | 'TOP_CATS' | 'SPIKE' | 'SAVINGS' | 'BUDGETS' | 'GOALS';
@@ -308,7 +314,7 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
     const d = (expense - prevExpense) / prevExpense;
     prevDelta = d;
     const vars: DeltaVars = {
-      pct: formatPercent(Math.abs(d)),
+      pct: formatPercent(Math.abs(d), PERCENT),
       ref: m(prevExpense),
       than: partial ? "qu'à la même date le mois dernier" : 'que le mois précédent',
       rel: partial ? 'à la même date du mois dernier' : 'au mois précédent',
@@ -335,7 +341,7 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
         type: 'VS_AVG',
         interest: Math.abs(d) * expense * 0.8,
         text: pickTemplate(d > 0 ? AVG_UP_T : AVG_DOWN_T, seed, month, 'VS_AVG', {
-          pct: formatPercent(Math.abs(d)),
+          pct: formatPercent(Math.abs(d), PERCENT),
           avg: m(Math.round(avg3)),
         }),
       });
@@ -381,23 +387,31 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
       interest: spike.d * spike.amount,
       text: pickTemplate(SPIKE_T, seed, month, 'SPIKE', {
         name: nameOf(spike.id),
-        pct: formatPercent(spike.d),
+        pct: formatPercent(spike.d, PERCENT),
         amount: m(spike.amount),
         avg: m(Math.round(spike.avg)),
       }),
     });
   }
 
-  // Taux d'épargne.
-  const saved = income - expense;
-  const rate = income > 0 ? saved / income : null;
+  // Taux d'épargne (définition unique : les versements vers le groupe Épargne sont de l'épargne).
+  const savingsIds = new Set(input.categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id));
+  const totals = {
+    income,
+    expense,
+    savingsGroupExpense: curExp
+      .filter((t) => t.categoryId !== null && savingsIds.has(t.categoryId))
+      .reduce((s, t) => s + t.amount, 0),
+  };
+  const saved = savedAmount(totals);
+  const rate = savingsRate(totals);
   if (rate !== null) {
     const set = rate < 0 ? SAVE_NEG_T : rate >= 0.2 ? SAVE_GOOD_T : SAVE_MID_T;
     facts.push({
       type: 'SAVINGS',
       interest: income * (0.1 + Math.abs(rate - 0.2) * 0.5),
       text: pickTemplate(set, seed, month, 'SAVINGS', {
-        pct: formatPercent(Math.abs(rate)),
+        pct: formatPercent(Math.abs(rate), PERCENT),
         saved: m(Math.abs(saved)),
       }),
     });
@@ -435,7 +449,7 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
       interest: expense * (completed ? 0.25 : 0.04),
       text: pickTemplate(completed ? GOAL_DONE_T : GOAL_PROGRESS_T, seed, month, 'GOALS', {
         name: goalForFact.name,
-        pct: formatPercent(Math.min(1, goalForFact.ratio)),
+        pct: formatPercent(Math.min(1, goalForFact.ratio), PERCENT),
         saved: m(goalForFact.savedAmount),
         target: m(goalForFact.targetAmount),
       }),
@@ -528,7 +542,7 @@ function buildRecommendations(p: {
         gain,
         impact: gain,
         title: `Freiner la hausse en ${nameOf(id)}`,
-        detail: `${m(s.total)} ce mois-ci contre ${m(Math.round(avg))} en moyenne (${formatPercent((s.total - avg) / avg, true)}). Revenir à votre niveau habituel ferait gagner ${m(gain)}.`,
+        detail: `${m(s.total)} ce mois-ci contre ${m(Math.round(avg))} en moyenne (${formatPercent((s.total - avg) / avg, PERCENT_SIGNED)}). Revenir à votre niveau habituel ferait gagner ${m(gain)}.`,
         href: txHref(id, month),
       });
     }
@@ -639,6 +653,7 @@ function buildRecommendations(p: {
     id !== null && chosen.some((x) => x.categoryId === id);
   const fallback: Candidate[] = [];
   const topVar = curCats.find(([id, s]) => s.count >= 3 && !taken(id));
+  const isFirstVar = topVar !== undefined && topVar === curCats.find(([, s]) => s.count >= 3);
   if (topVar) {
     const [id, s] = topVar;
     const gain = Math.round(s.total * 0.1);
@@ -648,7 +663,7 @@ function buildRecommendations(p: {
       gain,
       impact: gain,
       title: `Réduire ${nameOf(id)} de 10 %`,
-      detail: `C'est votre premier poste de dépenses courantes (${m(s.total)}). Une baisse de 10 % représente ${m(gain)} par mois.`,
+      detail: `C'est ${isFirstVar ? 'votre premier poste' : 'un de vos principaux postes'} de dépenses courantes (${m(s.total)}). Une baisse de 10 % représente ${m(gain)} par mois.`,
       href: txHref(id, month),
     });
   }

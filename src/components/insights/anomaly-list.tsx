@@ -22,6 +22,7 @@ import { anomalyTransactionsHref } from '@/components/dashboard/links';
 import { cn } from '@/lib/utils';
 import { SEVERITY_STYLES, bySeverity } from './severity';
 import { useDismissible } from './use-dismiss';
+import { useMaskedText } from './use-masked-text';
 
 export const ANOMALY_KINDS: Record<AnomalyKind, { icon: LucideIcon; label: string }> = {
   UNUSUAL_AMOUNT: { icon: Activity, label: 'Montant inhabituel' },
@@ -47,6 +48,7 @@ export function AnomalyList({
   className,
 }: AnomalyListProps) {
   const reduce = useReducedMotion() === true;
+  const mask = useMaskedText();
   const { visible, dismiss } = useDismissible(
     anomalies,
     anomalyKey,
@@ -99,15 +101,20 @@ export function AnomalyList({
                     <span className="sr-only"> ({sev.label})</span> ·{' '}
                     {formatDateFR(a.date, 'dayMonth')}
                   </p>
-                  <h3 className="text-sm font-medium">{a.title}</h3>
-                  <p className="text-muted-foreground text-sm">{a.message}</p>
+                  <h3 className="text-sm font-medium">{mask(a.title)}</h3>
+                  <p className="text-muted-foreground text-sm">{mask(a.message)}</p>
                   <p className="text-sm">
+                    {/* Montant d'une opération : au millime ; valeur attendue (moyenne) : au dinar */}
                     Montant : <Money value={a.actualAmount} className="font-medium" />
                     {a.expectedAmount !== null ? (
                       <>
                         {' '}
                         · attendu ≈{' '}
-                        <Money value={a.expectedAmount} className="text-muted-foreground" />
+                        <Money
+                          value={a.expectedAmount}
+                          decimals={0}
+                          className="text-muted-foreground"
+                        />
                       </>
                     ) : null}
                   </p>
@@ -124,7 +131,7 @@ export function AnomalyList({
                       size="sm"
                       className="h-11"
                       onClick={() => dismiss(a.key)}
-                      aria-label={`Ignorer l'anomalie « ${a.title} »`}
+                      aria-label={`Ignorer l'anomalie « ${mask(a.title)} »`}
                     >
                       <EyeOff aria-hidden />
                       Ignorer

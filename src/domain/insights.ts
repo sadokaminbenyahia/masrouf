@@ -17,6 +17,7 @@ import {
   type YearMonth,
 } from './dates';
 import { formatMoney, type Millimes } from './money';
+import { savedAmount, savingsRate } from './savings';
 import type { Category, Frequency, Insight, RecurringRule, Severity } from './types';
 
 export const RULE_NEEDS_MAX = 0.5;
@@ -75,8 +76,9 @@ export function rule503020Insights(
   const g = groupSpending(input.byCategory, categories);
   const needs = g.needs / input.income;
   const wants = g.wants / input.income;
-  const savingsAmount = input.income - input.expense + g.savings;
-  const savings = savingsAmount / input.income;
+  const totals = { income: input.income, expense: input.expense, savingsGroupExpense: g.savings };
+  const savingsAmount = savedAmount(totals);
+  const savings = savingsRate(totals) ?? 0;
   const label = formatMonthFR(input.month);
   const out: Insight[] = [];
 

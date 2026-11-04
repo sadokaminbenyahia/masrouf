@@ -194,6 +194,10 @@ describe('ai.service', () => {
   it('corrections en lot : modèle chargé une fois, persisté UNE fois', async () => {
     await ai.predictCategory('u10', { label: 'Carrefour', amount: 1000, type: 'EXPENSE' });
     saveAiModel.mockClear();
+    const transfer = {
+      sample: { label: 'Retrait DAB', amount: 20_000, type: 'TRANSFER' as const, categoryId: 'c_resto' },
+      previousCategoryId: null,
+    };
     const items = ['Pizzeria Roma', 'Chez Slah', 'Retrait DAB'].map((label, i) => ({
       sample: {
         label,
@@ -211,7 +215,7 @@ describe('ai.service', () => {
     }
     // Lot vide ou uniquement des virements : aucune écriture.
     expect((await ai.learnFromCorrections('u10', [])).ok).toBe(true);
-    expect((await ai.learnFromCorrections('u10', [items[2] ?? items[0]])).ok).toBe(true);
+    expect((await ai.learnFromCorrections('u10', [transfer])).ok).toBe(true);
     expect(saveAiModel).toHaveBeenCalledTimes(1);
   });
 

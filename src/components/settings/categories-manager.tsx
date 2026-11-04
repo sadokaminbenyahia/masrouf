@@ -70,7 +70,8 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ca
             {(['EXPENSE', 'INCOME'] as const).map((k) => (
               <TabsTrigger key={k} value={k}>
                 {KIND_LABELS[k]}
-                <span className="text-muted-foreground text-xs tabular-nums">
+                {/* Hérite la couleur de l'onglet (≥ 6:1 actif ou non, clair et sombre). */}
+                <span className="text-xs font-normal tabular-nums">
                   {categories.filter((c) => c.kind === k).length}
                 </span>
               </TabsTrigger>

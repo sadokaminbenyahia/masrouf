@@ -19,7 +19,7 @@ export function Topbar({ user }: { user: ShellUser }) {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           href="/tableau-de-bord"
-          className="rounded-lg md:hidden"
+          className="focus-visible:ring-ring/50 flex min-h-11 items-center rounded-lg outline-none focus-visible:ring-[3px] md:hidden"
           aria-label="Masrouf, tableau de bord"
         >
           <BrandMark compact />
@@ -43,7 +43,7 @@ export function Topbar({ user }: { user: ShellUser }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="size-11 md:hidden"
             onClick={() => openCommandPalette()}
             aria-label="Rechercher"
           >
@@ -55,6 +55,7 @@ export function Topbar({ user }: { user: ShellUser }) {
                 type="button"
                 className="hidden md:inline-flex"
                 onClick={() => openQuickAdd()}
+                aria-label="Ajouter une transaction"
                 aria-keyshortcuts="N"
               >
                 <PlusIcon aria-hidden="true" />

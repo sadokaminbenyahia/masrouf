@@ -182,3 +182,22 @@ export function parseAmountInput(raw: string): Result<Millimes, string> {
   if (total <= 0) return err('Le montant doit être supérieur à zéro.');
   return ok(total);
 }
+
+/** Valeur affichée à la place d'un montant en mode discret. */
+export const MASKED_MONEY = '•••';
+
+/**
+ * Montant formaté par `formatMoney` dans un texte : signe optionnel (« − », « + », « - »),
+ * milliers séparés par une espace (insécable, fine ou normale), décimales à la virgule,
+ * notation compacte (« 12,5 k »), puis la devise (« DT » ou un code ISO à 3 lettres).
+ */
+const MONEY_IN_TEXT_RE =
+  /(?<![\p{L}\d,.])[\u2212+-]?(?:\d{1,3}(?:[\u00a0\u202f ]\d{3})+|\d+)(?:,\d{1,3})?(?:[\u00a0\u202f ][kM])?[\u00a0\u202f ](DT|[A-Z]{3})(?![\p{L}\d])/gu;
+
+/**
+ * Mode discret : remplace chaque montant formaté d'un texte (« 1 234,500 DT », « −12 DT »,
+ * « +2,4 k DT ») par « ••• DT ». Les autres nombres (pourcentages, dates…) sont conservés.
+ */
+export function maskMoneyInText(text: string): string {
+  return text.replace(MONEY_IN_TEXT_RE, (_m, currency: string) => `${MASKED_MONEY}${NBSP}${currency}`);
+}

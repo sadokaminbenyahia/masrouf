@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AppShell, SIDEBAR_COOKIE } from '@/components/layout/app-shell';
 import { OnboardingDialog } from '@/components/onboarding/onboarding-dialog';
 import { requireUserId } from '@/server/auth/session';
+import { today } from '@/server/clock';
 import { listAccounts } from '@/server/services/accounts.service';
 import { listCategories } from '@/server/services/categories.service';
 import { getProfile } from '@/server/services/user.service';
@@ -37,7 +38,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppShell user={{ name: user.name, email: user.email }} defaultCollapsed={collapsed}>
+    <AppShell
+      user={{ name: user.name, email: user.email }}
+      defaultCollapsed={collapsed}
+      today={today()}
+    >
       {children}
       {onboarding}
     </AppShell>

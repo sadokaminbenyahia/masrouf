@@ -60,7 +60,7 @@ export function RecurringSummary({ totals }: { totals: MonthlyTotals }) {
         type="INCOME"
         icon={ArrowUpRight}
         iconClass="bg-income/10 text-income"
-        hint="Salaire, loyers perçus…"
+        hint="Salaire, loyer encaissé et autres rentrées régulières"
       />
       <Stat
         label="Solde récurrent / mois"

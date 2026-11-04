@@ -44,12 +44,8 @@ export function UpcomingRecurring({
                 {r.autoCreate ? ' · création automatique' : ''}
               </span>
             </span>
-            <Money
-              value={r.amount}
-              type={r.type}
-              decimals={0}
-              className="shrink-0 text-sm font-medium"
-            />
+            {/* Montant d'une opération : au millime (les agrégats sont arrondis au dinar) */}
+            <Money value={r.amount} type={r.type} className="shrink-0 text-sm font-medium" />
           </li>
         );
       })}

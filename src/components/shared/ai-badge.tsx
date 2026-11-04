@@ -28,7 +28,7 @@ export function AiBadge({ label = 'Suggestion', confidence, className }: AiBadge
       <SparklesIcon className="size-3" aria-hidden="true" />
       <span>{label}</span>
       {pct !== null && (
-        <span className="tabular-nums opacity-80">
+        <span className="tabular-nums">
           · {pct}
           <span aria-hidden="true">&nbsp;</span>%
         </span>

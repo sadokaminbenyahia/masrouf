@@ -2,8 +2,14 @@
 import Link from 'next/link';
 import { useTransition } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDownIcon, KeyboardIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
-import { logoutAction } from '@/app/actions/auth';
+import {
+  ChevronDownIcon,
+  KeyboardIcon,
+  LogOutIcon,
+  MonitorSmartphoneIcon,
+  SettingsIcon,
+} from 'lucide-react';
+import { logoutAction, logoutEverywhereAction } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -41,14 +47,24 @@ export function UserAvatar({ name }: { name: string }) {
 export function UserMenu({ user }: { user: ShellUser }) {
   const [pending, startTransition] = useTransition();
   const queryClient = useQueryClient();
+  const signOut = (action: () => Promise<void>) =>
+    startTransition(async () => {
+      await action();
+      // Rechargement COMPLET voulu (pas router.push) : il détruit tout état client de
+      // la session (cache TanStack Query) avant qu'un autre utilisateur ne se connecte.
+      queryClient.clear();
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign('/connexion');
+    });
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
           variant="ghost"
-          className="h-10 gap-2 rounded-full px-1.5 sm:pr-2.5"
-          aria-label={`Menu utilisateur (${user.name})`}
+          className="h-11 min-w-11 gap-2 rounded-full px-1.5 sm:pr-2.5 md:h-10 md:min-w-10"
+          // Le nom accessible commence par le texte visible (prénom) : WCAG 2.5.3.
+          aria-label={`${user.name}, menu utilisateur`}
         >
           <UserAvatar name={user.name} />
           <span className="hidden max-w-[9rem] truncate text-sm font-medium lg:inline">
@@ -81,19 +97,18 @@ export function UserMenu({ user }: { user: ShellUser }) {
         <DropdownMenuItem
           variant="destructive"
           disabled={pending}
-          onSelect={() =>
-            startTransition(async () => {
-              await logoutAction();
-              // Rechargement COMPLET voulu (pas router.push) : il détruit tout état client de
-              // la session (cache TanStack Query) avant qu'un autre utilisateur ne se connecte.
-              queryClient.clear();
-              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-              window.location.assign('/connexion');
-            })
-          }
+          onSelect={() => signOut(logoutAction)}
         >
           <LogOutIcon aria-hidden="true" />
           Se déconnecter
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={pending}
+          onSelect={() => signOut(logoutEverywhereAction)}
+        >
+          <MonitorSmartphoneIcon aria-hidden="true" />
+          Déconnecter tous les appareils
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

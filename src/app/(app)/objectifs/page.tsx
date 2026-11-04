@@ -4,13 +4,19 @@ import { requireUserId } from '@/server/auth/session';
 import { today as getToday } from '@/server/clock';
 import { listCategories } from '@/server/services/categories.service';
 import { listGoals } from '@/server/services/goals.service';
+import { listRecurring } from '@/server/services/recurring.service';
+import { fixedChargeCategoryIds } from '@/components/goals/simulator-utils';
 
-export const metadata: Metadata = { title: "Objectifs d'épargne · Masrouf" };
+export const metadata: Metadata = { title: "Objectifs d'épargne" };
 
 export default async function GoalsPage() {
   const userId = await requireUserId();
   const today = getToday();
-  const [goals, categories] = await Promise.all([listGoals(userId), listCategories(userId)]);
+  const [goals, categories, recurring] = await Promise.all([
+    listGoals(userId),
+    listCategories(userId),
+    listRecurring(userId),
+  ]);
 
   return (
     <GoalsView
@@ -18,6 +24,7 @@ export default async function GoalsPage() {
       initialGoals={goals.ok ? goals.value : null}
       initialError={goals.ok ? null : goals.error.message}
       categories={categories.ok ? categories.value : []}
+      fixedCategoryIds={recurring.ok ? fixedChargeCategoryIds(recurring.value) : []}
     />
   );
 }

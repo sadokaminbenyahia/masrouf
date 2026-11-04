@@ -93,6 +93,7 @@ describe('computeHealthScore', () => {
       ...BASE,
       totalBalance: 5_400_000,
       monthly: [mt('2026-01', 2_000_000, 1_800_000), mt('2026-02', 2_000_000, 1_800_000)],
+      groupSpending: { needs: 800_000, wants: 500_000, savings: 0 },
       budgets: [],
       goals: [],
     });
@@ -111,6 +112,23 @@ describe('computeHealthScore', () => {
     expect(s.score).toBe(66);
   });
 
+  it('taux d’épargne : les versements vers le groupe Épargne sont de l’épargne', () => {
+    const monthly = [mt('2026-01', 2_000_000, 1_800_000), mt('2026-02', 2_000_000, 1_800_000)];
+    const without = computeHealthScore({
+      ...BASE,
+      monthly,
+      groupSpending: { needs: 800_000, wants: 1_000_000, savings: 0 },
+    });
+    const withSavings = computeHealthScore({
+      ...BASE,
+      monthly,
+      groupSpending: { needs: 800_000, wants: 700_000, savings: 300_000 },
+    });
+    // 10 % → 50 ; (2 000 − 1 500) / 2 000 = 25 % → 100.
+    expect(byKey(without, 'SAVINGS_RATE')?.score).toBe(50);
+    expect(byKey(withSavings, 'SAVINGS_RATE')?.score).toBe(100);
+  });
+
   it('aucune donnée : score neutre', () => {
     const s = computeHealthScore({ ...BASE, monthly: [], budgets: [], goals: [] });
     expect(s.score).toBe(50);
@@ -121,6 +139,7 @@ describe('computeHealthScore', () => {
   it('situation fragile : épargne négative, solde négatif, charges lourdes, dépenses en hausse', () => {
     const s = computeHealthScore({
       ...BASE,
+      groupSpending: { needs: 800_000, wants: 500_000, savings: 0 },
       monthly: [
         mt('2025-12', 1_000_000, 800_000),
         mt('2026-01', 1_000_000, 1_000_000),

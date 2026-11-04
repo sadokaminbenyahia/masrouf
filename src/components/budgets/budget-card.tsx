@@ -90,13 +90,13 @@ export function BudgetCard({
         <DragHandle {...handle} className="-ml-1" />
         <CategoryIcon icon={category.icon} color={category.color} size="md" />
         <div className="min-w-0 flex-1">
-          <h3 id={titleId} className="truncate text-base leading-tight font-semibold">
+          <h3 id={titleId} className="text-base leading-tight font-semibold">
             {/* Lien étiré : toute la carte ouvre les transactions du mois */}
             <Link
               href={budgetTransactionsHref(category.id, progress.month)}
-              className="focus-visible:ring-ring/50 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-[3px]"
+              className="focus-visible:ring-ring/50 flex min-h-11 items-center rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-[3px] md:min-h-9"
             >
-              {category.name}
+              <span className="truncate">{category.name}</span>
               <span className="sr-only"> : voir les transactions du mois</span>
             </Link>
           </h3>

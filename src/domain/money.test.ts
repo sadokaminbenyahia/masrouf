@@ -3,6 +3,7 @@ import {
   applyRatio,
   dinarsToMillimes,
   formatMoney,
+  maskMoneyInText,
   isMillimes,
   millimesToDinars,
   millimesToInputString,
@@ -118,5 +119,36 @@ describe('utilitaires', () => {
     expect(millimesToInputString(3500)).toBe('3,500');
     expect(millimesToInputString(3000)).toBe('3');
     expect(millimesToInputString(-1050)).toBe('-1,050');
+  });
+});
+
+describe('maskMoneyInText (mode discret)', () => {
+  const NB = ' ';
+  it('masque toutes les sorties réelles de formatMoney', () => {
+    const values = [0, 1, 999, 3_500, 1_234_500, -12_000, 2_600_000_000, 999_999_999];
+    const variants = [
+      (v: number) => formatMoney(v),
+      (v: number) => formatMoney(v, { decimals: 0 }),
+      (v: number) => formatMoney(v, { sign: 'always' }),
+      (v: number) => formatMoney(v, { compact: true }),
+      (v: number) => formatMoney(-v, { compact: true, decimals: 0 }),
+      (v: number) => formatMoney(v, { currency: 'EUR' }),
+    ];
+    for (const v of values) {
+      for (const f of variants) {
+        const formatted = f(v);
+        const text = `Vous avez dépensé ${formatted} ce mois-ci (12 % de plus).`;
+        const masked = maskMoneyInText(text);
+        expect(masked, formatted).not.toContain(formatted);
+        expect(masked).toMatch(/^Vous avez dépensé •••\u00a0(DT|EUR) ce mois-ci \(12 % de plus\)\.$/);
+      }
+    }
+  });
+
+  it('plusieurs montants ; les autres nombres sont conservés', () => {
+    const t = `Courses : ${formatMoney(450_000)} sur ${formatMoney(500_000, { decimals: 0 })} (90${NB}%), le 12 mars 2026.`;
+    expect(maskMoneyInText(t)).toBe(`Courses : •••${NB}DT sur •••${NB}DT (90${NB}%), le 12 mars 2026.`);
+    expect(maskMoneyInText('3 mois, 12 jours, 2026')).toBe('3 mois, 12 jours, 2026');
+    expect(maskMoneyInText('le 12 DTs, 3 dt')).toBe('le 12 DTs, 3 dt');
   });
 });

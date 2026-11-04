@@ -14,10 +14,11 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90',
         outline: 'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
-        income: 'border-transparent bg-income/12 text-income',
-        expense: 'border-transparent bg-expense/12 text-expense',
-        warning: 'border-transparent bg-warning/15 text-warning',
-        success: 'border-transparent bg-success/12 text-success',
+        // Contrastes AA (≥ 4,5:1) mesurés sur carte, fond de page et fond atténué, clair et sombre.
+        income: 'border-transparent bg-income/12 text-success-ink',
+        expense: 'border-transparent bg-expense/10 text-expense',
+        warning: 'border-transparent bg-warning/12 text-warning-ink',
+        success: 'border-transparent bg-success/12 text-success-ink',
       },
     },
     defaultVariants: { variant: 'default' },

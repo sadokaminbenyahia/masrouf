@@ -159,13 +159,3 @@ export function fnv1a(input: string): number {
 export function capitalize(s: string): string {
   return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-/** Pourcentage lisible : 0.123 → « 12 % », 0.005 → « 0,5 % ». */
-export function formatPercent(ratio: number, signed = false): string {
-  const pct = ratio * 100;
-  const abs = Math.abs(pct);
-  const rounded = abs < 1 && abs > 0 ? Math.round(abs * 10) / 10 : Math.round(abs);
-  const body = String(rounded).replace('.', ',');
-  const sign = rounded === 0 ? '' : pct < 0 ? '−' : signed ? '+' : '';
-  return `${sign}${body}\u00a0%`;
-}

@@ -59,7 +59,7 @@ export function daysLeftInMonth(month: YearMonth, today: ISODate): number | null
 }
 
 export function formatDays(n: number): string {
-  return n <= 1 ? `${n} jour` : `${n} jours`;
+  return n <= 1 ? `${n} jour restant` : `${n} jours restants`;
 }
 
 export type BudgetStatus =
@@ -74,7 +74,7 @@ export function budgetStatus(p: BudgetProgress, today: ISODate): BudgetStatus {
 
 const money0 = (m: Millimes) => formatMoney(m, { decimals: 0 });
 
-/** Texte complet lisible sans couleur : « 320 / 400 DT · reste 80 DT · 9 jours ». */
+/** Texte complet lisible sans couleur : « 320 / 400 DT · reste 80 DT · 9 jours restants ». */
 export function budgetStatusText(p: BudgetProgress, today: ISODate): string {
   const head = `${formatMoney(p.spent, { decimals: 0, hideCurrency: true })} / ${money0(p.budget.amount)}`;
   const status = budgetStatus(p, today);

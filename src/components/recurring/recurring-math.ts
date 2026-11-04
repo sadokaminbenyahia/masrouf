@@ -138,3 +138,21 @@ export function sortRules(rules: readonly RecurringRule[]): RecurringRule[] {
     return a.label.localeCompare(b.label, 'fr');
   });
 }
+
+const DOMAIN_SUFFIX_RE = /\.(?:com|net|org|io|tn|fr|co)\b/giu;
+
+/**
+ * Libellé lisible d'une suggestion détectée dans un libellé bancaire brut : sans suffixe de
+ * domaine, en casse de titre s'il était tout en majuscules (« NETFLIX.COM » → « Netflix »).
+ * Un libellé déjà en casse mixte est seulement débarrassé du domaine.
+ */
+export function cleanSuggestionLabel(raw: string): string {
+  const stripped = raw.replace(DOMAIN_SUFFIX_RE, '').replace(/\s+/g, ' ').trim();
+  if (!stripped) return raw.trim();
+  const hasLower = /\p{Ll}/u.test(stripped);
+  if (hasLower) return stripped;
+  return stripped
+    .toLocaleLowerCase('fr')
+    .replace(/(^|[\s'’\-/])(\p{L})/gu, (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase('fr'))
+    .replace(/(?<=\s)(De|Du|Des|La|Le|Les|Et|À|Au|Aux)(?=\s)/gu, (w) => w.toLocaleLowerCase('fr'));
+}

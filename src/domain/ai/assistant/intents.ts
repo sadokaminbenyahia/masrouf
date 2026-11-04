@@ -66,7 +66,8 @@ export const INTENT_TRIGGERS: Record<KnownIntent, Trigger[]> = {
     t(/\bcombien (?:j ai|il me reste|me reste t il)\b(?! (?:depense|gagne|recu|economise))/, 1),
   ],
   COMPARE_PERIODS: [
-    t(/\b(?:plus|moins) (?:que|qu)\b/, 4),
+    // « plus que », mais aussi « plus en octobre qu'en septembre » (jusqu'à 4 mots intercalés).
+    t(/\b(?:plus|moins)(?: [a-z0-9]+){0,4} (?:que|qu)\b/, 4),
     t(/\bpar rapport (?:a|au|aux)\b/, 4),
     t(/\bcompar/, 4),
     t(/\b(?:vs|versus)\b/, 4),

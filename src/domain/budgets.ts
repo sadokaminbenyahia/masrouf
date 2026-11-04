@@ -1,7 +1,7 @@
 /**
  * Budgets mensuels : niveau d'alerte et projection de fin de mois (pur).
  *  - OK < 80 % ≤ WARNING < 100 % ≤ EXCEEDED
- *  - mois en cours : projected = spent / jourÉcoulé × joursDuMois
+ *  - mois en cours (dès le 7e jour et 25 % du mois) : projected = spent + rythme × joursRestants
  */
 import {
   daysInMonth,
@@ -23,19 +23,38 @@ export function budgetLevel(ratio: number): BudgetLevel {
   return 'OK';
 }
 
+/** Pas de projection avant ce jour du mois… */
+export const PROJECTION_MIN_DAY = 7;
+/** … ni tant que cette part du mois n'est pas écoulée (rythme trop peu fiable). */
+export const PROJECTION_MIN_ELAPSED_RATIO = 0.25;
+/** Le rythme journalier est plafonné à ce multiple de la moyenne journalière historique. */
+export const PROJECTION_MAX_PACE_FACTOR = 2;
+
 /**
- * Dépense projetée en fin de mois au rythme actuel. Uniquement pour le mois de `today` ;
- * null pour un mois passé ou futur.
+ * Dépense projetée en fin de mois. Uniquement pour le mois de `today`, à partir du 7e jour ET
+ * d'un quart du mois écoulé (null sinon, et pour un mois passé ou futur).
+ * projected = spent + max(0, rythme × joursRestants), où rythme = dépense moyenne par jour
+ * écoulé, plafonnée à 2× la moyenne journalière historique (`historicalMonthlyAverage`,
+ * moyenne mensuelle des mois précédents) si elle est fournie et positive.
  */
 export function projectSpending(
   spent: Millimes,
   month: YearMonth,
   today: ISODate,
+  historicalMonthlyAverage?: Millimes | null,
 ): Millimes | null {
   if (monthOf(today) !== month) return null;
   const { year, month: m } = parseYearMonth(month);
+  const days = daysInMonth(year, m);
   const elapsed = parseISODate(today).day;
-  return Math.round((spent / elapsed) * daysInMonth(year, m));
+  if (elapsed < PROJECTION_MIN_DAY || elapsed / days < PROJECTION_MIN_ELAPSED_RATIO) return null;
+  let pace = spent / elapsed;
+  if (historicalMonthlyAverage !== undefined && historicalMonthlyAverage !== null) {
+    if (historicalMonthlyAverage > 0) {
+      pace = Math.min(pace, (PROJECTION_MAX_PACE_FACTOR * historicalMonthlyAverage) / days);
+    }
+  }
+  return Math.round(spent + Math.max(0, pace * (days - elapsed)));
 }
 
 export function computeBudgetProgress(input: {
@@ -44,11 +63,13 @@ export function computeBudgetProgress(input: {
   month: YearMonth;
   spent: Millimes;
   today: ISODate;
+  /** Dépense mensuelle moyenne des mois précédents (plafonne le rythme de la projection) */
+  historicalMonthlyAverage?: Millimes | null;
 }): BudgetProgress {
   const { budget, category, month, spent, today } = input;
   // Le plafond est toujours > 0 (validé par Zod) ; garde-fou contre la division par zéro.
   const ratio = budget.amount > 0 ? spent / budget.amount : spent > 0 ? 1 : 0;
-  const projected = projectSpending(spent, month, today);
+  const projected = projectSpending(spent, month, today, input.historicalMonthlyAverage);
   return {
     budget,
     category,
@@ -72,6 +93,8 @@ export function computeAllBudgetProgress(input: {
   spentByCategory: ReadonlyMap<string, Millimes>;
   month: YearMonth;
   today: ISODate;
+  /** Dépense mensuelle moyenne par catégorie sur les mois précédents (optionnel) */
+  historicalAverageByCategory?: ReadonlyMap<string, Millimes>;
 }): BudgetProgress[] {
   const out: BudgetProgress[] = [];
   for (const budget of input.budgets) {
@@ -84,6 +107,7 @@ export function computeAllBudgetProgress(input: {
         month: input.month,
         spent: input.spentByCategory.get(budget.categoryId) ?? 0,
         today: input.today,
+        historicalMonthlyAverage: input.historicalAverageByCategory?.get(budget.categoryId) ?? null,
       }),
     );
   }

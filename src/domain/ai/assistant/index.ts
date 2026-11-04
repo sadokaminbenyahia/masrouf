@@ -97,8 +97,9 @@ export async function askAssistant(
   if (detection.intent === 'UNKNOWN') return notUnderstood(norm, detection.ranking);
 
   const intent = detection.intent;
+  const notes = [...new Set(periods.flatMap((p) => (p.note ? [p.note] : [])))];
   try {
-    return await ANSWERS[intent]({
+    const answer = await ANSWERS[intent]({
       norm,
       today,
       ctx,
@@ -109,6 +110,7 @@ export async function askAssistant(
       incomeCategory,
       amount,
     });
+    return notes.length > 0 ? { ...answer, text: `${notes.join(' ')} ${answer.text}` } : answer;
   } catch {
     return toolFailure(intent, { from: period.from, to: period.to, label: period.label });
   }

@@ -38,6 +38,9 @@
   --expense: #b42318;
   --warning: #b54708;
   --success: #137a3a;
+  /* Encres des pastilles teintées (texte sur fond --warning/--success à 10-12 %) : ≥ 5:1 */
+  --warning-ink: #93370d;
+  --success-ink: #0f6a31;
 
   --chart-1: #1f5fad;
   --chart-2: #0e7c6b;
@@ -82,6 +85,8 @@
   --expense: #f97066;
   --warning: #fdb022;
   --success: #4ade80;
+  --warning-ink: #fdb022;
+  --success-ink: #4ade80;
 
   --chart-1: #6aa6f0;
   --chart-2: #2dd4bf;
@@ -129,6 +134,8 @@
   --color-expense: var(--expense);
   --color-warning: var(--warning);
   --color-success: var(--success);
+  --color-warning-ink: var(--warning-ink);
+  --color-success-ink: var(--success-ink);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

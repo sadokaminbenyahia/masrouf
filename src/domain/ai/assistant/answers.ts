@@ -31,7 +31,9 @@ import type {
 } from '../types';
 import { matchGoal } from './entities';
 import type { KnownIntent } from './intents';
-import { capitalize, formatPercent } from './normalize';
+import { formatPercent } from '../../format';
+import { savedAmount, savingsRate } from '../../savings';
+import { capitalize } from './normalize';
 import {
   defaultPeriod,
   labelForRange,
@@ -39,6 +41,16 @@ import {
   previousPeriod,
   type ParsedPeriod,
 } from './periods';
+
+/** Pourcentages des textes générés : une décimale seulement sous 1 % (« 0,5 % », « 12 % »). */
+const PERCENT = { decimals: 'auto' } as const;
+const PERCENT_SIGNED = { decimals: 'auto', signed: true } as const;
+/**
+ * Montant agrégé ou approximatif (total de période, moyenne, projection, prévision) : arrondi
+ * au dinar. Seuls les montants unitaires (une transaction, une échéance, un solde) gardent
+ * leurs millimes via `formatMoney`.
+ */
+const approx = (v: Millimes) => formatMoney(v, { decimals: 0 });
 
 export interface AnswerInput {
   /** Question normalisée */
@@ -191,7 +203,7 @@ const spendingTotal: Answerer = async ({ tools, period, expenseCategory: cat, to
   const text =
     n === 0
       ? `Aucune dépense${what} enregistrée ${when}.`
-      : `${capitalize(when)}, vous avez dépensé ${formatMoney(total)}${what}, en ${plural(n, 'transaction')}.`;
+      : `${capitalize(when)}, vous avez dépensé ${approx(total)}${what}, en ${plural(n, 'transaction')}.`;
   const chart: MiniChart | null =
     monthly.length >= 2 && monthly.some((m) => m.expense > 0)
       ? {
@@ -230,7 +242,7 @@ const incomeTotal: Answerer = async ({ tools, period, incomeCategory: cat, today
   const text =
     n === 0
       ? `Aucun revenu${what} enregistré ${when}.`
-      : `${capitalize(when)}, vous avez reçu ${formatMoney(total)}${what}, en ${plural(n, 'entrée')} d'argent.`;
+      : `${capitalize(when)}, vous avez reçu ${approx(total)}${what}, en ${plural(n, 'entrée')} d'argent.`;
   const chart: MiniChart | null =
     monthly.length >= 2 && monthly.some((m) => m.income > 0)
       ? {
@@ -339,7 +351,7 @@ const comparePeriods: Answerer = async (input) => {
   if (A === 0 && B === 0) {
     text = `Aucune ${isIncome ? 'entrée' : 'dépense'}${what} ni ${aLabel}, ni ${bLabel} : rien à comparer.`;
   } else if (B === 0) {
-    text = `${dateNote}vous avez ${verb} ${formatMoney(A)}${what} ${aLabel}, contre rien${sameDate} : pas de comparaison possible.`;
+    text = `${dateNote}vous avez ${verb} ${approx(A)}${what} ${aLabel}, contre rien${sameDate} : pas de comparaison possible.`;
   } else {
     delta = (A - B) / B;
     const trend =
@@ -348,9 +360,9 @@ const comparePeriods: Answerer = async (input) => {
         : delta > 0
           ? `Vos ${noun}${what} sont en hausse`
           : `Vos ${noun}${what} sont en baisse`;
-    text = `${trend} : ${dateNote ? dateNote.toLowerCase() : ''}${formatMoney(A)} ${aLabel}, contre ${formatMoney(B)}${sameDate} (${formatPercent(delta, true)}).`;
+    text = `${trend} : ${dateNote ? dateNote.toLowerCase() : ''}${approx(A)} ${aLabel}, contre ${approx(B)}${sameDate} (${formatPercent(delta, PERCENT_SIGNED)}).`;
     if (sbFull)
-      text += ` Sur l'ensemble de la période précédente, le total était de ${formatMoney(sbFull.total)}.`;
+      text += ` Sur l'ensemble de la période précédente, le total était de ${approx(sbFull.total)}.`;
   }
   const highlights: AssistantHighlight[] = [
     money(capitalize(a.label), A),
@@ -390,15 +402,15 @@ const topCategories: Answerer = async ({ tools, period, today }) => {
   }
   const top = rows.slice(0, 3);
   const list = top.map(
-    (r) => `${r.name} (${formatMoney(r.total)}, ${formatPercent(r.total / total)})`,
+    (r) => `${r.name} (${approx(r.total)}, ${formatPercent(r.total / total, PERCENT)})`,
   );
   const topShare = top.reduce((s, r) => s + r.total, 0) / total;
   const tense = isPast(period, today) ? 'est surtout parti' : 'part surtout';
   let text = `${capitalize(when)}, votre argent ${tense} en ${joinFr(list)}.`;
   if (rows.length > top.length) {
-    text += ` ${top.length === 1 ? 'Ce poste représente' : `Ces ${top.length} postes représentent`} ${formatPercent(topShare)} de vos dépenses (${formatMoney(total)} au total).`;
+    text += ` ${top.length === 1 ? 'Ce poste représente' : `Ces ${top.length} postes représentent`} ${formatPercent(topShare, PERCENT)} de vos dépenses (${approx(total)} au total).`;
   } else {
-    text += ` Total : ${formatMoney(total)}.`;
+    text += ` Total : ${approx(total)}.`;
   }
   const slices = rows.slice(0, 5).map((r) => ({ label: r.name, value: r.total }));
   const rest = rows.slice(5).reduce((s, r) => s + r.total, 0);
@@ -433,7 +445,7 @@ const topMerchants: Answerer = async ({ tools, period, expenseCategory: cat }) =
       href,
     });
   }
-  const list = rows.map((r) => `${r.label} (${formatMoney(r.total)}, ${plural(r.count, 'achat')})`);
+  const list = rows.map((r) => `${r.label} (${approx(r.total)}, ${plural(r.count, 'achat')})`);
   const text = `${capitalize(when)}, vos principaux commerçants${what} sont : ${joinFr(list)}.`;
   return base('TOP_MERCHANTS', text, {
     highlights: rows.slice(0, 2).map((r) => money(r.label, r.total)),
@@ -549,9 +561,9 @@ const averageSpending: Answerer = async ({
     n === 1
       ? formatMonthFR(firstMonth)
       : `de ${formatMonthFR(firstMonth)} à ${formatMonthFR(lastMonth)}`;
-  let text = `En moyenne, vous dépensez ${formatMoney(avg)} par mois${what} (calcul sur ${plural(n, 'mois', 'mois')}, ${span}).`;
+  let text = `En moyenne, vous dépensez ${approx(avg)} par mois${what} (calcul sur ${plural(n, 'mois', 'mois')}, ${span}).`;
   if (n >= 2)
-    text += ` Le mois le plus élevé : ${formatMonthFR(max.month)}, avec ${formatMoney(max.expense)}.`;
+    text += ` Le mois le plus élevé : ${formatMonthFR(max.month)}, avec ${approx(max.expense)}.`;
   return base('AVERAGE_SPENDING', text, {
     highlights: [money('Moyenne mensuelle', avg), money('Mois le plus élevé', max.expense)],
     chart:
@@ -600,7 +612,7 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
       });
       return base(
         'BUDGET_STATUS',
-        `Vous n'avez pas de budget pour ${cat.name}. ${capitalize(label)}, vous y avez dépensé ${formatMoney(total)}. Vous pouvez en créer un depuis la page Budgets.`,
+        `Vous n'avez pas de budget pour ${cat.name}. ${capitalize(label)}, vous y avez dépensé ${approx(total)}. Vous pouvez en créer un depuis la page Budgets.`,
         {
           highlights: [money(`Dépenses ${cat.name}`, total)],
           period: outPeriod,
@@ -615,11 +627,11 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
     const name = b.category.name;
     let text: string;
     if (b.level === 'EXCEEDED') {
-      text = `${capitalize(label)}, votre budget ${name} est dépassé de ${formatMoney(Math.abs(b.remaining))} : ${formatMoney(b.spent)} dépensés pour un plafond de ${formatMoney(b.budget.amount)}.`;
+      text = `${capitalize(label)}, votre budget ${name} est dépassé de ${approx(Math.abs(b.remaining))} : ${approx(b.spent)} dépensés pour un plafond de ${approx(b.budget.amount)}.`;
     } else {
-      text = `Il vous reste ${formatMoney(b.remaining)} dans votre budget ${name} ${label} : ${formatMoney(b.spent)} dépensés sur ${formatMoney(b.budget.amount)} (${formatPercent(b.ratio)}).`;
+      text = `Il vous reste ${approx(b.remaining)} dans votre budget ${name} ${label} : ${approx(b.spent)} dépensés sur ${approx(b.budget.amount)} (${formatPercent(b.ratio, PERCENT)}).`;
       if (b.projectedOverrun && b.projected !== null) {
-        text += ` À ce rythme, vous atteindriez environ ${formatMoney(b.projected)} en fin de mois : un peu de vigilance vous évitera le dépassement.`;
+        text += ` À ce rythme, vous atteindriez environ ${approx(b.projected)} en fin de mois : un peu de vigilance vous évitera le dépassement.`;
       } else if (b.level === 'WARNING') {
         text += ' Vous approchez du plafond.';
       }
@@ -670,16 +682,16 @@ const budgetStatus: Answerer = async ({ tools, period, periods, expenseCategory:
   const remaining = list.reduce((s, b) => s + b.remaining, 0);
   const exceeded = list.filter((b) => b.level === 'EXCEEDED');
   const warning = list.filter((b) => b.level === 'WARNING');
-  let text = `${capitalize(label)}, vous avez utilisé ${formatPercent(planned === 0 ? 0 : spent / planned)} de vos budgets : ${formatMoney(spent)} sur ${formatMoney(planned)}.`;
+  let text = `${capitalize(label)}, vous avez utilisé ${formatPercent(planned === 0 ? 0 : spent / planned, PERCENT)} de vos budgets : ${approx(spent)} sur ${approx(planned)}.`;
   text +=
     remaining >= 0
-      ? ` Il reste ${formatMoney(remaining)} au total.`
-      : ` L'ensemble est dépassé de ${formatMoney(-remaining)}.`;
+      ? ` Il reste ${approx(remaining)} au total.`
+      : ` L'ensemble est dépassé de ${approx(-remaining)}.`;
   if (exceeded.length > 0) {
-    text += ` Dépassé${exceeded.length > 1 ? 's' : ''} : ${joinFr(exceeded.map((b) => `${b.category.name} (+${formatMoney(Math.abs(b.remaining))})`))}.`;
+    text += ` Dépassé${exceeded.length > 1 ? 's' : ''} : ${joinFr(exceeded.map((b) => `${b.category.name} (+${approx(Math.abs(b.remaining))})`))}.`;
   }
   if (warning.length > 0) {
-    text += ` À surveiller : ${joinFr(warning.map((b) => `${b.category.name} (${formatPercent(b.ratio)})`))}.`;
+    text += ` À surveiller : ${joinFr(warning.map((b) => `${b.category.name} (${formatPercent(b.ratio, PERCENT)})`))}.`;
   }
   if (exceeded.length === 0 && warning.length === 0)
     text += ' Tous vos budgets sont sous contrôle.';
@@ -734,9 +746,9 @@ const forecast: Answerer = async ({ tools, today, norm }) => {
   const wantsMonths = /\b(?:prochains? mois|mois prochain|dans \d+ mois|trimestre prochain)\b/.test(
     norm,
   );
-  let text = `D'après votre rythme actuel, votre solde devrait être d'environ ${formatMoney(eom.expected)} à la fin du mois (entre ${formatMoney(eom.low)} et ${formatMoney(eom.high)}).`;
+  let text = `D'après votre rythme actuel, votre solde devrait être d'environ ${approx(eom.expected)} à la fin du mois (entre ${approx(eom.low)} et ${approx(eom.high)}).`;
   if (wantsMonths && f.months.length > 0) {
-    text += ` Ensuite : ${joinFr(f.months.map((m) => `fin ${formatMonthFR(monthOf(m.date))} ≈ ${formatMoney(m.expected)}`))}.`;
+    text += ` Ensuite : ${joinFr(f.months.map((m) => `fin ${formatMonthFR(monthOf(m.date))} ≈ ${approx(m.expected)}`))}.`;
   }
   text += RELIABILITY_NOTE[f.reliability];
   const points = f.chart
@@ -769,11 +781,11 @@ const canAfford: Answerer = async ({ tools, amount, today }) => {
   const after = expected - amount;
   let text: string;
   if (low >= amount) {
-    text = `Oui, cela semble raisonnable. Même dans un scénario prudent, votre solde de fin de mois serait d'environ ${formatMoney(low)} : après cet achat de ${formatMoney(amount)}, il vous resterait ${formatMoney(low - amount)}.`;
+    text = `Oui, cela semble raisonnable. Même dans un scénario prudent, votre solde de fin de mois serait d'environ ${approx(low)} : après cet achat de ${approx(amount)}, il vous resterait ${approx(low - amount)}.`;
   } else if (expected >= amount) {
-    text = `C'est possible, mais serré. Votre solde prévu en fin de mois est de ${formatMoney(expected)} : il ne resterait que ${formatMoney(after)} après cet achat de ${formatMoney(amount)}, et le scénario prudent (${formatMoney(low)}) ne le couvre pas. Attendre la prochaine rentrée d'argent serait plus confortable.`;
+    text = `C'est possible, mais serré. Votre solde prévu en fin de mois est de ${approx(expected)} : il ne resterait que ${approx(after)} après cet achat de ${approx(amount)}, et le scénario prudent (${approx(low)}) ne le couvre pas. Attendre la prochaine rentrée d'argent serait plus confortable.`;
   } else {
-    text = `Mieux vaut patienter : votre solde prévu en fin de mois (${formatMoney(expected)}) ne couvre pas cet achat de ${formatMoney(amount)}. Il manquerait environ ${formatMoney(amount - expected)}.`;
+    text = `Mieux vaut patienter : votre solde prévu en fin de mois (${approx(expected)}) ne couvre pas cet achat de ${approx(amount)}. Il manquerait environ ${approx(amount - expected)}.`;
   }
   return base('CAN_AFFORD', text, {
     highlights: [money('Achat envisagé', amount), money('Reste prévu après achat', after)],
@@ -808,7 +820,7 @@ const subscriptions: Answerer = async ({ tools }) => {
   const list = shown.map(
     ({ rule }) => `${rule.label} (${formatMoney(rule.amount)} ${FREQUENCY_LABEL[rule.frequency]})`,
   );
-  let text = `Vous avez ${plural(rules.length, 'dépense récurrente active', 'dépenses récurrentes actives')}, soit environ ${formatMoney(total)} par mois : ${joinFr(list)}`;
+  let text = `Vous avez ${plural(rules.length, 'dépense récurrente active', 'dépenses récurrentes actives')}, soit environ ${approx(total)} par mois : ${joinFr(list)}`;
   text += rules.length > shown.length ? `, et ${rules.length - shown.length} autre(s).` : '.';
   const next = [...rules].sort((a, b) => (a.rule.nextDate < b.rule.nextDate ? -1 : 1))[0];
   if (next) {
@@ -842,7 +854,7 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
   if (!matched) {
     const list = goals.map(
       (g) =>
-        `« ${g.name} » à ${formatPercent(Math.min(1, g.ratio))} (${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)})`,
+        `« ${g.name} » à ${formatPercent(Math.min(1, g.ratio), PERCENT)} (${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)})`,
     );
     return base(
       'GOAL_PROGRESS',
@@ -894,17 +906,17 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
     adjustments: [],
     extraMonthlySaving: 0,
   });
-  let text = `Vous avez épargné ${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)} pour « ${g.name} » (${formatPercent(g.ratio)}) ; il reste ${formatMoney(remaining)}.`;
+  let text = `Vous avez épargné ${formatMoney(g.savedAmount)} sur ${formatMoney(g.targetAmount)} pour « ${g.name} » (${formatPercent(g.ratio, PERCENT)}) ; il reste ${formatMoney(remaining)}.`;
   if (sim.baselineDate) {
-    text += ` Au rythme de votre épargne récente (${formatMoney(sim.baselineMonthlySaving)} par mois, si elle y est entièrement consacrée), vous l'atteindriez vers ${formatMonthFR(monthOf(sim.baselineDate))}.`;
+    text += ` Au rythme de votre épargne récente (${approx(sim.baselineMonthlySaving)} par mois, si elle y est entièrement consacrée), vous l'atteindriez vers ${formatMonthFR(monthOf(sim.baselineDate))}.`;
   } else {
-    text += ` Au rythme actuel, votre épargne mensuelle (${formatMoney(sim.baselineMonthlySaving)}) ne permet pas de le faire avancer : un versement régulier, même modeste, ferait la différence.`;
+    text += ` Au rythme actuel, votre épargne mensuelle (${approx(sim.baselineMonthlySaving)}) ne permet pas de le faire avancer : un versement régulier, même modeste, ferait la différence.`;
   }
   if (g.targetDate) {
     if (g.status === 'OVERDUE') {
       text += ` La date visée (${formatDateFR(g.targetDate)}) est dépassée : vous pouvez la repousser depuis la page Objectifs.`;
     } else if (g.monthlyNeeded !== null) {
-      text += ` Pour tenir votre date cible (${formatDateFR(g.targetDate)}), il faudrait y consacrer ${formatMoney(g.monthlyNeeded)} par mois.`;
+      text += ` Pour tenir votre date cible (${formatDateFR(g.targetDate)}), il faudrait y consacrer ${approx(g.monthlyNeeded)} par mois.`;
     }
   }
   const timeline = sim.timeline.slice(0, 12);
@@ -930,29 +942,38 @@ const goalProgress: Answerer = async ({ tools, norm, today }) => {
   });
 };
 
-const savingsRate: Answerer = async ({ tools, period }) => {
+const savingsRateAnswer: Answerer = async ({ tools, period, ctx }) => {
   const monthly = await tools.monthlyTotals({ range: period });
   const income = monthly.reduce((s, m) => s + m.income, 0);
   const expense = monthly.reduce((s, m) => s + m.expense, 0);
+  // Définition unique (src/domain/savings.ts) : les versements vers le groupe Épargne comptent.
+  const savingsIds = ctx.categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id);
+  const savingsGroupExpense =
+    savingsIds.length > 0
+      ? (await tools.sumTransactions({ range: period, type: 'EXPENSE', categoryIds: savingsIds }))
+          .total
+      : 0;
   const when = capitalize(inPeriod(period.label));
   const href = buildTransactionsHref({ from: period.from, to: period.to });
   if (income === 0) {
     const text =
       expense > 0
-        ? `${when}, aucun revenu n'est enregistré (pour ${formatMoney(expense)} de dépenses) : impossible de calculer un taux d'épargne.`
+        ? `${when}, aucun revenu n'est enregistré (pour ${approx(expense)} de dépenses) : impossible de calculer un taux d'épargne.`
         : `${when}, aucun revenu n'est enregistré : impossible de calculer un taux d'épargne.`;
     return base('SAVINGS_RATE', text, { period: periodOut(period), href });
   }
-  const saved = income - expense;
-  const rate = saved / income;
+  const totals = { income, expense, savingsGroupExpense };
+  const saved = savedAmount(totals);
+  const rate = savingsRate(totals) ?? 0;
   let text: string;
   if (saved >= 0) {
-    text = `${when}, votre taux d'épargne est de ${formatPercent(rate)} : vous avez mis de côté ${formatMoney(saved)} sur ${formatMoney(income)} de revenus.`;
+    text = `${when}, votre taux d'épargne est de ${formatPercent(rate, PERCENT)} : vous avez mis de côté ${approx(saved)} sur ${approx(income)} de revenus.`;
     if (rate >= 0.2) text += " C'est au-dessus du repère de 20 %, bravo.";
     else if (rate >= 0.1) text += ' Le repère conseillé est de 20 % : vous en êtes proche.';
     else text += ' Viser 10 % serait un bon premier palier.';
   } else {
-    text = `${when}, vos dépenses (${formatMoney(expense)}) dépassent vos revenus (${formatMoney(income)}) de ${formatMoney(-saved)} : votre taux d'épargne est négatif (${formatPercent(rate)}).`;
+    const outflow = expense - savingsGroupExpense;
+    text = `${when}, vos dépenses${savingsGroupExpense > 0 ? ' hors épargne' : ''} (${approx(outflow)}) dépassent vos revenus (${approx(income)}) de ${approx(-saved)} : votre taux d'épargne est négatif (${formatPercent(rate, PERCENT)}).`;
   }
   return base('SAVINGS_RATE', text, {
     highlights: [percent("Taux d'épargne", rate), money('Épargné', saved)],
@@ -984,5 +1005,5 @@ export const ANSWERS: Record<KnownIntent, Answerer> = {
   CAN_AFFORD: canAfford,
   SUBSCRIPTIONS: subscriptions,
   GOAL_PROGRESS: goalProgress,
-  SAVINGS_RATE: savingsRate,
+  SAVINGS_RATE: savingsRateAnswer,
 };

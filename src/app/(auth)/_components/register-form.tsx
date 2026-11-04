@@ -6,12 +6,13 @@ import { registerAction, type AuthFormState } from '@/app/actions/auth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FieldError } from './field';
+import { Field, FieldError, emailErrors } from './field';
 import { PasswordInput } from './password-input';
 
 export function RegisterForm() {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(registerAction, {});
   const fe = state.fieldErrors ?? {};
+  const emailMessages = emailErrors(fe.email, state.values?.email);
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,7 +58,7 @@ export function RegisterForm() {
             aria-describedby={fe.email ? 'email-erreur' : undefined}
             placeholder="vous@exemple.tn"
           />
-          <FieldError id="email-erreur" messages={fe.email} />
+          <FieldError id="email-erreur" messages={emailMessages} />
         </Field>
         <Field id="password" label="Mot de passe">
           <PasswordInput

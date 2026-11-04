@@ -7,6 +7,7 @@ import {
   describeOutcome,
   eligibleGoals,
   estimatedSaving,
+  fixedChargeCategoryIds,
   monthsSavedLabel,
   percentValueText,
   selectSimulatorCategories,
@@ -79,6 +80,34 @@ describe('sélection des catégories', () => {
       'transport',
     ]);
     expect(selected[0]?.monthlyAverage).toBe(150 * DT);
+  });
+  it('exclut les besoins à charge fixe (échéance récurrente ou catégorie par défaut)', () => {
+    const withFixedIcon = categories.map((c) =>
+      c.id === 'transport' ? { ...c, icon: 'Smartphone' } : c,
+    );
+    const selected = selectSimulatorCategories(slices, withFixedIcon, {
+      fixedCategoryIds: new Set(['loyer', 'restaurants']),
+    });
+    // « loyer » (besoin récurrent) et « transport » (icône Télécom) sont exclus ; une envie
+    // récurrente (« restaurants ») reste réductible.
+    expect(selected.map((c) => c.categoryId)).toEqual([
+      'restaurants',
+      'shopping',
+      'cafes',
+      'loisirs',
+      'courses',
+    ]);
+  });
+  it('déduit les charges fixes des échéances récurrentes actives', () => {
+    expect(
+      fixedChargeCategoryIds([
+        { categoryId: 'loyer', type: 'EXPENSE', active: true },
+        { categoryId: 'loyer', type: 'EXPENSE', active: true },
+        { categoryId: 'salaire', type: 'INCOME', active: true },
+        { categoryId: 'gym', type: 'EXPENSE', active: false },
+        { categoryId: null, type: 'EXPENSE', active: true },
+      ]),
+    ).toEqual(['loyer']);
   });
   it('ignore les catégories de revenu', () => {
     const selected = selectSimulatorCategories(

@@ -5,6 +5,7 @@ import {
   buildCategorySlices,
   buildMonthlySeries,
   categoryMonthSums,
+  comparisonPeriod,
   dailyAllowance,
   relativeChange,
   remainingDaysInMonth,
@@ -127,5 +128,31 @@ describe('averageMillimes / categoryMonthSums', () => {
       { categoryId: 'a', month: '2026-11', amount: 7 },
       { categoryId: null, month: '2026-11', amount: 3 },
     ]);
+  });
+});
+
+describe('comparisonPeriod', () => {
+  it('mois en cours : mois précédent « à date » (mêmes jours)', () => {
+    expect(comparisonPeriod('2026-11', '2026-11-04')).toEqual({
+      range: { from: '2026-10-01', to: '2026-10-04' },
+      label: 'vs 1–4 octobre',
+    });
+    expect(comparisonPeriod('2026-11', '2026-11-01').label).toBe('vs 1er octobre');
+    // 31 mars → février borné à sa fin : mois entier.
+    expect(comparisonPeriod('2026-03', '2026-03-31')).toEqual({
+      range: { from: '2026-02-01', to: '2026-02-28' },
+      label: 'vs février',
+    });
+    expect(comparisonPeriod('2026-01', '2026-01-15').range).toEqual({
+      from: '2025-12-01',
+      to: '2025-12-15',
+    });
+  });
+
+  it('mois terminé : mois précédent entier', () => {
+    expect(comparisonPeriod('2026-10', '2026-11-04')).toEqual({
+      range: { from: '2026-09-01', to: '2026-09-30' },
+      label: 'vs septembre',
+    });
   });
 });

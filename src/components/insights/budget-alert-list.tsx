@@ -1,15 +1,18 @@
+'use client';
 /**
  * Alertes budgets (≥ 80 % ou dépassement projeté) : barre de progression, niveau en texte,
- * projection « à ce rythme ». Compatible Server Components.
+ * projection « à ce rythme ». Client (mode discret) mais rendu dès le serveur.
  */
 import { CircleCheck, OctagonAlert, TrendingUp, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
+import { formatMoney } from '@/domain/money';
 import type { BudgetProgress } from '@/domain/types';
 import { CategoryIcon } from '@/components/shared/category-icon';
 import { Money } from '@/components/shared/money';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { formatPercent } from '@/components/charts/format';
+import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { cn } from '@/lib/utils';
 
 export interface BudgetAlertListProps {
@@ -42,7 +45,27 @@ function levelBadge(b: BudgetProgress) {
   );
 }
 
+const LEVEL_TEXT: Record<BudgetProgress['level'], string> = {
+  EXCEEDED: 'dépassé',
+  WARNING: 'bientôt atteint',
+  OK: 'dans les limites',
+};
+
+/**
+ * Texte lu par les lecteurs d'écran pour la barre : montants réels (la barre est plafonnée à
+ * 100 %), niveau d'alerte ; les montants sont masqués en mode discret.
+ */
+export function budgetValueText(b: BudgetProgress, discreet: boolean): string {
+  const level =
+    b.level === 'OK' && b.projectedOverrun ? 'dépassement prévu' : LEVEL_TEXT[b.level];
+  if (discreet) return `${formatPercent(b.ratio)} du budget utilisé, ${level}`;
+  const spent = formatMoney(b.spent, { decimals: 0 });
+  const budget = formatMoney(b.budget.amount, { decimals: 0 });
+  return `${spent} sur ${budget}, ${level}`;
+}
+
 export function BudgetAlertList({ alerts, className }: BudgetAlertListProps) {
+  const { discreet } = useDiscreetMode();
   if (alerts.length === 0) {
     return (
       <p className={cn('text-muted-foreground flex items-center gap-2 text-sm', className)}>
@@ -74,7 +97,8 @@ export function BudgetAlertList({ alerts, className }: BudgetAlertListProps) {
               {levelBadge(b)}
             </div>
             <Progress
-              value={b.ratio * 100}
+              value={Math.round(b.ratio * 100)}
+              getValueLabel={() => budgetValueText(b, discreet)}
               aria-label={`Budget ${b.category.name} : ${formatPercent(b.ratio)} utilisé`}
               indicatorClassName={indicator}
             />

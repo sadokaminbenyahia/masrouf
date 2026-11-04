@@ -6,7 +6,7 @@ import { loginAction, type AuthFormState } from '@/app/actions/auth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FieldError } from './field';
+import { Field, FieldError, emailErrors } from './field';
 import { PasswordInput } from './password-input';
 
 const DEMO = { email: 'demo@masrouf.tn', password: 'Demo1234!' };
@@ -16,6 +16,7 @@ export function LoginForm({ callbackUrl, showDemo }: { callbackUrl: string; show
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const fe = state.fieldErrors ?? {};
+  const emailMessages = emailErrors(fe.email, state.values?.email);
 
   const fillDemo = () => {
     if (emailRef.current) emailRef.current.value = DEMO.email;
@@ -59,7 +60,7 @@ export function LoginForm({ callbackUrl, showDemo }: { callbackUrl: string; show
             aria-describedby={fe.email ? 'email-erreur' : undefined}
             placeholder="vous@exemple.tn"
           />
-          <FieldError id="email-erreur" messages={fe.email} />
+          <FieldError id="email-erreur" messages={emailMessages} />
         </Field>
         <Field id="password" label="Mot de passe">
           <PasswordInput

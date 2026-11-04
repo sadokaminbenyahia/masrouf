@@ -33,7 +33,7 @@ export function MonthSwitcher({ value, onChange, max, min, className }: MonthSwi
         type="button"
         variant="ghost"
         size="icon"
-        className="size-9"
+        className="size-11 md:size-9"
         onClick={() => onChange(prev)}
         disabled={!canPrev}
         aria-label={`Mois précédent (${formatMonthFR(prev)})`}
@@ -50,7 +50,7 @@ export function MonthSwitcher({ value, onChange, max, min, className }: MonthSwi
         type="button"
         variant="ghost"
         size="icon"
-        className="size-9"
+        className="size-11 md:size-9"
         onClick={() => onChange(next)}
         disabled={!canNext}
         aria-label={`Mois suivant (${formatMonthFR(next)})`}

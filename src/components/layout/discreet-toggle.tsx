@@ -3,6 +3,7 @@ import { EyeIcon, EyeOffIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
+import { cn } from '@/lib/utils';
 
 export function DiscreetToggle() {
   const { discreet, toggle } = useDiscreetMode();
@@ -16,7 +17,10 @@ export function DiscreetToggle() {
           size="icon"
           aria-label={label}
           onClick={toggle}
-          className={discreet ? 'bg-primary/10 text-primary hover:bg-primary/15' : undefined}
+          className={cn(
+            'size-11 md:size-10',
+            discreet && 'bg-primary/10 text-primary hover:bg-primary/15',
+          )}
         >
           {discreet ? <EyeOffIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
         </Button>

@@ -6,6 +6,7 @@ import {
   buildCategorySlices,
   buildMonthlySeries,
   categoryMonthSums,
+  comparisonPeriod,
   dailyAllowance,
   relativeChange,
 } from '@/domain/aggregations';
@@ -57,6 +58,7 @@ export async function getDashboard(
   const ym = month ?? monthOf(day);
   const range = monthRange(ym);
   const prevRange = monthRange(addMonthsYM(ym, -1));
+  const comparison = comparisonPeriod(ym, day);
   const ruleMonth = ruleMonthFor(ym, day);
   const detectionRange: DateRange = {
     from: monthStart(addMonthsYM(monthOf(day), -(DETECTION_MONTHS - 1))),
@@ -70,6 +72,7 @@ export async function getDashboard(
     categories,
     currentSums,
     previousSums,
+    comparisonSums,
     byCategory,
     monthly,
     topExpenses,
@@ -85,6 +88,9 @@ export async function getDashboard(
     categoryRepo.listCategories(userId),
     txRepo.sumByType(userId, range),
     txRepo.sumByType(userId, prevRange),
+    comparison.range.to === prevRange.to
+      ? Promise.resolve(null)
+      : txRepo.sumByType(userId, comparison.range),
     getCategoryBreakdown(userId, range, 'EXPENSE'),
     getMonthlySeries(userId, 12, ym),
     txRepo.topTransactions(userId, range, 'EXPENSE', TOP_EXPENSES),
@@ -106,6 +112,7 @@ export async function getDashboard(
 
   const current = totalsFromTypeSums(currentSums);
   const previous = totalsFromTypeSums(previousSums);
+  const reference = comparisonSums === null ? previous : totalsFromTypeSums(comparisonSums);
   const summary = summarizeBudgets(budgets.value);
   const remainingToSpend = summary === null ? null : summary.remaining;
 
@@ -139,7 +146,8 @@ export async function getDashboard(
     accounts: accounts.value,
     current,
     previous,
-    expenseChange: relativeChange(current.expense, previous.expense),
+    expenseChange: relativeChange(current.expense, reference.expense),
+    comparisonLabel: comparison.label,
     remainingToSpend,
     dailyAllowance: remainingToSpend === null ? null : dailyAllowance(remainingToSpend, ym, day),
     byCategory: byCategory.value,

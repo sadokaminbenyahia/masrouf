@@ -16,6 +16,7 @@ export function ThemeToggle() {
           variant="ghost"
           size="icon"
           aria-label="Changer de thème"
+          className="size-11 md:size-10"
           onClick={() => setTheme(next)}
         >
           <SunIcon className="hidden dark:block" aria-hidden="true" />

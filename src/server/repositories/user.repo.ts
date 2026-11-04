@@ -39,6 +39,26 @@ export async function updateUser(
   return count === 0 ? null : findProfile(userId);
 }
 
+/** Identifiant de l'utilisateur ayant cette adresse e-mail (inscription), ou null. */
+export async function findUserIdByEmail(email: string): Promise<string | null> {
+  const row = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  return row?.id ?? null;
+}
+
+/** Crée un compte utilisateur ; lève P2002 si l'e-mail est déjà pris (course). */
+export async function createUser(data: {
+  email: string;
+  name: string;
+  passwordHash: string;
+}): Promise<{ id: string; email: string }> {
+  return prisma.user.create({ data, select: { id: true, email: true } });
+}
+
+/** Supprime un compte (et ses données, par cascade). */
+export async function deleteUser(userId: string): Promise<void> {
+  await prisma.user.deleteMany({ where: { id: userId } });
+}
+
 export async function userExists(userId: string, db: Db = prisma): Promise<boolean> {
   const row = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
   return row !== null;

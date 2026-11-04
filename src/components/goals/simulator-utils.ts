@@ -14,7 +14,7 @@ import {
 } from '@/domain/dates';
 import type { AppErrorCode } from '@/domain/result';
 import type { Millimes } from '@/domain/money';
-import type { Category, CategorySlice, GoalProgress } from '@/domain/types';
+import type { Category, CategorySlice, GoalProgress, RecurringRule } from '@/domain/types';
 import type { WhatIfActionInput } from '@/lib/schemas/ai';
 
 export const SIMULATOR_MONTHS = 3;
@@ -41,15 +41,51 @@ export interface SimulatorCategory {
   monthlyAverage: Millimes;
 }
 
+/** Icônes des catégories par défaut à charge fixe (Loyer, Factures, Télécom, Éducation). */
+const FIXED_CHARGE_ICONS: ReadonlySet<string> = new Set([
+  'House',
+  'Zap',
+  'Smartphone',
+  'GraduationCap',
+]);
+
 /**
- * Les `limit` catégories de dépense les plus coûteuses (hors « sans catégorie » et épargne),
- * affichées avec les envies (WANTS) en premier, puis par montant décroissant.
+ * Charge fixe, qu'on ne « réduit » pas d'un curseur : besoin (NEEDS) payé par une échéance
+ * récurrente, ou l'une des catégories par défaut de ce type.
+ */
+export function isFixedCharge(category: Category, fixedCategoryIds: ReadonlySet<string>): boolean {
+  if (category.group !== 'NEEDS') return false;
+  return fixedCategoryIds.has(category.id) || FIXED_CHARGE_ICONS.has(category.icon);
+}
+
+/** Catégories de dépense payées par une échéance récurrente active. */
+export function fixedChargeCategoryIds(
+  rules: readonly Pick<RecurringRule, 'categoryId' | 'type' | 'active'>[],
+): string[] {
+  const ids = new Set<string>();
+  for (const r of rules) if (r.active && r.type === 'EXPENSE' && r.categoryId) ids.add(r.categoryId);
+  return [...ids];
+}
+
+export interface SelectSimulatorOptions {
+  /** Catégories payées par une échéance récurrente (exclues si ce sont des besoins). */
+  fixedCategoryIds?: ReadonlySet<string>;
+  limit?: number;
+  months?: number;
+}
+
+/**
+ * Les `limit` catégories de dépense les plus coûteuses (hors « sans catégorie », épargne et
+ * charges fixes), affichées avec les envies (WANTS) en premier, puis par montant décroissant.
  */
 export function selectSimulatorCategories(
   slices: readonly CategorySlice[],
   categories: readonly Category[],
-  limit = SIMULATOR_CATEGORY_LIMIT,
-  months = SIMULATOR_MONTHS,
+  {
+    fixedCategoryIds = new Set(),
+    limit = SIMULATOR_CATEGORY_LIMIT,
+    months = SIMULATOR_MONTHS,
+  }: SelectSimulatorOptions = {},
 ): SimulatorCategory[] {
   const byId = new Map(categories.map((c) => [c.id, c]));
   const candidates: SimulatorCategory[] = [];
@@ -57,6 +93,7 @@ export function selectSimulatorCategories(
     if (s.categoryId === null || s.amount <= 0) continue;
     const category = byId.get(s.categoryId);
     if (category && (category.kind !== 'EXPENSE' || category.group === 'SAVINGS')) continue;
+    if (category && isFixedCharge(category, fixedCategoryIds)) continue;
     candidates.push({
       categoryId: s.categoryId,
       name: category?.name ?? s.name,

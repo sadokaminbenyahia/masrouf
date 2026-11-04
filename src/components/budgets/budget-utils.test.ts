@@ -97,7 +97,7 @@ describe('mois', () => {
 describe('textes de progression', () => {
   it('reste et jours', () => {
     expect(n(budgetStatusText(progress('b1', 'Courses', 320 * DT, 400 * DT), TODAY))).toBe(
-      '320 / 400 DT · reste 80 DT · 9 jours',
+      '320 / 400 DT · reste 80 DT · 9 jours restants',
     );
   });
   it('dépassement', () => {

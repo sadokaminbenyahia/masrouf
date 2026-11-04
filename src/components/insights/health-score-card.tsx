@@ -4,16 +4,17 @@
  * prioritaire. En mode détaillé, une barre par composante avec son poids et son explication.
  */
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Lightbulb } from 'lucide-react';
+import { ArrowRight, ChartNoAxesColumn, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import type { HealthComponent, HealthScore } from '@/domain/ai/types';
 import { AiBadge } from '@/components/shared/ai-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { formatPercent } from '@/components/charts/format';
 import { cn } from '@/lib/utils';
+import { useMaskedText } from './use-masked-text';
 
 export interface HealthScoreCardProps {
   score: HealthScore;
@@ -57,6 +58,14 @@ function clampScore(v: number): number {
   return Math.min(100, Math.max(0, Math.round(v)));
 }
 
+/**
+ * Vrai si le score repose sur assez de données. Le domaine renvoie un score neutre (50) sans
+ * aucune composante quand l'historique est insuffisant : on affiche alors un état vide.
+ */
+export function hasHealthData(score: Pick<HealthScore, 'components'>): boolean {
+  return score.components.length > 0;
+}
+
 function Gauge({
   score,
   grade,
@@ -91,7 +100,9 @@ function Gauge({
           strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={CIRCUMFERENCE}
-          initial={reduce ? false : { strokeDashoffset: CIRCUMFERENCE }}
+          // Toujours le même état initial qu'au rendu serveur : framer-motion anime donc toujours
+          // (durée nulle si l'utilisateur réduit les animations) et écrit la valeur finale.
+          initial={{ strokeDashoffset: CIRCUMFERENCE }}
           animate={{ strokeDashoffset: offset }}
           transition={reduce ? { duration: 0 } : { duration: 0.9, ease: 'easeOut', delay: 0.1 }}
         />
@@ -105,6 +116,7 @@ function Gauge({
 }
 
 function ComponentRow({ c }: { c: HealthComponent }) {
+  const mask = useMaskedText();
   const value = clampScore(c.score);
   const tone = componentTone(value);
   return (
@@ -121,61 +133,111 @@ function ComponentRow({ c }: { c: HealthComponent }) {
         aria-label={`${c.label} : ${value} sur 100`}
         indicatorClassName={tone.bar}
       />
-      <p className="text-muted-foreground text-xs leading-relaxed">{c.explanation}</p>
+      <p className="text-muted-foreground text-xs leading-relaxed">{mask(c.explanation)}</p>
     </li>
   );
 }
 
-export function HealthScoreCard({ score, compact = false, className }: HealthScoreCardProps) {
-  const components = [...score.components].sort((a, b) => b.weight - a.weight);
+function CardTitleRow() {
   return (
-    <Card data-testid="health-score" className={cn('min-w-0 scroll-mt-24', className)}>
-      <CardHeader>
-        <h2 className="text-base leading-tight font-semibold">Santé financière</h2>
-        <CardDescription>Score calculé sur vos 6 derniers mois</CardDescription>
-        <CardAction>
-          <AiBadge label="IA locale" />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div
-          className={cn(
-            'flex items-center gap-5',
-            !compact && 'flex-col sm:flex-row sm:items-center',
-          )}
-        >
-          <Gauge score={score.score} grade={score.grade} size={compact ? 104 : 136} />
-          <div className="min-w-0 space-y-2">
-            <Badge variant={GRADE_BADGE[score.grade]} className="text-sm">
-              {GRADE_LABELS[score.grade]}
-            </Badge>
-            <p className={cn('text-sm leading-relaxed', compact && 'line-clamp-3')}>
-              {score.summary}
-            </p>
-          </div>
+    <div className="flex min-w-0 items-center justify-between gap-3">
+      <h2 className="text-base leading-tight font-semibold">Santé financière</h2>
+      <div className="-my-3 flex shrink-0 items-center">
+        <AiBadge label="IA locale" />
+      </div>
+    </div>
+  );
+}
+
+function NotEnoughData({ compact }: { compact: boolean }) {
+  return (
+    <div className="flex flex-col items-start gap-3 text-sm">
+      <div className="flex items-start gap-3">
+        <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-full">
+          <ChartNoAxesColumn aria-hidden className="size-4" />
+        </span>
+        <div className="space-y-1">
+          <p className="font-medium">Pas encore de score</p>
+          <p className="text-muted-foreground leading-relaxed">
+            Le score se calcule à partir de quelques semaines de revenus et de dépenses.
+            Continuez à enregistrer vos opérations, ou importez un relevé pour l&apos;obtenir dès
+            maintenant.
+          </p>
         </div>
-        {score.topAdvice ? (
-          <div className="bg-muted/60 flex gap-3 rounded-lg p-3 text-sm">
-            <Lightbulb aria-hidden className="text-warning mt-0.5 size-4 shrink-0" />
-            <p>
-              <span className="font-medium">Levier prioritaire : </span>
-              {score.topAdvice}
-            </p>
-          </div>
-        ) : null}
-        {compact ? (
+      </div>
+      <div className="flex flex-wrap gap-x-4">
+        <Button asChild variant="link" className="h-11 px-0">
+          <Link href="/import">
+            Importer un relevé
+            <ArrowRight aria-hidden />
+          </Link>
+        </Button>
+        {compact ? null : (
           <Button asChild variant="link" className="h-11 px-0">
-            <Link href="/analyses#sante">
-              Voir le détail du score
+            <Link href="/transactions">
+              Voir mes transactions
               <ArrowRight aria-hidden />
             </Link>
           </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function HealthScoreCard({ score, compact = false, className }: HealthScoreCardProps) {
+  const mask = useMaskedText();
+  const components = [...score.components].sort((a, b) => b.weight - a.weight);
+  const enough = hasHealthData(score);
+  return (
+    <Card data-testid="health-score" className={cn('min-w-0 scroll-mt-24', className)}>
+      <CardHeader>
+        <CardTitleRow />
+        <CardDescription>Score calculé sur vos 6 derniers mois</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {enough ? (
+          <>
+            <div
+              className={cn(
+                'flex items-center gap-5',
+                !compact && 'flex-col sm:flex-row sm:items-center',
+              )}
+            >
+              <Gauge score={score.score} grade={score.grade} size={compact ? 104 : 136} />
+              <div className="min-w-0 space-y-2">
+                <Badge variant={GRADE_BADGE[score.grade]} className="text-sm">
+                  {GRADE_LABELS[score.grade]}
+                </Badge>
+                <p className="text-sm leading-relaxed">{mask(score.summary)}</p>
+              </div>
+            </div>
+            {score.topAdvice ? (
+              <div className="bg-muted/60 flex gap-3 rounded-lg p-3 text-sm">
+                <Lightbulb aria-hidden className="text-warning mt-0.5 size-4 shrink-0" />
+                <p>
+                  <span className="font-medium">Levier prioritaire : </span>
+                  {mask(score.topAdvice)}
+                </p>
+              </div>
+            ) : null}
+            {compact ? (
+              <Button asChild variant="link" className="h-11 px-0">
+                <Link href="/analyses#sante">
+                  Voir le détail du score
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            ) : (
+              <ul className="space-y-4" aria-label="Composantes du score">
+                {components.map((c) => (
+                  <ComponentRow key={c.key} c={c} />
+                ))}
+              </ul>
+            )}
+          </>
         ) : (
-          <ul className="space-y-4" aria-label="Composantes du score">
-            {components.map((c) => (
-              <ComponentRow key={c.key} c={c} />
-            ))}
-          </ul>
+          <NotEnoughData compact={compact} />
         )}
       </CardContent>
     </Card>

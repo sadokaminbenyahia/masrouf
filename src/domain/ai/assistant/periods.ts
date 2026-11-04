@@ -33,6 +33,8 @@ export interface ParsedPeriod extends DateRange {
   unit: PeriodUnit;
   /** Position [début, fin[ dans le texte normalisé (null si période par défaut ou dérivée) */
   span: [number, number] | null;
+  /** Remarque à ajouter à la réponse (ex. date future remplacée par la période par défaut) */
+  note?: string;
 }
 
 const MONTH_NAMES = [
@@ -183,6 +185,21 @@ interface Resolved {
   range: DateRange;
   unit: PeriodUnit;
   label?: string;
+  note?: string;
+}
+
+/**
+ * « depuis <date future> » : pas de période future ni d'intervalle inversé. On répond pour la
+ * période par défaut (ce mois-ci) en le signalant, plutôt que de relire la date seule.
+ */
+function futureSince(today: ISODate, what: string): Resolved {
+  const ym = monthOf(today);
+  return {
+    range: { from: monthStart(ym), to: monthEnd(ym) },
+    unit: 'month',
+    label: 'ce mois-ci',
+    note: `${what} est dans le futur : je vous réponds pour ce mois-ci.`,
+  };
 }
 
 interface Matcher {
@@ -392,7 +409,7 @@ const MATCHERS: Matcher[] = [
       if (!d) return null;
       const from = safeDate(d.year, d.month, d.day);
       return from > today
-        ? null
+        ? futureSince(today, `Le ${formatDateFR(from)}`)
         : { range: { from, to: today }, unit: 'custom', label: `depuis le ${formatDateFR(from)}` };
     },
   },
@@ -406,7 +423,10 @@ const MATCHERS: Matcher[] = [
       if (month === null) return null;
       const year = parseYear(m[2]) ?? inferYear(month, today);
       const from = toISODate(year, month, 1);
-      if (from > today) return null;
+      if (from > today) {
+        const what = formatMonthFR(monthOf(from));
+        return futureSince(today, what.charAt(0).toUpperCase() + what.slice(1));
+      }
       const sameYear = year === parseISODate(today).year;
       return {
         range: { from, to: today },
@@ -468,6 +488,7 @@ export function parsePeriods(norm: string, today: ISODate): ParsedPeriod[] {
         unit: r.unit,
         label: r.label ?? labelForRange(r.range, today),
         span: [m.index, m.index + m[0].length],
+        ...(r.note !== undefined ? { note: r.note } : {}),
         order,
       });
     }

@@ -4,7 +4,7 @@
  */
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Card, CardAction, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export interface SectionCardProps {
@@ -50,15 +50,23 @@ export function SectionCard({
       className={cn('min-w-0 scroll-mt-24', className)}
     >
       <CardHeader>
-        <h2
-          id={headingId}
-          className="flex items-center gap-2 text-base leading-tight font-semibold"
-        >
-          {Icon ? <Icon aria-hidden className="text-muted-foreground size-4" /> : null}
-          {title}
-        </h2>
+        {/* Titre et action sur une même ligne, centrés verticalement : la marge négative absorbe
+            la hauteur des cibles tactiles de 44 px sans décaler le titre ni agrandir l'en-tête. */}
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <h2
+            id={headingId}
+            className="flex min-w-0 items-center gap-2 text-base leading-tight font-semibold"
+          >
+            {Icon ? <Icon aria-hidden className="text-muted-foreground size-4 shrink-0" /> : null}
+            {title}
+          </h2>
+          {action ? (
+            <div data-slot="section-action" className="-my-3 flex shrink-0 items-center">
+              {action}
+            </div>
+          ) : null}
+        </div>
         {description ? <CardDescription>{description}</CardDescription> : null}
-        {action ? <CardAction>{action}</CardAction> : null}
       </CardHeader>
       <CardContent className={cn('min-w-0', contentClassName)}>{children}</CardContent>
     </Card>

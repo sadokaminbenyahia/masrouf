@@ -122,6 +122,7 @@ function SuggestionCard({
         <p className="text-muted-foreground text-sm">{basis}</p>
       </div>
       <Button
+        variant="outline"
         onClick={onCreate}
         disabled={pending}
         aria-describedby={titleId}

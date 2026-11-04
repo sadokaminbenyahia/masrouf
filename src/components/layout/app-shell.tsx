@@ -8,6 +8,7 @@ import { NavHotkeys } from './nav-hotkeys';
 import { ShortcutsDialog } from './shortcuts-dialog';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
+import type { ISODate } from '@/domain/dates';
 import type { ShellUser } from './user-menu';
 
 export const SIDEBAR_COOKIE = 'masrouf-sidebar';
@@ -15,10 +16,13 @@ export const SIDEBAR_COOKIE = 'masrouf-sidebar';
 export function AppShell({
   user,
   defaultCollapsed,
+  today,
   children,
 }: {
   user: ShellUser;
   defaultCollapsed: boolean;
+  /** « Aujourd'hui » côté serveur (dates relatives de la palette). */
+  today: ISODate;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -67,7 +71,7 @@ export function AppShell({
       <NavHotkeys />
       <ShortcutsDialog />
       <QuickAddTransaction />
-      <CommandPalette />
+      <CommandPalette today={today} />
     </>
   );
 }

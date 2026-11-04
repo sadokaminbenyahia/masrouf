@@ -14,9 +14,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { askAssistantAction } from '@/app/actions/ai';
 import type { AssistantAnswer } from '@/domain/ai/types';
+import { maskMoneyInText } from '@/domain/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { ActionError, errorMessage, unwrap } from '@/lib/query';
 import { cn } from '@/lib/utils';
 import { MiniChart } from './mini-chart';
@@ -97,12 +99,17 @@ export function AssistantChat({ examples, initialQuestion }: AssistantChatProps)
     router.replace(pathname, { scroll: false });
   }, [initialQuestion, ask, router, pathname]);
 
+  // Défilement vers la fin UNIQUEMENT quand la conversation avance (nouvelle question ou
+  // réponse reçue) : jamais au chargement de la page, où `entries` est vide.
+  const last = entries.at(-1);
+  const progressKey = last ? `${entries.length}:${last.status}` : null;
   useEffect(() => {
+    if (progressKey === null) return;
     endRef.current?.scrollIntoView({
       behavior: reduceMotion ? 'auto' : 'smooth',
       block: 'nearest',
     });
-  }, [entries, reduceMotion]);
+  }, [progressKey, reduceMotion]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -181,7 +188,9 @@ export function AssistantChat({ examples, initialQuestion }: AssistantChatProps)
           </AnimatePresence>
         </ol>
       )}
-      <div ref={endRef} />
+      {/* La marge de défilement laisse la fin de la réponse (suggestions) au-dessus du
+          formulaire collant et, sur mobile, de la barre de navigation. */}
+      <div ref={endRef} aria-hidden="true" className="scroll-mb-52 md:scroll-mb-36" />
 
       <form
         onSubmit={submit}
@@ -194,7 +203,7 @@ export function AssistantChat({ examples, initialQuestion }: AssistantChatProps)
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Ex. : combien j’ai dépensé en courses ce mois-ci ?"
+            placeholder="Ex. : mes courses ce mois ?"
             maxLength={300}
             autoComplete="off"
             enterKeyHint="send"
@@ -225,6 +234,7 @@ function AnswerBubble({
   onSuggestion: (q: string) => void;
   onRetry: () => void;
 }) {
+  const { discreet } = useDiscreetMode();
   if (entry.status === 'pending') {
     return (
       <p
@@ -268,7 +278,7 @@ function AnswerBubble({
     >
       <p className="flex items-start gap-2 leading-relaxed">
         <SparklesIcon className="text-primary mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <span>{a.text}</span>
+        <span>{discreet ? maskMoneyInText(a.text) : a.text}</span>
       </p>
       {a.highlights.length > 0 ? (
         <dl className="flex flex-wrap gap-x-6 gap-y-2">

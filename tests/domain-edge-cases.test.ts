@@ -23,14 +23,10 @@ import { detectRecurring, detectSeries } from '@/domain/ai/recurring-detect';
 import { generateMonthlySummary } from '@/domain/ai/summary';
 import { askAssistant } from '@/domain/ai/assistant';
 import { parsePeriods } from '@/domain/ai/assistant/periods';
+import { detectIntent } from '@/domain/ai/assistant/intents';
 import { extractQuestionAmount, matchGoal } from '@/domain/ai/assistant/entities';
-import {
-  capitalize,
-  contentWords,
-  formatPercent,
-  jaccard,
-  normalizeQuestion,
-} from '@/domain/ai/assistant/normalize';
+import { capitalize, contentWords, jaccard, normalizeQuestion } from '@/domain/ai/assistant/normalize';
+import { formatPercent } from '@/domain/format';
 import {
   ceilTo,
   clamp,
@@ -517,14 +513,10 @@ describe('generateMonthlySummary : gabarits et branches', () => {
     }
   });
 
-  // BUG: src/domain/ai/summary.ts:627 et :642 — les replis TRIM_VARIABLE (`variable[0]`) et
-  // SET_BUDGET (`curCats.find(...)`) ne considèrent que la PREMIÈRE catégorie éligible. Si elle
-  // est déjà retenue par une recommandation principale (ici « Freiner la hausse en Courses »),
-  // le dédoublonnage par catégorie (:662) les écarte tous les deux et le résumé n'a que 2
-  // recommandations, alors que Restaurants, Transport… (≥ 2 dépenses, sans budget) étaient
-  // disponibles. Attendu : 3 recommandations (contrat MonthlySummary : « exactement 3, moins
-  // seulement si les données manquent ») ; obtenu : 2 pour août 2026 de l'historique synthétique.
-  it.fails('historique synthétique réel : 3 recommandations aussi en août', () => {
+  // Régression (corrigée) : les replis TRIM_VARIABLE / SET_BUDGET ne considéraient que la
+  // PREMIÈRE catégorie éligible ; si elle était déjà retenue (« Freiner la hausse en Courses »),
+  // le résumé n'avait que 2 recommandations. Ils parcourent désormais toutes les catégories.
+  it('historique synthétique réel : 3 recommandations aussi en août', () => {
     const s = generateMonthlySummary({ ...baseInput(syntheticHistory(), '2026-08'), seed: 'u' });
     expect(s.recommendations.map((r) => r.title)).toEqual([
       'Freiner la hausse en Courses',
@@ -550,12 +542,20 @@ describe('assistant : périodes (cas limites)', () => {
     ]);
   });
 
-  it('« depuis » une date future : pas d’intervalle « depuis … jusqu’à aujourd’hui »', () => {
-    // Le motif « depuis » est rejeté ; le jour / mois futur est relu par les motifs suivants.
-    for (const q of ['depuis le 10 novembre 2027', 'depuis decembre 2027']) {
-      const [first] = p(q);
-      expect(first?.to).not.toBe(TODAY);
-      expect((first?.from ?? '') > TODAY).toBe(true);
+  it('« depuis » une date future : période par défaut (ce mois-ci) avec une remarque', () => {
+    // Ni intervalle inversé, ni relecture de la date seule comme une période future.
+    for (const [q, what] of [
+      ['depuis le 10 novembre 2027', 'Le 10 novembre 2027'],
+      ['depuis decembre 2027', 'Décembre 2027'],
+    ] as const) {
+      const all = parsePeriods(normalizeQuestion(q), TODAY);
+      expect(all).toHaveLength(1);
+      expect(all[0]).toMatchObject({
+        from: '2026-11-01',
+        to: '2026-11-30',
+        label: 'ce mois-ci',
+        note: `${what} est dans le futur : je vous réponds pour ce mois-ci.`,
+      });
     }
   });
 
@@ -603,13 +603,12 @@ describe('assistant : entités et normalisation', () => {
     expect(extractQuestionAmount('99999999999999 dt')).toBeNull();
   });
 
-  // BUG: src/domain/ai/assistant/entities.ts:261-262 — avec l'unité « k », le résultat de
-  // parseMoneyTerm est multiplié par 1000 sans revérifier Number.isSafeInteger.
-  // Entrée « 9999999999k » → attendu : null (ou un entier sûr) ; obtenu : 9 999 999 999 000 000
-  // (> Number.MAX_SAFE_INTEGER), qui est ensuite formaté/comparé comme un montant.
-  it.fails('extractQuestionAmount : jamais d’entier non sûr (« 9999999999k »)', () => {
-    const v = extractQuestionAmount('je peux acheter un yacht a 9999999999k');
-    expect(v === null || Number.isSafeInteger(v)).toBe(true);
+  // Régression (corrigée) : avec l'unité « k », le montant était multiplié par 1000 sans
+  // revérifier Number.isSafeInteger ni le plafond métier.
+  it('extractQuestionAmount : jamais d’entier non sûr ni au-delà du plafond (« 9999999999k »)', () => {
+    expect(extractQuestionAmount('je peux acheter un yacht a 9999999999k')).toBeNull();
+    expect(extractQuestionAmount('une maison a 1000000k')).toBeNull();
+    expect(extractQuestionAmount('une voiture a 999k')).toBe(999_000_000);
   });
 
   it('matchGoal : nom exact, flou, absent', () => {
@@ -629,9 +628,9 @@ describe('assistant : entités et normalisation', () => {
     expect(contentWords('')).toEqual([]);
     expect(jaccard(new Set(), new Set())).toBe(0);
     expect(capitalize('')).toBe('');
-    expect(formatPercent(0.005)).toBe('0,5 %');
-    expect(formatPercent(-0.25, true)).toBe('−25 %');
-    expect(formatPercent(0.25, true)).toBe('+25 %');
+    expect(formatPercent(0.005, { decimals: 'auto' })).toBe('0,5 %');
+    expect(formatPercent(-0.25, { signed: true })).toBe('−25 %');
+    expect(formatPercent(0.25, { signed: true })).toBe('+25 %');
     expect(formatPercent(0)).toBe('0 %');
   });
 });
@@ -816,12 +815,9 @@ describe('assistant : configurations particulières des outils', () => {
   });
 });
 
-// BUG (reconnaissance d'intention) : src/domain/ai/assistant/intents.ts:69 — le motif
-// /\b(?:plus|moins) (?:que|qu)\b/ exige « plus » immédiatement suivi de « que/qu ». Avec la
-// période intercalée, tournure française courante, la comparaison n'est pas reconnue.
-// Entrée « je dépense plus en octobre qu’en septembre ? » (deux périodes détectées) →
-// attendu COMPARE_PERIODS (octobre vs septembre) ; obtenu SPENDING_TOTAL (total d'octobre seul).
-it.fails(
+// Régression (corrigée) : le motif exigeait « plus » immédiatement suivi de « que/qu » ; avec la
+// période intercalée (tournure courante), la comparaison n'était pas reconnue.
+it(
   'assistant : « je dépense plus en octobre qu’en septembre ? » → COMPARE_PERIODS',
   async () => {
     const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
@@ -833,3 +829,26 @@ it.fails(
     expect(a.intent).toBe('COMPARE_PERIODS');
   },
 );
+
+it('assistant : « depuis le 10 novembre 2027 » → réponse pour ce mois-ci, avec la remarque', async () => {
+  const ctx: AssistantContext = { today: TODAY, categories: CATEGORIES, accounts: [], goals: [] };
+  const a = await askAssistant(
+    'combien j’ai dépensé depuis le 10 novembre 2027 ?',
+    ctx,
+    fakeTools({ txs: syntheticHistory() }),
+  );
+  expect(a.period).toMatchObject({ from: '2026-11-01', to: '2026-11-30', label: 'ce mois-ci' });
+  expect(a.text.startsWith('Le 10 novembre 2027 est dans le futur')).toBe(true);
+});
+
+describe('intention COMPARE_PERIODS : « plus … qu’ » avec quelques mots intercalés', () => {
+  it.each([
+    ['je depense plus en octobre qu en septembre', 'COMPARE_PERIODS'],
+    ['j ai gagne moins ce mois ci que le mois dernier', 'COMPARE_PERIODS'],
+    ['est ce que je depense plus que le mois dernier', 'COMPARE_PERIODS'],
+    ['quelles sont mes plus grosses depenses du mois dernier', 'BIGGEST_EXPENSE'],
+    ['quand vais je atteindre mon objectif', 'GOAL_PROGRESS'],
+  ])('« %s » → %s', (q, intent) => {
+    expect(detectIntent(q).intent).toBe(intent);
+  });
+});

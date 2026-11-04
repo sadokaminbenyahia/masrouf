@@ -149,7 +149,12 @@ function loggedTools(tools: FinanceTools): FinanceTools {
   };
 }
 
-const toAiCategory = (c: Category): AiCategory => ({ id: c.id, name: c.name, kind: c.kind });
+const toAiCategory = (c: Category): AiCategory => ({
+  id: c.id,
+  name: c.name,
+  kind: c.kind,
+  group: c.group,
+});
 
 async function aiCategories(userId: string): Promise<Result<Category[]>> {
   return listCategories(userId);
@@ -202,6 +207,21 @@ function monthlyEquivalent(r: RecurringRule): number {
     case 'YEARLY':
       return r.amount / 12;
   }
+}
+
+/** Dépenses mensuelles vers les catégories du groupe Épargne (comptées comme de l'épargne). */
+function savingsGroupByMonth(
+  txs: readonly AiTransaction[],
+  categories: readonly Category[],
+): { month: YearMonth; amount: number }[] {
+  const ids = new Set(categories.filter((c) => c.group === 'SAVINGS').map((c) => c.id));
+  const byMonth = new Map<YearMonth, number>();
+  for (const t of txs) {
+    if (t.type !== 'EXPENSE' || t.categoryId === null || !ids.has(t.categoryId)) continue;
+    const ym = monthOf(t.date);
+    byMonth.set(ym, (byMonth.get(ym) ?? 0) + t.amount);
+  }
+  return [...byMonth].map(([month, amount]) => ({ month, amount }));
 }
 
 // ───────────────────────── Modèle de catégorisation ─────────────────────────
@@ -587,8 +607,9 @@ export async function simulateWhatIf(
       if (tx.type !== 'EXPENSE' || tx.categoryId === null || !last3.has(monthOf(tx.date))) continue;
       spent.set(tx.categoryId, (spent.get(tx.categoryId) ?? 0) + tx.amount);
     }
+    // Les catégories du groupe Épargne ne sont pas des leviers : les réduire diminuerait l'épargne.
     const categorySpending = cats.value
-      .filter((c) => c.kind === 'EXPENSE' && (spent.get(c.id) ?? 0) > 0)
+      .filter((c) => c.kind === 'EXPENSE' && c.group !== 'SAVINGS' && (spent.get(c.id) ?? 0) > 0)
       .map((c) => ({
         categoryId: c.id,
         name: c.name,
@@ -608,6 +629,7 @@ export async function simulateWhatIf(
       categorySpending,
       adjustments: input.adjustments,
       extraMonthlySaving: input.extraMonthlySaving,
+      savingsGroupByMonth: savingsGroupByMonth(txs, cats.value),
     });
     return validated(whatIfResultSchema, result, 'simulateWhatIf');
   });

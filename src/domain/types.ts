@@ -226,8 +226,13 @@ export interface DashboardData {
   accounts: AccountWithBalance[];
   current: TransactionTotals;
   previous: TransactionTotals;
-  /** (dépenses du mois − mois précédent) / mois précédent ; null si pas de référence */
+  /**
+   * (dépenses du mois − période de comparaison) / période de comparaison ; null sans référence.
+   * Mois en cours : comparé au mois précédent « à date » (mêmes jours), voir `comparisonLabel`.
+   */
   expenseChange: number | null;
+  /** Période de comparaison de `expenseChange` : « vs 1–4 octobre » ou « vs octobre » */
+  comparisonLabel: string;
   /** Budgets totaux − dépenses budgétées du mois ; null s'il n'y a pas de budget */
   remainingToSpend: Millimes | null;
   /** Reste à dépenser par jour restant ; null s'il n'y a pas de budget */

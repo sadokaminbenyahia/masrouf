@@ -4,9 +4,11 @@ import { AlertCircleIcon, ArrowRightIcon, LightbulbIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { getMonthlySummaryAction } from '@/app/actions/ai';
-import { formatPercent } from '@/domain/ai/assistant/normalize';
 import type { AssistantHighlight, MonthlySummary } from '@/domain/ai/types';
 import type { YearMonth } from '@/domain/dates';
+import { formatNumber, formatPercent } from '@/domain/format';
+import { maskMoneyInText } from '@/domain/money';
+import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { AiBadge } from '@/components/shared/ai-badge';
 import { Money } from '@/components/shared/money';
 import { MonthSwitcher } from '@/components/shared/month-switcher';
@@ -28,8 +30,8 @@ export function HighlightValue({ h, className }: { h: AssistantHighlight; classN
   if (h.format === 'money') return <Money value={h.value} decimals={0} className={className} />;
   const text =
     h.format === 'percent'
-      ? formatPercent(h.value, h.label.startsWith('Évolution'))
-      : new Intl.NumberFormat('fr-FR').format(h.value);
+      ? formatPercent(h.value, { signed: h.label.startsWith('Évolution'), decimals: 'auto' })
+      : formatNumber(h.value);
   return <span className={cn('tabular-nums', className)}>{text}</span>;
 }
 
@@ -47,6 +49,9 @@ export function MonthlySummaryCard({
     staleTime: 5 * 60_000,
   });
   const data = query.data;
+  const { discreet } = useDiscreetMode();
+  /** Mode discret : les montants cités dans les textes générés sont masqués. */
+  const text = (t: string) => (discreet ? maskMoneyInText(t) : t);
 
   return (
     <Card data-testid="monthly-summary" className={className} aria-busy={query.isFetching}>
@@ -54,7 +59,7 @@ export function MonthlySummaryCard({
         <div className="flex min-w-0 flex-col gap-1.5">
           <AiBadge label="Résumé automatique" />
           <CardTitle className="text-lg">
-            <h2>{data?.title ?? 'Résumé du mois'}</h2>
+            <h2>{text(data?.title ?? 'Résumé du mois')}</h2>
           </CardTitle>
         </div>
         {switchable ? (
@@ -95,7 +100,7 @@ export function MonthlySummaryCard({
             ) : null}
             <div className="flex max-w-prose flex-col gap-3 text-sm leading-relaxed">
               {data.paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
+                <p key={i}>{text(p)}</p>
               ))}
             </div>
             {data.recommendations.length > 0 ? (
@@ -110,8 +115,10 @@ export function MonthlySummaryCard({
                 <ul className="grid gap-2 md:grid-cols-3">
                   {data.recommendations.map((r) => (
                     <li key={r.title} className="flex flex-col gap-1.5 rounded-lg border p-3">
-                      <p className="text-sm font-medium">{r.title}</p>
-                      <p className="text-muted-foreground text-xs leading-relaxed">{r.detail}</p>
+                      <p className="text-sm font-medium">{text(r.title)}</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        {text(r.detail)}
+                      </p>
                       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
                         {r.impact !== null ? (
                           <span className="text-income text-xs font-medium">
@@ -126,7 +133,7 @@ export function MonthlySummaryCard({
                             className="text-primary focus-visible:ring-ring/50 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-xs font-medium hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
                           >
                             Voir le détail
-                            <span className="sr-only"> : {r.title}</span>
+                            <span className="sr-only"> : {text(r.title)}</span>
                             <ArrowRightIcon className="size-3.5" aria-hidden="true" />
                           </Link>
                         ) : null}

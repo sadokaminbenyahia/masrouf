@@ -1,10 +1,12 @@
 'use client';
 /**
- * Tableau de données d'un graphique, réservé aux lecteurs d'écran. S'il contient des actions
- * (boutons), il devient visible dès qu'il reçoit le focus clavier : les éléments cliquables
- * d'un graphique restent ainsi atteignables au clavier.
+ * Données d'un graphique pour les lecteurs d'écran (tableau masqué visuellement). Si le
+ * graphique est cliquable, ses actions (ex. ouvrir les transactions d'un mois) sont proposées
+ * dans une liste de boutons distincte : masquée tant qu'elle n'a pas le focus, elle apparaît
+ * DANS LE FLUX sous le graphique dès qu'un de ses boutons reçoit le focus clavier (aucun
+ * chevauchement, retour à la ligne sur mobile, pas de défilement horizontal).
  */
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ChartDataColumn<T> {
@@ -13,13 +15,21 @@ export interface ChartDataColumn<T> {
   align?: 'left' | 'right';
 }
 
+export interface ChartDataAction<T> {
+  /** Nom accessible complet du bouton (ex. « Transactions de mars 2026 ») */
+  label: (row: T) => string;
+  onActivate: (row: T) => void;
+  /** Intitulé de la liste d'actions (défaut « Actions du graphique ») */
+  title?: string;
+}
+
 export interface ChartDataTableProps<T> {
   caption: string;
   rows: readonly T[];
   columns: readonly ChartDataColumn<T>[];
   rowKey: (row: T) => string;
   /** Action par ligne (ex. ouvrir les transactions du mois) */
-  action?: { label: (row: T) => string; onActivate: (row: T) => void };
+  action?: ChartDataAction<T>;
   className?: string;
 }
 
@@ -31,73 +41,63 @@ export function ChartDataTable<T>({
   action,
   className,
 }: ChartDataTableProps<T>) {
+  const titleId = useId();
   return (
-    <div
-      className={cn(
-        'sr-only',
-        action &&
-          'focus-within:bg-card focus-within:not-sr-only focus-within:mt-3 focus-within:block focus-within:max-h-72 focus-within:overflow-auto focus-within:rounded-lg focus-within:border',
-        className,
-      )}
-    >
-      <table className="w-full text-sm">
-        <caption className="px-3 py-2 text-left font-medium">{caption}</caption>
-        <thead>
-          <tr className="text-muted-foreground border-b">
-            {columns.map((c) => (
-              <th
-                key={c.header}
-                scope="col"
-                className={cn(
-                  'px-3 py-1.5 font-medium',
-                  c.align === 'right' ? 'text-right' : 'text-left',
+    <div className={className}>
+      <div className="sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <th key={c.header} scope="col">
+                  {c.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={rowKey(row)}>
+                {columns.map((c, i) =>
+                  i === 0 ? (
+                    <th key={c.header} scope="row">
+                      {c.cell(row)}
+                    </th>
+                  ) : (
+                    <td key={c.header}>{c.cell(row)}</td>
+                  ),
                 )}
-              >
-                {c.header}
-              </th>
+              </tr>
             ))}
-            {action ? (
-              <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                Action
-              </th>
-            ) : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-b last:border-0">
-              {columns.map((c, i) =>
-                i === 0 ? (
-                  <th key={c.header} scope="row" className="px-3 py-1.5 text-left font-normal">
-                    {c.cell(row)}
-                  </th>
-                ) : (
-                  <td
-                    key={c.header}
-                    className={cn(
-                      'px-3 py-1.5 tabular-nums',
-                      c.align === 'right' ? 'text-right' : 'text-left',
-                    )}
-                  >
-                    {c.cell(row)}
-                  </td>
-                ),
-              )}
-              {action ? (
-                <td className="px-3 py-1 text-right">
+          </tbody>
+        </table>
+      </div>
+      {action ? (
+        <div
+          data-slot="chart-actions"
+          className="sr-only focus-within:not-sr-only focus-within:mt-3 focus-within:block"
+        >
+          <div className="bg-card rounded-lg border p-3">
+            <p id={titleId} className="text-muted-foreground mb-2 text-xs font-medium">
+              {action.title ?? 'Actions du graphique'}
+            </p>
+            <ul aria-labelledby={titleId} className="flex flex-wrap gap-2">
+              {rows.map((row) => (
+                <li key={rowKey(row)}>
                   <button
                     type="button"
                     onClick={() => action.onActivate(row)}
-                    className="text-primary focus-visible:ring-ring/50 min-h-11 rounded-md px-2 underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+                    className="text-primary hover:bg-accent focus-visible:ring-ring/50 min-h-11 rounded-full border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
                   >
                     {action.label(row)}
                   </button>
-                </td>
-              ) : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

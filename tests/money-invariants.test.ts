@@ -300,9 +300,16 @@ describe('agrégats, budgets, objectifs, comptes : sorties entières', () => {
       const p = computeBudgetProgress({ budget, category: cat, month, spent, today });
       expectMoney(p.remaining, 'remaining');
       expect(p.remaining).toBe(amount - spent);
-      expect(p.projected).not.toBeNull();
-      expectMoney(p.projected ?? NaN, 'projected');
-      expect(p.projected ?? -1).toBeGreaterThanOrEqual(spent);
+      // Projection à partir du 7e jour ET d'un quart du mois écoulé.
+      const day = Number(today.slice(8));
+      const dim = month.endsWith('-02') ? (month === '2024-02' ? 29 : 28) : month.endsWith('-11') ? 30 : 31;
+      if (day < 7 || day / dim < 0.25) {
+        expect(p.projected).toBeNull();
+      } else {
+        expect(p.projected).not.toBeNull();
+        expectMoney(p.projected ?? NaN, 'projected');
+        expect(p.projected ?? -1).toBeGreaterThanOrEqual(spent);
+      }
       expect(Number.isFinite(p.ratio)).toBe(true);
     }
     expect(projectSpending(1, '2024-02', '2024-02-29')).toBe(1);

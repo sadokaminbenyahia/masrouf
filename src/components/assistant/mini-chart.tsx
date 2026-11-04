@@ -15,11 +15,9 @@ import {
   YAxis,
 } from 'recharts';
 import type { MiniChart as MiniChartData } from '@/domain/ai/types';
-import { formatMoney, millimesToDinars } from '@/domain/money';
+import { formatMoney, maskMoneyInText } from '@/domain/money';
 import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { cn } from '@/lib/utils';
-
-const DISCREET = '•••';
 
 function color(index: number): string {
   return `var(--chart-${(index % 8) + 1})`;
@@ -47,14 +45,16 @@ function describe(chart: MiniChartData, discreet: boolean): string {
 export function MiniChart({ chart, height = 180, className }: MiniChartProps) {
   const { discreet } = useDiscreetMode();
   const reduceMotion = useReducedMotion() ?? false;
-  const data = chart.data.map((d) => ({ label: d.label, value: millimesToDinars(d.value) }));
+  // Les données restent en millimes entiers : la conversion n'a lieu qu'au formatage.
+  const data = chart.data;
+  const mask = (text: string) => (discreet ? maskMoneyInText(text) : text);
   const fmt = (v: unknown) =>
-    discreet ? DISCREET : typeof v === 'number' ? formatMoney(Math.round(v * 1000)) : String(v);
+    typeof v === 'number' ? mask(formatMoney(Math.round(v))) : String(v);
   const tick = (v: unknown) =>
     discreet
       ? ''
       : typeof v === 'number'
-        ? formatMoney(Math.round(v * 1000), { compact: true, hideCurrency: true })
+        ? formatMoney(Math.round(v), { compact: true, hideCurrency: true })
         : String(v);
   const tooltip = (
     <Tooltip

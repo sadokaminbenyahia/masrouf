@@ -16,6 +16,7 @@ import {
 import { errorMessage, queryKeys, unwrap } from '@/lib/query';
 import type { RecurringInput, RecurringPatch } from '@/lib/schemas/recurring';
 import { toastError } from '@/lib/toast';
+import { cleanSuggestionLabel } from './recurring-math';
 
 const TEMP_PREFIX = 'temp-';
 
@@ -137,7 +138,7 @@ function candidateToInput(c: RecurringCandidate): RecurringInput {
     categoryId: c.categoryId,
     type: c.type,
     amount: c.amount,
-    label: c.label.slice(0, 140),
+    label: cleanSuggestionLabel(c.label).slice(0, 140),
     frequency: c.frequency,
     startDate: c.nextDate,
     endDate: null,

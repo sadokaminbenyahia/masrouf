@@ -5,7 +5,7 @@
  */
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { CalendarCheck, CalendarX, RotateCcw, Sparkles, TrendingUp } from 'lucide-react';
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { WhatIfResult } from '@/domain/ai/types';
 import { formatMonthFR, monthOf, type ISODate } from '@/domain/dates';
 import type { Category, GoalProgress } from '@/domain/types';
@@ -44,12 +44,19 @@ export interface WhatIfSimulatorProps {
   goals: GoalProgress[];
   categories: Category[];
   today: ISODate;
+  /** Catégories payées par une échéance récurrente : exclues des curseurs si besoins. */
+  fixedCategoryIds?: readonly string[];
 }
 
 const selectClass =
   'flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm dark:bg-input/30';
 
-export function WhatIfSimulator({ goals, categories, today }: WhatIfSimulatorProps) {
+export function WhatIfSimulator({
+  goals,
+  categories,
+  today,
+  fixedCategoryIds,
+}: WhatIfSimulatorProps) {
   const headingId = useId();
   const goalFieldId = useId();
   const extraId = useId();
@@ -66,9 +73,13 @@ export function WhatIfSimulator({ goals, categories, today }: WhatIfSimulatorPro
     queryFn: async () => unwrap(await getCategoryBreakdownAction(breakdownParams)),
     staleTime: 5 * 60_000,
   });
+  const fixedKey = (fixedCategoryIds ?? []).join(',');
   const simCategories = useMemo(
-    () => selectSimulatorCategories(breakdown.data ?? [], categories),
-    [breakdown.data, categories],
+    () =>
+      selectSimulatorCategories(breakdown.data ?? [], categories, {
+        fixedCategoryIds: new Set(fixedKey ? fixedKey.split(',') : []),
+      }),
+    [breakdown.data, categories, fixedKey],
   );
 
   const input = useMemo<WhatIfActionInput | null>(() => {
@@ -143,6 +154,11 @@ export function WhatIfSimulator({ goals, categories, today }: WhatIfSimulatorPro
               </select>
             </div>
 
+            {/* Mobile : le résultat complet est sous les curseurs ; ce résumé collant montre
+                l'effet de chaque réglage sans faire défiler (doublon visuel, masqué aux
+                lecteurs d'écran qui ont la région live du résultat). */}
+            <StickySummary result={simulation.data ?? null} isUpdating={simulation.isFetching} />
+
             <fieldset className="grid gap-4">
               <legend className="mb-1 text-sm font-medium">
                 Réduire mes dépenses{' '}
@@ -216,6 +232,68 @@ export function WhatIfSimulator({ goals, categories, today }: WhatIfSimulatorPro
   );
 }
 
+/*
+ * Curseur natif restylé : piste de 6 px, pouce de 24 px (zone tactile de 44 px de haut),
+ * portion active en couleur primaire (`--fill`), anneau de focus sur le pouce.
+ */
+const sliderClass = cn(
+  'h-11 w-full cursor-pointer appearance-none bg-transparent outline-none',
+  '[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full',
+  '[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--primary)_var(--fill),var(--input)_var(--fill))]',
+  '[&::-webkit-slider-thumb]:-mt-[9px] [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none',
+  '[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white',
+  '[&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md',
+  'focus-visible:[&::-webkit-slider-thumb]:ring-ring/50 focus-visible:[&::-webkit-slider-thumb]:ring-[4px]',
+  '[&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-input',
+  '[&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-primary',
+  '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2',
+  '[&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow-md',
+  'focus-visible:[&::-moz-range-thumb]:ring-ring/50 focus-visible:[&::-moz-range-thumb]:ring-[4px]',
+);
+
+function StickySummary({
+  result,
+  isUpdating,
+}: {
+  result: WhatIfResult | null;
+  isUpdating: boolean;
+}) {
+  if (!result) return null;
+  const outcome = describeOutcome(result);
+  return (
+    <div
+      aria-hidden="true"
+      className="bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-[4.5rem] z-10 -mx-1 flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden"
+    >
+      <span className="min-w-0">
+        <span className="text-muted-foreground block text-xs">Date simulée</span>
+        <span className={cn('text-primary font-semibold', isUpdating && 'opacity-70')}>
+          {result.scenarioDate ? formatMonthFR(monthOf(result.scenarioDate)) : 'Jamais atteint'}
+        </span>
+      </span>
+      {outcome.kind === 'COMPARED' && (
+        <span
+          className={cn(
+            'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            outcome.monthsSaved > 0
+              ? 'bg-income/12 text-income'
+              : outcome.monthsSaved < 0
+                ? 'bg-warning/10 text-warning'
+                : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {monthsSavedLabel(outcome.monthsSaved)}
+        </span>
+      )}
+      {outcome.kind === 'NOW_REACHABLE' && (
+        <span className="bg-income/12 text-income shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+          Atteignable
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ReductionSlider({
   category,
   value,
@@ -249,7 +327,8 @@ function ReductionSlider({
         onChange={(e) => onChange(clampPercent(Number(e.target.value)))}
         aria-valuetext={percentValueText(value)}
         aria-describedby={hintId}
-        className="accent-primary h-11 w-full cursor-pointer"
+        style={{ '--fill': `${(value / MAX_REDUCTION) * 100}%` } as CSSProperties}
+        className={sliderClass}
       />
       <p id={hintId} className="text-muted-foreground text-xs">
         ≈ <Money value={category.monthlyAverage} decimals={0} />
@@ -336,7 +415,7 @@ function SimulationResult({
         <p
           className={cn(
             'inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold',
-            outcome.monthsSaved > 0 ? 'bg-income/12 text-income' : 'bg-warning/15 text-warning',
+            outcome.monthsSaved > 0 ? 'bg-income/12 text-income' : 'bg-warning/10 text-warning',
           )}
         >
           <TrendingUp className="size-4" aria-hidden="true" />

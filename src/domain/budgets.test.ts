@@ -39,9 +39,29 @@ describe('budgetLevel', () => {
 describe('projectSpending', () => {
   it('projette au rythme actuel pour le mois courant uniquement', () => {
     expect(projectSpending(100_000, '2026-11', '2026-11-10')).toBe(300_000);
-    expect(projectSpending(0, '2026-11', '2026-11-01')).toBe(0);
+    expect(projectSpending(0, '2026-11', '2026-11-10')).toBe(0);
     expect(projectSpending(100_000, '2026-10', '2026-11-10')).toBeNull();
     expect(projectSpending(100_000, '2026-12', '2026-11-10')).toBeNull();
+  });
+
+  it('aucune projection avant le 7e jour ni avant un quart du mois écoulé', () => {
+    expect(projectSpending(50_000, '2026-11', '2026-11-01')).toBeNull();
+    expect(projectSpending(50_000, '2026-11', '2026-11-06')).toBeNull();
+    // 30 jours : le 7 = 23 % < 25 % ; le 8 = 27 %.
+    expect(projectSpending(70_000, '2026-11', '2026-11-07')).toBeNull();
+    expect(projectSpending(80_000, '2026-11', '2026-11-08')).toBe(300_000);
+    // Février (28 jours) : le 7 = 25 %.
+    expect(projectSpending(70_000, '2026-02', '2026-02-07')).toBe(280_000);
+  });
+
+  it('rythme plafonné à 2× la moyenne journalière historique', () => {
+    // Gros achat ponctuel : 300 DT le 10 novembre, habituellement 150 DT par mois.
+    // Rythme brut 30 DT/j, plafonné à 2 × 150/30 = 10 DT/j → 300 + 10 × 20 = 500 DT.
+    expect(projectSpending(300_000, '2026-11', '2026-11-10', 150_000)).toBe(500_000);
+    expect(projectSpending(300_000, '2026-11', '2026-11-10')).toBe(900_000);
+    // Moyenne nulle ou absente : pas de plafond ; rythme sous le plafond : inchangé.
+    expect(projectSpending(300_000, '2026-11', '2026-11-10', 0)).toBe(900_000);
+    expect(projectSpending(30_000, '2026-11', '2026-11-10', 150_000)).toBe(90_000);
   });
 });
 

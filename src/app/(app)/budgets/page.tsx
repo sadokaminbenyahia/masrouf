@@ -6,7 +6,7 @@ import { today as getToday } from '@/server/clock';
 import { listBudgetProgress } from '@/server/services/budgets.service';
 import { listCategories } from '@/server/services/categories.service';
 
-export const metadata: Metadata = { title: 'Budgets · Masrouf' };
+export const metadata: Metadata = { title: 'Budgets' };
 
 export default async function BudgetsPage({
   searchParams,

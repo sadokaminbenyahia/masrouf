@@ -30,25 +30,31 @@ export interface ChangeDescription {
 const FLAT_THRESHOLD = 0.005;
 
 /**
- * Décrit la variation des dépenses par rapport au mois précédent.
- * `change` = (dépenses − dépenses précédentes) / dépenses précédentes, null sans référence.
+ * Décrit la variation des dépenses par rapport à la période de comparaison.
+ * `change` = (dépenses − dépenses de référence) / dépenses de référence, null sans référence.
+ * `comparisonLabel` (service : « vs 1–4 octobre » à mi-mois, « vs octobre » sinon) évite de
+ * comparer quelques jours à un mois complet ; à défaut, le mois précédent est cité.
  */
 export function describeExpenseChange(
   change: number | null,
   month: string,
+  comparisonLabel?: string,
 ): ChangeDescription | null {
   if (change === null || !Number.isFinite(change)) return null;
+  const label = comparisonLabel?.trim();
   const previous = formatMonthFR(addMonthsYM(month, -1), 'monthOnly');
+  const period = label ? label.replace(/^vs\s+/, '') : previous;
+  const reference = label ? `(comparaison : ${period})` : `par rapport à ${previous}`;
   const trend: Trend = Math.abs(change) < FLAT_THRESHOLD ? 'flat' : change > 0 ? 'up' : 'down';
   const percent = trend === 'flat' ? formatPercent(0) : formatPercent(change, { signed: true });
   const tone: Tone = trend === 'flat' ? 'neutral' : trend === 'up' ? 'bad' : 'good';
-  const text = `${percent} vs ${previous}`;
+  const text = `${percent} vs ${period}`;
   const srText =
     trend === 'flat'
-      ? `Dépenses stables par rapport à ${previous}.`
+      ? `Dépenses stables ${reference}.`
       : trend === 'up'
-        ? `Dépenses en hausse de ${formatPercent(change)} par rapport à ${previous}.`
-        : `Dépenses en baisse de ${formatPercent(Math.abs(change))} par rapport à ${previous}.`;
+        ? `Dépenses en hausse de ${formatPercent(change)} ${reference}.`
+        : `Dépenses en baisse de ${formatPercent(Math.abs(change))} ${reference}.`;
   return { trend, tone, percent, text, srText };
 }
 

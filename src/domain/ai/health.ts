@@ -1,6 +1,7 @@
 // Propriétaire : agent K — score de santé financière 0–100 expliqué
 import { monthOf } from '../dates';
 import { formatMoney } from '../money';
+import { savingsRate } from '../savings';
 import type { GoalProgress, MonthTotals } from '../types';
 import type { HealthComponent, HealthInput, HealthScore } from './types';
 
@@ -94,7 +95,6 @@ export function computeHealthScore(input: HealthInput): HealthScore {
   const months = completeMonths(input.monthly, input.today);
   const withActivity = months.filter((m) => m.income > 0 || m.expense > 0);
   const totalIncome = withActivity.reduce((s, m) => s + m.income, 0);
-  const totalExpense = withActivity.reduce((s, m) => s + m.expense, 0);
   const avgIncome = mean(withActivity.map((m) => m.income));
   const avgExpense = mean(withActivity.map((m) => m.expense));
   const parts: Partial0[] = [];
@@ -102,8 +102,13 @@ export function computeHealthScore(input: HealthInput): HealthScore {
     parts.push({ key, label: LABELS[key], score: clampScore(raw), explanation });
 
   // 1. Taux d'épargne : 0 % → 0 ; ≥ 20 % → 100.
-  if (totalIncome > 0) {
-    const rate = (totalIncome - totalExpense) / totalIncome;
+  // Définition unique (src/domain/savings.ts) : les versements vers le groupe Épargne comptent.
+  const rate = savingsRate({
+    income: avgIncome,
+    expense: avgExpense,
+    savingsGroupExpense: Math.min(avgExpense, Math.max(0, input.groupSpending.savings)),
+  });
+  if (totalIncome > 0 && rate !== null) {
     push(
       'SAVINGS_RATE',
       lerp(rate, 0, 0, 0.2, 100),

@@ -25,6 +25,8 @@ interface GoalsViewProps {
   initialGoals: GoalProgress[] | null;
   initialError: string | null;
   categories: Category[];
+  /** Catégories payées par une échéance récurrente (exclues du simulateur si besoins). */
+  fixedCategoryIds?: string[];
 }
 
 export function GoalsView({
@@ -32,6 +34,7 @@ export function GoalsView({
   initialGoals,
   initialError,
   categories: initialCategories,
+  fixedCategoryIds,
 }: GoalsViewProps) {
   const [form, setForm] = useState<GoalFormMode | null>(null);
   const [contribution, setContribution] = useState<ContributionTarget | null>(null);
@@ -130,7 +133,14 @@ export function GoalsView({
         </section>
       )}
 
-      {hasData && <WhatIfSimulator goals={goals} categories={categories} today={today} />}
+      {hasData && (
+        <WhatIfSimulator
+          goals={goals}
+          categories={categories}
+          today={today}
+          fixedCategoryIds={fixedCategoryIds}
+        />
+      )}
 
       <ContributionDialog
         target={contribution}
