@@ -1,0 +1,227 @@
+// Masrouf — schéma de données
+// Conventions :
+//  - Tous les montants sont des ENTIERS en millimes (1 TND = 1000 millimes). Jamais de float.
+//  - Les dates métier sont des chaînes "YYYY-MM-DD" (date locale Africa/Tunis) : comparaison
+//    lexicographique = comparaison chronologique, aucun piège de fuseau horaire.
+//  - Les "enums" sont des String validées par Zod (SQLite) ; valeurs listées en commentaire.
+//  - Chaque table métier porte userId et est indexée dessus : toute requête est filtrée par userId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  currency     String    @default("TND")
+  onboardedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accounts      Account[]
+  categories    Category[]
+  transactions  Transaction[]
+  tags          Tag[]
+  budgets       Budget[]
+  goals         Goal[]
+  recurring     RecurringRule[]
+  aiModels      AiModel[]
+  dismissed     DismissedInsight[]
+}
+
+model Account {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  /// CASH | BANK | CARD
+  type           String
+  /// Solde d'ouverture, en millimes
+  initialBalance Int      @default(0)
+  color          String   @default("#1F5FAD")
+  archived       Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions         Transaction[]   @relation("TransactionAccount")
+  incomingTransfers    Transaction[]   @relation("TransferTarget")
+  recurring            RecurringRule[]
+
+  @@index([userId, archived])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  /// EXPENSE | INCOME
+  kind      String
+  /// NEEDS | WANTS | SAVINGS | INCOME  (règle 50/30/20)
+  group     String
+  /// Nom d'icône lucide-react (ex. "ShoppingCart")
+  icon      String   @default("Tag")
+  color     String   @default("#64748B")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+  recurring    RecurringRule[]
+
+  @@unique([userId, name])
+  @@index([userId, kind])
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  userId            String
+  accountId         String
+  categoryId        String?
+  /// EXPENSE | INCOME | TRANSFER
+  type              String
+  /// Montant POSITIF en millimes ; le signe est porté par `type`
+  amount            Int
+  /// "YYYY-MM-DD"
+  date              String
+  label             String
+  note              String?
+  /// Compte destinataire pour un TRANSFER
+  transferAccountId String?
+  recurringId       String?
+  /// Empreinte pour la détection de doublons à l'import (date|montant|libellé normalisé)
+  importHash        String?
+  /// USER | AI | RULE | IMPORT | RECURRING | SEED
+  categorySource    String?
+  /// Confiance de la catégorisation automatique (0..1)
+  aiConfidence      Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account         Account        @relation("TransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  transferAccount Account?       @relation("TransferTarget", fields: [transferAccountId], references: [id], onDelete: SetNull)
+  category        Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurring       RecurringRule? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  tags            Tag[]
+
+  @@index([userId, date])
+  @@index([userId, categoryId, date])
+  @@index([userId, accountId, date])
+  @@index([userId, type, date])
+  @@index([userId, importHash])
+  @@index([transferAccountId])
+}
+
+model Tag {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name])
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  /// Plafond MENSUEL en millimes (s'applique à chaque mois)
+  amount     Int
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([userId, sortOrder])
+}
+
+model Goal {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  targetAmount Int
+  savedAmount  Int       @default(0)
+  /// "YYYY-MM-DD" ou null
+  targetDate   String?
+  icon         String    @default("PiggyBank")
+  color        String    @default("#15803D")
+  sortOrder    Int       @default(0)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sortOrder])
+}
+
+model RecurringRule {
+  id         String   @id @default(cuid())
+  userId     String
+  accountId  String
+  categoryId String?
+  /// EXPENSE | INCOME
+  type       String
+  amount     Int
+  label      String
+  /// WEEKLY | MONTHLY | QUARTERLY | YEARLY
+  frequency  String
+  /// "YYYY-MM-DD"
+  startDate  String
+  /// Prochaine échéance "YYYY-MM-DD"
+  nextDate   String
+  endDate    String?
+  active     Boolean  @default(true)
+  /// Crée automatiquement la transaction à l'échéance
+  autoCreate Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([userId, active, nextDate])
+}
+
+/// Modèles IA persistés par utilisateur (ex. classifieur bayésien sérialisé en JSON)
+model AiModel {
+  id        String   @id @default(cuid())
+  userId    String
+  /// ex. "categorizer"
+  kind      String
+  version   Int
+  /// JSON sérialisé, validé par Zod au chargement
+  data      String
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+}
+
+/// Anomalies / conseils ignorés par l'utilisateur (clé stable)
+model DismissedInsight {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+}
