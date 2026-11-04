@@ -63,7 +63,8 @@ export function fixedChargeCategoryIds(
   rules: readonly Pick<RecurringRule, 'categoryId' | 'type' | 'active'>[],
 ): string[] {
   const ids = new Set<string>();
-  for (const r of rules) if (r.active && r.type === 'EXPENSE' && r.categoryId) ids.add(r.categoryId);
+  for (const r of rules)
+    if (r.active && r.type === 'EXPENSE' && r.categoryId) ids.add(r.categoryId);
   return [...ids];
 }
 

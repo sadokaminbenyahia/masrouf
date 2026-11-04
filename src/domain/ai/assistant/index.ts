@@ -19,11 +19,12 @@ export const EXAMPLE_QUESTIONS: string[] = [
 
 const GREETING_RE = /^(?:bonjour|bonsoir|salut|hello|coucou|salam|aslema|ahla|hey|merci)\b/;
 
+// Les suggestions sont introduites par l'interface (« Essayez : ») : pas de redite ici.
 const HELP_TEXT =
-  'Je n’ai pas bien compris votre question. Je peux vous renseigner sur vos dépenses et revenus, vos catégories, vos budgets, votre solde et sa prévision, vos abonnements, vos objectifs ou votre taux d’épargne. Essayez par exemple une de ces questions :';
+  'Je n’ai pas bien compris votre question. Je peux vous renseigner sur vos dépenses et revenus, vos catégories, vos budgets, votre solde et sa prévision, vos abonnements, vos objectifs ou votre taux d’épargne.';
 
 const GREETING_TEXT =
-  'Bonjour ! Je suis votre assistant financier. Posez-moi une question sur vos finances, par exemple :';
+  'Bonjour ! Je suis votre assistant financier. Posez-moi une question sur vos finances.';
 
 const TOOL_ERROR_TEXT =
   'Désolé, je n’ai pas pu consulter vos données pour le moment. Réessayez dans un instant.';

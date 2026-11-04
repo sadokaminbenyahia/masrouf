@@ -523,6 +523,11 @@ describe('generateMonthlySummary : gabarits et branches', () => {
       'Vos petites dépenses en Cafés',
       expect.any(String),
     ]);
+    // Mois résumé ≠ mois courant : « en août », jamais « ce mois-ci ».
+    const details = s.recommendations.map((r) => r.detail).join(' ');
+    expect(details).toContain('en août');
+    expect(details).not.toContain('ce mois-ci');
+    expect(s.paragraphs.join(' ')).not.toContain('ce mois-ci');
   });
 });
 

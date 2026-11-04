@@ -100,7 +100,11 @@ interface Entry {
 /** Garde les entrées pertinentes, triées par pertinence décroissante (tri stable). */
 function rank(entries: readonly Entry[], search: string): Entry[] {
   return entries
-    .map((entry, index) => ({ entry, index, score: paletteScore(search, entry.label, entry.keywords) }))
+    .map((entry, index) => ({
+      entry,
+      index,
+      score: paletteScore(search, entry.label, entry.keywords),
+    }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((r) => r.entry);
@@ -265,7 +269,9 @@ export function CommandPalette({ today }: { today: ISODate }) {
       <CommandList>
         <CommandEmpty>Aucun résultat.</CommandEmpty>
 
-        {nav.length > 0 ? <CommandGroup heading="Navigation">{nav.map(renderEntry)}</CommandGroup> : null}
+        {nav.length > 0 ? (
+          <CommandGroup heading="Navigation">{nav.map(renderEntry)}</CommandGroup>
+        ) : null}
 
         {actions.length > 0 ? (
           <>
@@ -288,9 +294,7 @@ export function CommandPalette({ today }: { today: ISODate }) {
                 <CommandItem
                   value="ia:demander"
                   onSelect={() =>
-                    run(() =>
-                      router.push(`/assistant?q=${encodeURIComponent(text.slice(0, 300))}`),
-                    )
+                    run(() => router.push(`/assistant?q=${encodeURIComponent(text.slice(0, 300))}`))
                   }
                 >
                   <MessageCircleQuestionIcon aria-hidden="true" />

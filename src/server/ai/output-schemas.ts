@@ -135,6 +135,7 @@ export const balanceForecastSchema: z.ZodType<BalanceForecast> = z.object({
       high: money.nullable(),
     }),
   ),
+  chartToday: isoDateSchema.optional(),
   monthlyNetEstimate: money,
   explanation: text,
 });
@@ -231,4 +232,5 @@ export const healthScoreSchema: z.ZodType<HealthScore> = z.object({
   ),
   summary: text,
   topAdvice: text,
+  dataSufficient: z.boolean(),
 });

@@ -19,7 +19,10 @@ const PRICE_INCREASE_RATIO = 1.05;
 const PRICE_INCREASE_MIN = 1_000;
 const DEFAULT_LOOKBACK_DAYS = 45;
 
+/** Montant unitaire (une transaction) : millimes visibles. */
 const money = (m: number) => formatMoney(m);
+/** Montant de référence approximatif (habituel, médiane) : arrondi au dinar. */
+const approx = (m: number) => formatMoney(m, { decimals: 0 });
 
 function byDateThenId(a: AiTransaction, b: AiTransaction): number {
   return a.date < b.date ? -1 : a.date > b.date ? 1 : a.id.localeCompare(b.id);
@@ -93,7 +96,7 @@ function unusualAmounts(
         title: t.categoryId ? `Dépense inhabituelle en ${name}` : 'Dépense inhabituelle',
         message:
           expected !== null
-            ? `${money(t.amount)} pour « ${t.label} », alors qu’une dépense ${t.categoryId ? `en ${name} ` : ''}tourne habituellement autour de ${money(expected)}.`
+            ? `${money(t.amount)} pour « ${t.label} », alors qu’une dépense ${t.categoryId ? `en ${name} ` : ''}tourne habituellement autour de ${approx(expected)}.`
             : `${money(t.amount)} pour « ${t.label} », bien au-dessus de vos dépenses habituelles.`,
         actualAmount: t.amount,
         expectedAmount: expected,
@@ -181,7 +184,7 @@ function priceIncreases(input: AnomalyInput, expenses: AiTransaction[], since: s
       severity: pct >= 20 ? 'WARNING' : 'INFO',
       transactionIds: list.slice(-4).map((t) => t.id),
       title: `Hausse de prix : ${last.label}`,
-      message: `« ${last.label} » passe de ${money(Math.round(ref))} à ${money(last.amount)} (+${pct} %).`,
+      message: `« ${last.label} » passe de ${approx(Math.round(ref))} à ${money(last.amount)} (+${pct} %).`,
       actualAmount: last.amount,
       expectedAmount: Math.round(ref),
       score: Math.round((last.amount / ref) * 100) / 100,

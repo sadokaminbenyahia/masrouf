@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RecurringCandidate } from './ai/types';
 import { formatMoney } from './money';
 import {
+  activeMonthsAverage,
   categorySpikeInsights,
   computeInsights,
   forgottenSubscriptionInsights,
@@ -149,13 +150,28 @@ describe('categorySpikeInsights', () => {
     ).toEqual([]);
   });
 
-  it('trie par écart décroissant', () => {
+  it('facture bimestrielle : pas une « hausse » le mois où elle tombe', () => {
+    // STEG tous les 2 mois (≈ 90 DT) : moyenne 3 mois ≈ 30–60 DT, mais mois actifs ≈ 90 DT.
     const sums = [
-      { categoryId: 'resto', month: '2026-10', amount: 300_000 },
-      { categoryId: 'resto', month: '2026-11', amount: 200_000 },
-      { categoryId: 'loyer', month: '2026-10', amount: 3_000_000 },
-      { categoryId: 'loyer', month: '2026-11', amount: 2_000_000 },
+      { categoryId: 'loyer', month: '2026-05', amount: 90_000 },
+      { categoryId: 'loyer', month: '2026-07', amount: 88_000 },
+      { categoryId: 'loyer', month: '2026-09', amount: 92_000 },
+      { categoryId: 'loyer', month: '2026-11', amount: 95_000 },
     ];
+    expect(categorySpikeInsights('2026-11', sums, catMap)).toEqual([]);
+    expect(activeMonthsAverage([0, 90_000, 0, 92_000])).toBe(91_000);
+    expect(activeMonthsAverage([0, 0])).toBe(0);
+  });
+
+  it('trie par écart décroissant', () => {
+    const sums = ['2026-08', '2026-09', '2026-10'].flatMap((month) => [
+      { categoryId: 'resto', month, amount: 100_000 },
+      { categoryId: 'loyer', month, amount: 1_000_000 },
+    ]);
+    sums.push(
+      { categoryId: 'resto', month: '2026-11', amount: 200_000 },
+      { categoryId: 'loyer', month: '2026-11', amount: 2_000_000 },
+    );
     expect(categorySpikeInsights('2026-11', sums, catMap).map((i) => i.categoryId)).toEqual([
       'loyer',
       'resto',

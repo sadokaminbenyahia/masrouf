@@ -112,7 +112,10 @@ export type RowEdits = Record<number, RowEdit>;
 
 export type PreviewFilter = 'ALL' | 'TO_IMPORT' | 'DUPLICATES';
 
-/** Les doublons existants ne sont jamais importables ; les doublons internes au fichier peuvent l'être. */
+/**
+ * Les doublons existants ne sont jamais importables ; les doublons internes au fichier et les
+ * doublons possibles le sont (décochés par défaut, voir `initialEdits`).
+ */
 export function isSelectable(row: ImportPreviewRow): boolean {
   return row.duplicate !== 'EXISTING';
 }
@@ -163,18 +166,22 @@ export interface PreviewCounts {
   selected: number;
   existing: number;
   inFile: number;
+  /** Doublons possibles : même montant et type à ±2 jours, libellé différent */
+  possible: number;
 }
 
 export function previewCounts(rows: readonly ImportPreviewRow[], edits: RowEdits): PreviewCounts {
   let selected = 0;
   let existing = 0;
   let inFile = 0;
+  let possible = 0;
   for (const row of rows) {
     if (isSelected(edits, row)) selected++;
     if (row.duplicate === 'EXISTING') existing++;
     if (row.duplicate === 'IN_FILE') inFile++;
+    if (row.duplicate === 'POSSIBLE') possible++;
   }
-  return { total: rows.length, selected, existing, inFile };
+  return { total: rows.length, selected, existing, inFile, possible };
 }
 
 export function setSelected(
@@ -228,7 +235,26 @@ export function applyCategoryToSelection(
 
 export type CommitRow = ImportCommitInput['rows'][number];
 
-export function buildCommitRows(rows: readonly ImportPreviewRow[], edits: RowEdits): CommitRow[] {
+/** Libellé nettoyé proposé par le serveur, s'il diffère du libellé brut. */
+export function cleanedLabel(row: ImportPreviewRow): string | null {
+  const s = row.suggestedLabel?.trim();
+  return s && s !== row.label ? s : null;
+}
+
+/** Libellé affiché et importé : nettoyé si l'option est active et qu'une proposition existe. */
+export function effectiveLabel(row: ImportPreviewRow, cleanLabels: boolean): string {
+  return (cleanLabels ? cleanedLabel(row) : null) ?? row.label;
+}
+
+export function hasCleanableLabels(rows: readonly ImportPreviewRow[]): boolean {
+  return rows.some((r) => cleanedLabel(r) !== null);
+}
+
+export function buildCommitRows(
+  rows: readonly ImportPreviewRow[],
+  edits: RowEdits,
+  { cleanLabels = false }: { cleanLabels?: boolean } = {},
+): CommitRow[] {
   const out: CommitRow[] = [];
   for (const row of rows) {
     if (!isSelected(edits, row)) continue;
@@ -236,7 +262,7 @@ export function buildCommitRows(rows: readonly ImportPreviewRow[], edits: RowEdi
     const commit: CommitRow = {
       index: row.index,
       date: row.date,
-      label: row.label,
+      label: effectiveLabel(row, cleanLabels),
       amount: row.amount,
       type: row.type,
       importHash: row.importHash,

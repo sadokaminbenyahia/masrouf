@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -33,8 +34,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   PREVIEW_PAGE_SIZE,
   applyCategoryToSelection,
+  cleanedLabel,
   editOf,
+  effectiveLabel,
   filterRows,
+  hasCleanableLabels,
   isSelectable,
   isSelected,
   pageCount,
@@ -52,6 +56,9 @@ interface PreviewStepProps {
   rows: ImportPreviewRow[];
   edits: RowEdits;
   onEditsChange: (edits: RowEdits) => void;
+  /** Envoyer les libellés nettoyés (proposés par le serveur) plutôt que les libellés bruts */
+  cleanLabels: boolean;
+  onCleanLabelsChange: (clean: boolean) => void;
   categories: Category[];
   pending: boolean;
   error: string | null;
@@ -62,6 +69,12 @@ interface PreviewStepProps {
 function DuplicateBadge({ duplicate }: { duplicate: ImportPreviewRow['duplicate'] }) {
   if (duplicate === 'EXISTING') return <Badge variant="secondary">Déjà importée</Badge>;
   if (duplicate === 'IN_FILE') return <Badge variant="warning">Doublon dans le fichier</Badge>;
+  if (duplicate === 'POSSIBLE')
+    return (
+      <Badge variant="warning" title="Même montant à 2 jours près, avec un libellé différent">
+        Doublon possible
+      </Badge>
+    );
   return <span className="text-muted-foreground text-sm">Nouvelle</span>;
 }
 
@@ -69,6 +82,8 @@ export function PreviewStep({
   rows,
   edits,
   onEditsChange,
+  cleanLabels,
+  onCleanLabelsChange,
   categories,
   pending,
   error,
@@ -79,6 +94,8 @@ export function PreviewStep({
   const [page, setPage] = useState(1);
   const [bulkCategory, setBulkCategory] = useState<string>('');
   const bulkId = useId();
+  const cleanId = useId();
+  const cleanable = useMemo(() => hasCleanableLabels(rows), [rows]);
 
   const counts = useMemo(() => previewCounts(rows, edits), [rows, edits]);
   const filtered = useMemo(() => filterRows(rows, edits, filter), [rows, edits, filter]);
@@ -132,9 +149,9 @@ export function PreviewStep({
           { label: 'À importer', value: counts.selected, accent: 'text-primary' },
           { label: 'Déjà importées', value: counts.existing },
           {
-            label: 'Doublons dans le fichier',
-            value: counts.inFile,
-            accent: counts.inFile > 0 ? 'text-warning' : '',
+            label: 'Doublons à vérifier',
+            value: counts.inFile + counts.possible,
+            accent: counts.inFile + counts.possible > 0 ? 'text-warning' : '',
           },
         ].map((s) => (
           <div key={s.label} className="bg-card rounded-xl border px-4 py-3">
@@ -144,12 +161,32 @@ export function PreviewStep({
         ))}
       </dl>
 
-      {counts.existing > 0 && (
+      {counts.existing + counts.inFile + counts.possible > 0 && (
         <p className="text-muted-foreground text-sm">
-          Les lignes « Déjà importées » existent dans vos transactions et ne seront pas ajoutées.
-          Les doublons dans le fichier sont décochés : cochez-les s’il s’agit bien de deux
-          opérations.
+          {counts.existing > 0 &&
+            'Les lignes « Déjà importées » existent dans vos transactions et ne seront pas ajoutées. '}
+          {counts.inFile + counts.possible > 0 &&
+            'Les doublons dans le fichier et les doublons possibles (même montant à 2 jours près, libellé différent) sont décochés : cochez-les s’il s’agit bien d’opérations distinctes.'}
         </p>
+      )}
+
+      {cleanable && (
+        <div className="bg-card flex items-start gap-3 rounded-xl border px-4 py-3">
+          <Switch
+            id={cleanId}
+            checked={cleanLabels}
+            onCheckedChange={onCleanLabelsChange}
+            aria-describedby={`${cleanId}-aide`}
+            className="mt-0.5"
+          />
+          <div className="grid gap-0.5">
+            <Label htmlFor={cleanId}>Nettoyer les libellés</Label>
+            <p id={`${cleanId}-aide`} className="text-muted-foreground text-sm">
+              Retire les préfixes bancaires et références (« CB », dates, numéros) pour des
+              libellés lisibles. Le libellé d’origine reste affiché en dessous.
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -168,7 +205,7 @@ export function PreviewStep({
           <ToggleGroupItem value="ALL">Toutes ({counts.total})</ToggleGroupItem>
           <ToggleGroupItem value="TO_IMPORT">À importer ({counts.selected})</ToggleGroupItem>
           <ToggleGroupItem value="DUPLICATES">
-            Doublons ({counts.existing + counts.inFile})
+            Doublons ({counts.existing + counts.inFile + counts.possible})
           </ToggleGroupItem>
         </ToggleGroup>
 
@@ -247,6 +284,8 @@ export function PreviewStep({
               const selectable = isSelectable(row);
               const selected = isSelected(edits, row);
               const options = row.type === 'EXPENSE' ? expenseCategories : incomeCategories;
+              const label = effectiveLabel(row, cleanLabels);
+              const cleaned = cleanLabels && cleanedLabel(row) !== null;
               return (
                 <TableRow
                   key={row.index}
@@ -259,9 +298,7 @@ export function PreviewStep({
                       disabled={!selectable}
                       onCheckedChange={(v) => onEditsChange(setSelected(edits, [row], v === true))}
                       aria-label={
-                        selectable
-                          ? `Importer « ${row.label} »`
-                          : `« ${row.label} » est déjà importée`
+                        selectable ? `Importer « ${label} »` : `« ${label} » est déjà importée`
                       }
                     />
                   </TableCell>
@@ -269,9 +306,15 @@ export function PreviewStep({
                     {formatDateFR(row.date, 'short')}
                   </TableCell>
                   <TableCell className="max-w-72">
-                    <p className="text-foreground truncate font-medium" title={row.label}>
-                      {row.label}
+                    <p className="text-foreground truncate font-medium" title={label}>
+                      {label}
                     </p>
+                    {cleaned && (
+                      <p className="text-muted-foreground truncate text-xs" title={row.label}>
+                        <span className="sr-only">Libellé d’origine : </span>
+                        {row.label}
+                      </p>
+                    )}
                     {row.note && (
                       <p className="text-muted-foreground truncate text-xs" title={row.note}>
                         {row.note}
@@ -291,7 +334,7 @@ export function PreviewStep({
                             setCategory(edits, row, e.target.value === '' ? null : e.target.value),
                           )
                         }
-                        aria-label={`Catégorie pour « ${row.label} »`}
+                        aria-label={`Catégorie pour « ${label} »`}
                         className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-9 max-w-48 rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:opacity-50 dark:[color-scheme:dark]"
                       >
                         <option value="">Sans catégorie</option>

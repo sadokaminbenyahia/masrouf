@@ -86,6 +86,8 @@ export function ImportWizard({ today, initialAccounts, initialCategories }: Impo
   const [fileError, setFileError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [hasHeader, setHasHeader] = useState(true);
+  /** « Nettoyer les libellés » : libellés proposés par le serveur envoyés à l'import. */
+  const [cleanLabels, setCleanLabels] = useState(true);
   const [mapping, setMapping] = useState<MappingState | null>(null);
   const [chosenAccountId, setChosenAccountId] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ key: string; rows: ImportPreviewRow[] } | null>(null);
@@ -205,7 +207,7 @@ export function ImportWizard({ today, initialAccounts, initialCategories }: Impo
 
   const commit = () => {
     if (accountId === null || !preview) return;
-    const rows = buildCommitRows(preview.rows, edits);
+    const rows = buildCommitRows(preview.rows, edits, { cleanLabels });
     if (rows.length === 0) return;
     commitMutation.mutate({ accountId, rows });
   };
@@ -303,6 +305,8 @@ export function ImportWizard({ today, initialAccounts, initialCategories }: Impo
                 rows={preview.rows}
                 edits={edits}
                 onEditsChange={setEdits}
+                cleanLabels={cleanLabels}
+                onCleanLabelsChange={setCleanLabels}
                 categories={categories}
                 pending={commitMutation.isPending}
                 error={commitMutation.error ? errorMessage(commitMutation.error) : null}

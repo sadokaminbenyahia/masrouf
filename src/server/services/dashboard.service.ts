@@ -98,7 +98,7 @@ export async function getDashboard(
     txRepo.sumByCategory(userId, monthRange(ruleMonth), 'EXPENSE'),
     txRepo.sumByCategoryAndDay(
       userId,
-      { from: monthStart(addMonthsYM(ym, -3)), to: monthEnd(ym) },
+      { from: monthStart(addMonthsYM(ym, -6)), to: monthEnd(ym) },
       'EXPENSE',
     ),
     txRepo.findInRange(userId, detectionRange, { types: ['EXPENSE', 'INCOME'] }),

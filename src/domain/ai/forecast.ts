@@ -204,7 +204,13 @@ export function forecastBalance(input: ForecastInput): BalanceForecast {
     addMonthsYM(current, -1),
   );
   const sortedDesc = [...history].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // Pas de faux historique plat : aucun solde « réel » avant le premier mois de données.
+  const firstMonth = firstDate === null ? null : monthOf(firstDate);
   for (const ym of pastMonths) {
+    if (firstMonth === null || ym < firstMonth) {
+      chart.push({ month: ym, actual: null, expected: null, low: null, high: null });
+      continue;
+    }
     const cutoff = monthEnd(ym);
     let after = 0;
     for (const t of sortedDesc) {
@@ -225,7 +231,9 @@ export function forecastBalance(input: ForecastInput): BalanceForecast {
     [current, endOfMonth] as const,
     ...monthsOut.map((p, i) => [addMonthsYM(current, i + 1), p] as const),
   ]) {
-    chart.push({ month: ym, actual: null, expected: p.expected, low: p.low, high: p.high });
+    // Mois courant : le solde réel d'aujourd'hui prolonge la courbe réelle jusqu'à `today`.
+    const actual = ym === current ? Math.round(currentBalance) : null;
+    chart.push({ month: ym, actual, expected: p.expected, low: p.low, high: p.high });
   }
 
   const monthlyNetEstimate = Math.round(method === 'none' ? 0 : predict(1));
@@ -247,6 +255,7 @@ export function forecastBalance(input: ForecastInput): BalanceForecast {
     endOfMonth,
     months: monthsOut,
     chart,
+    chartToday: today,
     monthlyNetEstimate,
     explanation,
   };

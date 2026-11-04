@@ -199,6 +199,8 @@ export interface BalanceForecast {
   months: ForecastPoint[];
   /** 6 mois d'historique + mois courant + 3 mois de prévision, pour le graphique */
   chart: ForecastChartPoint[];
+  /** Date du solde réel porté par le point du mois courant (`actual` = solde à cette date) */
+  chartToday?: ISODate;
   /** Flux net mensuel estimé (hors récurrences) */
   monthlyNetEstimate: Millimes;
   /** Explication courte en français */
@@ -315,7 +317,7 @@ export interface AssistantAnswer {
 export interface MonthlySummaryInput {
   month: YearMonth;
   today: ISODate;
-  /** Transactions du mois ET des 3 mois précédents */
+  /** Transactions du mois ET des 3 mois précédents (jusqu'à 6 : hausses comparées aux mois actifs) */
   transactions: AiTransaction[];
   categories: AiCategory[];
   budgets: BudgetProgress[];
@@ -421,6 +423,11 @@ export interface HealthScore {
   summary: string;
   /** Conseil prioritaire (levier qui rapporte le plus de points) */
   topAdvice: string;
+  /**
+   * Au moins 1 mois complet avec revenus ET dépenses. false : score seulement indicatif,
+   * l'interface affiche un état vide explicite.
+   */
+  dataSufficient: boolean;
 }
 
 export type { Category };

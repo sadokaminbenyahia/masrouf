@@ -777,23 +777,32 @@ const canAfford: Answerer = async ({ tools, amount, today }) => {
     );
   }
   const f = await tools.forecast();
-  const { expected, low } = f.endOfMonth;
-  const after = expected - amount;
+  // UN seul scénario chiffré, le prudent (borne basse de l'intervalle à 80 %), arrondi au dinar :
+  // le texte, les chiffres clés et le graphique citent les mêmes montants.
+  const toDinar = (v: Millimes) => Math.round(v / 1000) * 1000;
+  const { expected } = f.endOfMonth;
+  const prudent = toDinar(f.endOfMonth.low);
+  const purchase = toDinar(amount);
+  const after = prudent - purchase;
   let text: string;
-  if (low >= amount) {
-    text = `Oui, cela semble raisonnable. Même dans un scénario prudent, votre solde de fin de mois serait d'environ ${approx(low)} : après cet achat de ${approx(amount)}, il vous resterait ${approx(low - amount)}.`;
+  if (after >= 0) {
+    text = `Oui, cela semble raisonnable. Dans un scénario prudent, votre solde de fin de mois serait d'environ ${approx(prudent)} : après cet achat de ${approx(purchase)}, il vous resterait environ ${approx(after)}.`;
   } else if (expected >= amount) {
-    text = `C'est possible, mais serré. Votre solde prévu en fin de mois est de ${approx(expected)} : il ne resterait que ${approx(after)} après cet achat de ${approx(amount)}, et le scénario prudent (${approx(low)}) ne le couvre pas. Attendre la prochaine rentrée d'argent serait plus confortable.`;
+    text = `C'est possible, mais serré. Votre solde prévu couvre cet achat de ${approx(purchase)}, mais pas dans un scénario prudent (environ ${approx(prudent)} en fin de mois) : il vous manquerait environ ${approx(-after)}. Attendre la prochaine rentrée d'argent serait plus confortable.`;
   } else {
-    text = `Mieux vaut patienter : votre solde prévu en fin de mois (${approx(expected)}) ne couvre pas cet achat de ${approx(amount)}. Il manquerait environ ${approx(amount - expected)}.`;
+    text = `Mieux vaut patienter : dans un scénario prudent, votre solde de fin de mois serait d'environ ${approx(prudent)}, ce qui ne couvre pas cet achat de ${approx(purchase)}. Il manquerait environ ${approx(-after)}.`;
   }
   return base('CAN_AFFORD', text, {
-    highlights: [money('Achat envisagé', amount), money('Reste prévu après achat', after)],
+    highlights: [
+      money('Achat envisagé', purchase),
+      money('Fin de mois (prudent)', prudent),
+      money('Reste après achat (prudent)', after),
+    ],
     chart: {
       kind: 'bar',
-      title: 'Fin de mois prévue',
+      title: 'Fin de mois prévue (scénario prudent)',
       data: [
-        { label: 'Sans l’achat', value: expected },
+        { label: 'Sans l’achat', value: prudent },
         { label: 'Avec l’achat', value: after },
       ],
     },

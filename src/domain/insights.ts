@@ -126,7 +126,17 @@ export function rule503020Insights(
   return out;
 }
 
-/** Catégories dont la dépense du mois dépasse de 30 % (et 30 DT) la moyenne des 3 mois précédents. */
+/** Moyenne des seuls mois non nuls (dépense « habituelle » d'un mois où la catégorie sert). */
+export function activeMonthsAverage(values: readonly Millimes[]): Millimes {
+  const nonZero = values.filter((v) => v > 0);
+  return nonZero.length === 0 ? 0 : averageMillimes(nonZero);
+}
+
+/**
+ * Catégories dont la dépense du mois dépasse de 30 % (et 30 DT) la moyenne des 3 mois
+ * précédents ET la dépense habituelle des mois actifs des 6 derniers mois (factures
+ * bimestrielles ou trimestrielles non signalées comme une hausse).
+ */
 export function categorySpikeInsights(
   month: YearMonth,
   sums: readonly CategoryMonthSum[],
@@ -139,6 +149,7 @@ export function categorySpikeInsights(
     amountOf.set(key, (amountOf.get(key) ?? 0) + s.amount);
   }
   const previous = [1, 2, 3].map((i) => addMonthsYM(month, -i));
+  const previous6 = [1, 2, 3, 4, 5, 6].map((i) => addMonthsYM(month, -i));
   const out: { insight: Insight; delta: Millimes }[] = [];
   for (const c of categories.values()) {
     if (c.kind !== 'EXPENSE' || c.group === 'SAVINGS') continue;
@@ -147,6 +158,10 @@ export function categorySpikeInsights(
     if (avg <= 0) continue;
     const delta = current - avg;
     if (current < avg * SPIKE_RATIO || delta < SPIKE_MIN_DELTA) continue;
+    // Facture périodique non mensuelle (bimestrielle, trimestrielle…) : la hausse doit aussi
+    // dépasser la dépense habituelle des mois où la catégorie est utilisée (6 derniers mois).
+    const active = activeMonthsAverage(previous6.map((m) => amountOf.get(`${c.id}|${m}`) ?? 0));
+    if (current < active * SPIKE_RATIO || current - active < SPIKE_MIN_DELTA) continue;
     out.push({
       delta,
       insight: {
@@ -220,7 +235,7 @@ export function forgottenSubscriptionInsights(input: ForgottenSubscriptionInput)
       kind: 'FORGOTTEN_SUBSCRIPTION',
       severity: 'INFO',
       title: `Abonnement non suivi : ${c.label}`,
-      message: `Environ ${formatMoney(c.amount)} prélevés ${FREQUENCY_FR[c.frequency]} depuis ${months} mois, sans dépense récurrente associée. Ajoutez-le à vos récurrents pour le suivre, ou résiliez-le s'il ne vous sert plus.`,
+      message: `Environ ${DT(c.amount)} prélevés ${FREQUENCY_FR[c.frequency]} depuis ${months} mois, sans dépense récurrente associée. Ajoutez-le à vos récurrents pour le suivre, ou résiliez-le s'il ne vous sert plus.`,
       ...(c.categoryId !== null ? { categoryId: c.categoryId } : {}),
       href: '/recurrents',
     });

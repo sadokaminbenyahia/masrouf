@@ -7,6 +7,7 @@ import {
   monthOf,
   monthStart,
   parseISODate,
+  type ISODate,
   type YearMonth,
 } from '../dates';
 import { formatMoney, type Millimes } from '../money';
@@ -161,6 +162,8 @@ const SPIKE_T: Templates<SpikeVars> = [
 interface SavingVars {
   pct: string;
   saved: string;
+  /** « ce mois-ci » pour le mois en cours, sinon « en octobre » */
+  when: string;
 }
 const SAVE_GOOD_T: Templates<SavingVars> = [
   (v) => `Vous avez épargné ${v.saved}, soit ${v.pct} de vos revenus : bravo.`,
@@ -175,7 +178,7 @@ const SAVE_MID_T: Templates<SavingVars> = [
 const SAVE_NEG_T: Templates<SavingVars> = [
   (v) => `Vos dépenses ont dépassé vos revenus de ${v.saved}.`,
   (v) => `Le mois se solde par un déficit de ${v.saved} : rien d'inquiétant s'il reste ponctuel.`,
-  (v) => `Vous avez puisé ${v.saved} dans vos réserves ce mois-ci.`,
+  (v) => `Vous avez puisé ${v.saved} dans vos réserves ${v.when}.`,
 ];
 
 const BUDGET_OVER_T: Templates<{ list: string; n: number }> = [
@@ -371,11 +374,29 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
     }
   }
 
-  // Plus forte hausse.
+  // Dépense habituelle des mois ACTIFS de chaque catégorie sur les 6 mois précédents : une
+  // facture bimestrielle ou trimestrielle n'est pas une « hausse » le mois où elle tombe.
+  const activeAvg = new Map<string | null, number>();
+  {
+    const prev6 = [1, 2, 3, 4, 5, 6].map((k) => addMonthsYM(month, -k));
+    const perMonth = new Map<string | null, number[]>();
+    for (const ym of prev6) {
+      for (const [id, s] of byCategory(inMonth(ym).filter((t) => t.type === 'EXPENSE'))) {
+        perMonth.set(id, [...(perMonth.get(id) ?? []), s.total]);
+      }
+    }
+    for (const [id, totals] of perMonth) {
+      activeAvg.set(id, totals.reduce((a, b) => a + b, 0) / totals.length);
+    }
+  }
+
+  // Plus forte hausse (hors factures périodiques non mensuelles : voir `activeAvg`).
   let spike: { id: string | null; amount: number; avg: number; d: number } | null = null;
   for (const [id, s] of curCats) {
     const avg = prevCatAvg.get(id) ?? 0;
     if (avg <= 0) continue;
+    const active = activeAvg.get(id) ?? avg;
+    if (s.total < active * 1.15) continue;
     const d = (s.total - avg) / avg;
     if (d >= 0.15 && s.total - avg >= 10_000 && (!spike || d * s.total > spike.d * spike.amount)) {
       spike = { id, amount: s.total, avg, d };
@@ -413,6 +434,7 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
       text: pickTemplate(set, seed, month, 'SAVINGS', {
         pct: formatPercent(Math.abs(rate), PERCENT),
         saved: m(Math.abs(saved)),
+        when: monthWhen(month, input.today),
       }),
     });
   }
@@ -492,12 +514,18 @@ export function generateMonthlySummary(input: MonthlySummaryInput): MonthlySumma
       curExp,
       curCats,
       prevCatAvg,
+      activeAvg,
       income,
       saved,
       rate,
       nameOf,
     }),
   };
+}
+
+/** « ce mois-ci » pour le mois en cours, sinon « en octobre » (mois résumé). */
+function monthWhen(month: YearMonth, today: ISODate): string {
+  return monthOf(today) === month ? 'ce mois-ci' : `en ${formatMonthFR(month, 'monthOnly')}`;
 }
 
 function buildRecommendations(p: {
@@ -509,9 +537,12 @@ function buildRecommendations(p: {
   saved: Millimes;
   rate: number | null;
   nameOf: (id: string | null) => string;
+  /** Dépense habituelle des mois actifs (6 mois) par catégorie */
+  activeAvg: Map<string | null, number>;
 }): Recommendation[] {
-  const { input, curExp, curCats, prevCatAvg, nameOf } = p;
+  const { input, curExp, curCats, prevCatAvg, nameOf, activeAvg } = p;
   const month = input.month;
+  const when = monthWhen(month, input.today);
   const main: Candidate[] = [];
 
   // 1. Catégorie au-dessus de son budget.
@@ -535,14 +566,15 @@ function buildRecommendations(p: {
     const avg = prevCatAvg.get(id) ?? 0;
     if (avg <= 0) continue;
     const gain = Math.round(s.total - avg);
-    if (s.total > avg * 1.3 && gain >= 30_000) {
+    const active = activeAvg.get(id) ?? avg;
+    if (s.total > avg * 1.3 && s.total > active * 1.3 && gain >= 30_000) {
       main.push({
         type: 'CATEGORY_SPIKE',
         categoryId: id,
         gain,
         impact: gain,
         title: `Freiner la hausse en ${nameOf(id)}`,
-        detail: `${m(s.total)} ce mois-ci contre ${m(Math.round(avg))} en moyenne (${formatPercent((s.total - avg) / avg, PERCENT_SIGNED)}). Revenir à votre niveau habituel ferait gagner ${m(gain)}.`,
+        detail: `${m(s.total)} ${when} contre ${m(Math.round(avg))} en moyenne (${formatPercent((s.total - avg) / avg, PERCENT_SIGNED)}). Revenir à votre niveau habituel ferait gagner ${m(gain)}.`,
         href: txHref(id, month),
       });
     }
@@ -564,7 +596,7 @@ function buildRecommendations(p: {
       gain,
       impact: gain,
       title: `Vos petites dépenses en ${nameOf(id)}`,
-      detail: `${s.count} achats de ${formatMoney(Math.round(s.total / s.count))} en moyenne, soit ${m(s.total)} ce mois-ci. En supprimer un sur trois vous ferait économiser environ ${m(gain)} par mois.`,
+      detail: `${s.count} achats de ${m(Math.round(s.total / s.count))} en moyenne, soit ${m(s.total)} ${when}. En supprimer un sur trois vous ferait économiser environ ${m(gain)} par mois.`,
       href: txHref(id, month),
     });
   }
@@ -595,7 +627,7 @@ function buildRecommendations(p: {
         gain,
         impact: gain,
         title: `Hausse de « ${last.label} »`,
-        detail: `Le montant est passé de ${formatMoney(Math.round(med))} à ${formatMoney(last.amount)}. Vérifiez votre offre ou comparez la concurrence : ${formatMoney(gain)} par mois à la clé.`,
+        detail: `Le montant est passé de ${m(Math.round(med))} à ${formatMoney(last.amount)}. Vérifiez votre offre ou comparez la concurrence : ${m(gain)} par mois à la clé.`,
         href: '/recurrents',
       };
     }

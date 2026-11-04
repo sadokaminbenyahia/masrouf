@@ -559,7 +559,9 @@ export async function getMonthlySummary(
 ): Promise<Result<MonthlySummary>> {
   return guard('getMonthlySummary', async () => {
     const [txs, cats, budgets, goals] = await Promise.all([
-      listAiTransactions(userId, { from: monthStart(addMonthsYM(month, -3)), to: monthEnd(month) }),
+      // 6 mois précédents : la hausse d'une catégorie est comparée aussi aux mois actifs (factures
+      // bimestrielles / trimestrielles).
+      listAiTransactions(userId, { from: monthStart(addMonthsYM(month, -6)), to: monthEnd(month) }),
       aiCategories(userId),
       listBudgetProgress(userId, month),
       listGoals(userId),

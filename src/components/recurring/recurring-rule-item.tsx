@@ -114,11 +114,7 @@ export function RecurringRuleItem({
           </p>
         </div>
         <div className="flex shrink-0 items-center justify-end gap-4">
-          <Money
-            value={rule.amount}
-            type={rule.type}
-            className="hidden font-semibold sm:inline"
-          />
+          <Money value={rule.amount} type={rule.type} className="hidden font-semibold sm:inline" />
           <div className="flex items-center gap-2 sm:gap-1">
             <Switch
               checked={rule.active}

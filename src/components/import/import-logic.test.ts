@@ -9,9 +9,13 @@ import {
   columnOptions,
   dateSpan,
   decodeCsvBuffer,
+  effectiveLabel,
   fileLineNumber,
   filterRows,
+  hasCleanableLabels,
   initialEdits,
+  isSelectable,
+  isSelected,
   mappingProblem,
   mappingStateFrom,
   pageCount,
@@ -141,7 +145,13 @@ describe('aperçu', () => {
     expect(edits[0]).toEqual({ selected: true, categoryId: 'courses', categoryFromAI: true });
     expect(edits[1]?.selected).toBe(false);
     expect(edits[2]?.selected).toBe(false);
-    expect(previewCounts(ROWS, edits)).toEqual({ total: 4, selected: 2, existing: 1, inFile: 1 });
+    expect(previewCounts(ROWS, edits)).toEqual({
+      total: 4,
+      selected: 2,
+      existing: 1,
+      inFile: 1,
+      possible: 0,
+    });
   });
 
   it('permet de cocher un doublon interne mais jamais un doublon existant', () => {
@@ -194,6 +204,39 @@ describe('aperçu', () => {
     });
     expect(commit[1]).not.toHaveProperty('note');
     expect(commit[1]?.categoryFromAI).toBe(false);
+  });
+
+  it('doublon possible : décoché par défaut mais cochable, compté à part', () => {
+    const rows = [row(0), row(1, { duplicate: 'POSSIBLE' })];
+    const edits = initialEdits(rows);
+    expect(isSelected(edits, rows[1] ?? row(9))).toBe(false);
+    expect(isSelectable(rows[1] ?? row(9))).toBe(true);
+    const checked = setSelected(edits, rows, true);
+    expect(buildCommitRows(rows, checked).map((c) => c.index)).toEqual([0, 1]);
+    expect(previewCounts(rows, edits)).toMatchObject({ possible: 1, inFile: 0, selected: 1 });
+    expect(filterRows(rows, edits, 'DUPLICATES').map((r) => r.index)).toEqual([1]);
+  });
+
+  it('nettoie les libellés à l’envoi si l’option est active', () => {
+    const rows = [
+      row(0, { label: 'CB CARREFOUR 12/03', suggestedLabel: 'Carrefour' }),
+      row(1, { label: 'Café', suggestedLabel: 'Café' }),
+      row(2),
+    ];
+    const edits = initialEdits(rows);
+    expect(hasCleanableLabels(rows)).toBe(true);
+    expect(hasCleanableLabels([row(5)])).toBe(false);
+    expect(buildCommitRows(rows, edits, { cleanLabels: true }).map((c) => c.label)).toEqual([
+      'Carrefour',
+      'Café',
+      'Ligne 2',
+    ]);
+    expect(buildCommitRows(rows, edits).map((c) => c.label)).toEqual([
+      'CB CARREFOUR 12/03',
+      'Café',
+      'Ligne 2',
+    ]);
+    expect(effectiveLabel(rows[0] ?? row(9), false)).toBe('CB CARREFOUR 12/03');
   });
 
   it('calcule l’intervalle et le lien vers les transactions', () => {

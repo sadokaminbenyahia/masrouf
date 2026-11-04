@@ -358,7 +358,8 @@ describe('ask() avec un FinanceTools factice', () => {
     expect(a.intent).toBe('SPENDING_TOTAL');
     expect(a.period).toMatchObject({ from: '2026-10-01', to: '2026-10-31' });
     expect(restoOctober).toBeGreaterThan(0);
-    expect(a.text).toContain(formatMoney(restoOctober));
+    // Total de période : arrondi au dinar dans le texte, exact dans les highlights.
+    expect(a.text).toContain(formatMoney(restoOctober, { decimals: 0 }));
     expect(a.highlights.some((h) => h.value === restoOctober)).toBe(true);
     const sum = tools.calls.find((c) => c.name === 'sumTransactions');
     expect(sum?.arg).toMatchObject({ categoryIds: [restoId], type: 'EXPENSE' });

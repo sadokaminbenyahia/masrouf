@@ -70,11 +70,46 @@ describe('forecastBalance', () => {
       expect(c.actual).toBe(initialBalance + total(upTo));
     }
     expect(past[5]).toMatchObject({ expected: past[5]?.actual, low: past[5]?.actual });
+    // Mois courant : le solde réel d'aujourd'hui prolonge la courbe réelle.
     expect(f.chart[6]).toMatchObject({
       month: '2026-10',
-      actual: null,
+      actual: currentBalance,
       expected: f.endOfMonth.expected,
     });
+    expect(f.chartToday).toBe(LINEAR_TODAY);
+    expect(f.chart.slice(7).every((c) => c.actual === null)).toBe(true);
+  });
+
+  it('historique court (< 30 jours) : fiabilité basse, aucun faux historique plat', () => {
+    const history = [
+      {
+        id: 't1',
+        date: '2026-10-20',
+        amount: 50_000,
+        type: 'EXPENSE' as const,
+        label: 'Courses',
+        categoryId: null,
+        accountId: 'a',
+        recurringId: null,
+      },
+    ];
+    const f = forecastBalance({
+      today: '2026-10-25',
+      currentBalance: 1_000_000,
+      history,
+      recurring: [],
+    });
+    expect(f.reliability).toBe('LOW');
+    const past = f.chart.slice(0, 6);
+    expect(past.every((c) => c.actual === null && c.expected === null)).toBe(true);
+    expect(f.chart[6]).toMatchObject({ month: '2026-10', actual: 1_000_000 });
+    const empty = forecastBalance({
+      today: '2026-10-25',
+      currentBalance: 0,
+      history: [],
+      recurring: [],
+    });
+    expect(empty.chart.slice(0, 6).every((c) => c.actual === null)).toBe(true);
   });
 
   it('ajoute les récurrences restantes du mois et des mois suivants', () => {

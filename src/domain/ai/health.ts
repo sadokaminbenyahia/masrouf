@@ -91,7 +91,14 @@ function goalScore(g: GoalProgress): number {
 
 type Partial0 = Omit<HealthComponent, 'weight'>;
 
+/** Au moins 1 mois complet (avant le mois de `today`) avec des revenus ET des dépenses. */
+export function hasSufficientData(monthly: readonly MonthTotals[], today: string): boolean {
+  const current = monthOf(today);
+  return monthly.some((m) => m.month < current && m.income > 0 && m.expense > 0);
+}
+
 export function computeHealthScore(input: HealthInput): HealthScore {
+  const dataSufficient = hasSufficientData(input.monthly, input.today);
   const months = completeMonths(input.monthly, input.today);
   const withActivity = months.filter((m) => m.income > 0 || m.expense > 0);
   const totalIncome = withActivity.reduce((s, m) => s + m.income, 0);
@@ -207,6 +214,7 @@ export function computeHealthScore(input: HealthInput): HealthScore {
         'Pas encore assez de données pour évaluer votre santé financière. Ajoutez vos revenus et dépenses pour obtenir un score.',
       topAdvice:
         'Enregistrez vos transactions pendant quelques semaines pour obtenir un premier score.',
+      dataSufficient: false,
     };
   }
 
@@ -241,7 +249,10 @@ export function computeHealthScore(input: HealthInput): HealthScore {
     score,
     grade,
     components,
-    summary,
+    summary: dataSufficient
+      ? summary
+      : `Score indicatif : il faut au moins un mois complet de revenus et de dépenses pour une évaluation fiable. ${summary}`,
+    dataSufficient,
     topAdvice: lever
       ? ADVICE[lever.key]
       : 'Tous vos indicateurs sont au vert : continuez ainsi et pensez à faire grandir vos objectifs.',

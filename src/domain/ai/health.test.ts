@@ -209,3 +209,23 @@ describe('computeHealthScore', () => {
     }
   });
 });
+
+describe('computeHealthScore : données suffisantes ?', () => {
+  it('moins d’un mois complet de revenus et dépenses → dataSufficient false (score indicatif)', () => {
+    const partial = computeHealthScore({ ...BASE, monthly: [mt('2026-03', 500_000, 900_000)] });
+    expect(partial.dataSufficient).toBe(false);
+    expect(partial.summary).toMatch(/^Score indicatif/);
+    const noIncome = computeHealthScore({
+      ...BASE,
+      monthly: [mt('2026-02', 0, 900_000), mt('2026-03', 500_000, 900_000)],
+    });
+    expect(noIncome.dataSufficient).toBe(false);
+    expect(computeHealthScore({ ...BASE, monthly: [] }).dataSufficient).toBe(false);
+  });
+
+  it('au moins un mois complet → dataSufficient true', () => {
+    const s = computeHealthScore(BASE);
+    expect(s.dataSufficient).toBe(true);
+    expect(s.summary).not.toMatch(/indicatif/);
+  });
+});

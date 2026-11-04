@@ -9,7 +9,7 @@ function Switch({ className, ...props }: ComponentProps<typeof SwitchPrimitive.R
       data-slot="switch"
       className={cn(
         // Zone tactile étendue à 44 px de haut (pseudo-élément) sans changer le visuel.
-        "peer focus-visible:ring-ring/50 relative after:absolute after:-inset-x-0.5 after:-inset-y-2.5 after:content-[''] data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80 inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent shadow-xs transition-colors outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "peer focus-visible:ring-ring/50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80 relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent shadow-xs transition-colors outline-none after:absolute after:-inset-x-0.5 after:-inset-y-2.5 after:content-[''] focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

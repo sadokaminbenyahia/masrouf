@@ -546,7 +546,7 @@ describe('askAssistant — contenu des réponses', () => {
   it('total de dépenses : montant issu des outils, graphique mensuel, lien filtré', async () => {
     const a = await ask('combien j’ai dépensé en restaurants ce trimestre ?');
     // 3 × 45 DT + 380 DT
-    expect(a.text).toContain(formatMoney(515_000));
+    expect(a.text).toContain(formatMoney(515_000, { decimals: 0 }));
     expect(a.text).toContain('Restaurants');
     expect(a.period?.label).toBe('ce trimestre');
     expect(a.chart?.kind).toBe('bar');
@@ -630,19 +630,19 @@ describe('askAssistant — contenu des réponses', () => {
   it('moyenne mensuelle sur 3 mois complets', async () => {
     const a = await ask('combien je dépense en moyenne en courses ?');
     expect(a.highlights[0]?.value).toBe(215_500);
-    expect(a.text).toContain(formatMoney(215_500));
+    expect(a.text).toContain(formatMoney(215_500, { decimals: 0 }));
     const empty = await ask('combien je dépense en moyenne en courses ?', makeTools({ txs: [] }));
     expect(empty.text).toMatch(/pas de moyenne/);
   });
 
   it('budget d’une catégorie : reste, dépassement, absence', async () => {
     const courses = await ask('il me reste combien dans mon budget courses ?');
-    expect(courses.text).toContain(`Il vous reste ${formatMoney(234_500)}`);
+    expect(courses.text).toContain(`Il vous reste ${formatMoney(234_500, { decimals: 0 })}`);
     const resto = await ask('il me reste combien dans mon budget resto ?');
     expect(resto.text).toMatch(/dépassé de/);
     const loisirs = await ask('il me reste combien en budget loisirs ?');
     expect(loisirs.text).toMatch(/pas de budget pour Loisirs/);
-    expect(loisirs.text).toContain(formatMoney(40_000));
+    expect(loisirs.text).toContain(formatMoney(40_000, { decimals: 0 }));
   });
 
   it('budgets globaux et absence de budgets', async () => {
@@ -674,16 +674,22 @@ describe('askAssistant — contenu des réponses', () => {
 
   it('prévision de fin de mois et des mois suivants', async () => {
     const a = await ask('combien j’aurai à la fin du mois ?');
-    expect(a.text).toContain(formatMoney(1_500_000));
+    expect(a.text).toContain(formatMoney(1_500_000, { decimals: 0 }));
     expect(a.chart?.kind).toBe('line');
     const b = await ask('quelle est la prévision pour les prochains mois ?');
-    expect(b.text).toContain(formatMoney(2_400_000));
+    expect(b.text).toContain(formatMoney(2_400_000, { decimals: 0 }));
   });
 
   it('achat envisagé : oui / serré / non / montant manquant', async () => {
     const yes = await ask('est-ce que je peux me permettre un téléphone à 900 dinars ?');
     expect(yes.text).toMatch(/^Oui/);
     expect(yes.highlights[0]?.value).toBe(900_000);
+    // Un seul scénario (prudent = borne basse) : texte et chiffres clés concordent.
+    expect(yes.highlights.map((h) => h.value)).toEqual([900_000, 1_100_000, 200_000]);
+    expect(yes.text).toContain(formatMoney(1_100_000, { decimals: 0 }));
+    expect(yes.text).toContain(formatMoney(200_000, { decimals: 0 }));
+    expect(yes.text).not.toContain(formatMoney(1_500_000, { decimals: 0 }));
+    expect(yes.chart?.data.map((d) => d.value)).toEqual([1_100_000, 200_000]);
     const tight = await ask('je peux m’offrir une télé à 1300 dt ?');
     expect(tight.text).toMatch(/serré/);
     const no = await ask('est-ce que je peux me permettre une moto à 2k ?');
@@ -696,7 +702,7 @@ describe('askAssistant — contenu des réponses', () => {
 
   it('abonnements : total mensuel des dépenses récurrentes actives', async () => {
     const a = await ask('mes abonnements');
-    expect(a.text).toContain(formatMoney(799_000));
+    expect(a.text).toContain(formatMoney(799_000, { decimals: 0 }));
     expect(a.text).toMatch(/Internet Ooredoo, le 25 mars/);
     expect(a.chart?.kind).toBe('pie');
     const none = await ask('mes abonnements', makeTools({ recurring: [] }));
@@ -707,7 +713,7 @@ describe('askAssistant — contenu des réponses', () => {
     const a = await ask('quand vais-je atteindre mon objectif voyage ?');
     expect(a.text).toContain('Voyage à Djerba');
     expect(a.text).toMatch(/vers (avril|mai) 2026/);
-    expect(a.text).toContain(formatMoney(180_000));
+    expect(a.text).toContain(formatMoney(180_000, { decimals: 0 }));
     expect(a.chart?.kind).toBe('line');
   });
 
@@ -762,7 +768,7 @@ describe('askAssistant — contenu des réponses', () => {
 
   it('revenus', async () => {
     const a = await ask('combien j’ai gagné depuis janvier ?');
-    expect(a.text).toContain(formatMoney(7_800_000));
+    expect(a.text).toContain(formatMoney(7_800_000, { decimals: 0 }));
     const none = await ask('combien j’ai gagné ce mois ?', makeTools({ txs: [] }));
     expect(none.text).toMatch(/Aucun revenu/);
   });

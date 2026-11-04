@@ -153,6 +153,9 @@ export function cleanSuggestionLabel(raw: string): string {
   if (hasLower) return stripped;
   return stripped
     .toLocaleLowerCase('fr')
-    .replace(/(^|[\s'’\-/])(\p{L})/gu, (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase('fr'))
+    .replace(
+      /(^|[\s'’\-/])(\p{L})/gu,
+      (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase('fr'),
+    )
     .replace(/(?<=\s)(De|Du|Des|La|Le|Les|Et|À|Au|Aux)(?=\s)/gu, (w) => w.toLocaleLowerCase('fr'));
 }
