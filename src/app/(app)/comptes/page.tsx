@@ -5,7 +5,7 @@ import { LoadError } from '@/components/transactions/error-panel';
 import { requireUserId } from '@/server/auth/session';
 import { listAccounts } from '@/server/services/accounts.service';
 
-export const metadata: Metadata = { title: 'Comptes · Masrouf' };
+export const metadata: Metadata = { title: 'Comptes' };
 
 export default async function AccountsPage() {
   const userId = await requireUserId();

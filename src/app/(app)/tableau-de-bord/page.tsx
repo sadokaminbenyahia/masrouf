@@ -38,7 +38,7 @@ import { BudgetAlertList } from '@/components/insights/budget-alert-list';
 import { HealthScoreCard } from '@/components/insights/health-score-card';
 import { InsightList } from '@/components/insights/insight-list';
 
-export const metadata: Metadata = { title: 'Tableau de bord · Masrouf' };
+export const metadata: Metadata = { title: 'Tableau de bord' };
 
 function SeeAll({ href, label }: { href: string; label: string }) {
   return (

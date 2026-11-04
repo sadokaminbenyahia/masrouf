@@ -182,8 +182,8 @@ export function PreviewStep({
           <div className="grid gap-0.5">
             <Label htmlFor={cleanId}>Nettoyer les libellés</Label>
             <p id={`${cleanId}-aide`} className="text-muted-foreground text-sm">
-              Retire les préfixes bancaires et références (« CB », dates, numéros) pour des
-              libellés lisibles. Le libellé d’origine reste affiché en dessous.
+              Retire les préfixes bancaires et références (« CB », dates, numéros) pour des libellés
+              lisibles. Le libellé d’origine reste affiché en dessous.
             </p>
           </div>
         </div>

@@ -33,7 +33,7 @@ import { HealthScoreCard } from '@/components/insights/health-score-card';
 import { InsightList } from '@/components/insights/insight-list';
 import { MaskedText } from '@/components/insights/use-masked-text';
 
-export const metadata: Metadata = { title: 'Analyses · Masrouf' };
+export const metadata: Metadata = { title: 'Analyses' };
 
 const SECTIONS = [
   { id: 'previsions', label: 'Prévisions' },

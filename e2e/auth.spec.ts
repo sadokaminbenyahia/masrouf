@@ -62,8 +62,8 @@ demoTest.describe('Déconnexion', () => {
   demoTest('menu utilisateur → Se déconnecter', async ({ page }) => {
     await page.goto('/tableau-de-bord');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: /^Menu utilisateur/ }).click();
-    await page.getByRole('menuitem', { name: 'Se déconnecter' }).click();
+    await page.getByRole('button', { name: /menu utilisateur/i }).click();
+    await page.getByRole('menuitem', { name: 'Se déconnecter', exact: true }).click();
     await expect(page).toHaveURL(/\/connexion/);
 
     // La session est bien fermée.

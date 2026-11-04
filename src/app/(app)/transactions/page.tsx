@@ -12,7 +12,7 @@ import { listAccounts } from '@/server/services/accounts.service';
 import { listCategories, listTags } from '@/server/services/categories.service';
 import { listTransactions } from '@/server/services/transactions.service';
 
-export const metadata: Metadata = { title: 'Transactions · Masrouf' };
+export const metadata: Metadata = { title: 'Transactions' };
 
 export default async function TransactionsPage({
   searchParams,
