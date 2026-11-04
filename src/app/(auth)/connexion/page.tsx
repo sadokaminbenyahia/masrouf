@@ -10,6 +10,9 @@ export default async function ConnexionPage({
 }) {
   const params = await searchParams;
   const raw = params.callbackUrl;
-  const callbackUrl = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/tableau-de-bord';
+  const callbackUrl =
+    typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')
+      ? raw
+      : '/tableau-de-bord';
   return <LoginForm callbackUrl={callbackUrl} />;
 }

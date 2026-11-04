@@ -31,9 +31,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             />
           ))}
         </svg>
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.16),transparent_55%)]" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.16),transparent_55%)]"
+        />
         <div className="relative flex items-center gap-3">
-          <LogoGlyph className="size-10 ring-1 ring-white/25 rounded-[10px]" />
+          <LogoGlyph className="size-10 rounded-[10px] ring-1 ring-white/25" />
           <span className="text-xl font-semibold tracking-tight">Masrouf</span>
         </div>
         <div className="relative max-w-md">
@@ -57,7 +60,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <main id="contenu" className="flex flex-col items-center justify-center px-4 py-10 sm:px-8">
         <div className="mb-8 flex flex-col items-center text-center lg:hidden">
           <BrandMark />
-          <p className="mt-2 text-sm text-muted-foreground">Sachez où part chaque dinar</p>
+          <p className="text-muted-foreground mt-2 text-sm">Sachez où part chaque dinar</p>
         </div>
         <div className="w-full max-w-sm">{children}</div>
       </main>

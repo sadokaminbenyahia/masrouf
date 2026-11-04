@@ -70,7 +70,7 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ca
             {(['EXPENSE', 'INCOME'] as const).map((k) => (
               <TabsTrigger key={k} value={k}>
                 {KIND_LABELS[k]}
-                <span className="text-xs text-muted-foreground tabular-nums">
+                <span className="text-muted-foreground text-xs tabular-nums">
                   {categories.filter((c) => c.kind === k).length}
                 </span>
               </TabsTrigger>
@@ -92,7 +92,10 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ca
                   description="Créez une catégorie pour classer vos opérations."
                 />
               ) : (
-                <ul className="divide-y rounded-xl border" aria-label={`Catégories de ${KIND_LABELS[k].toLowerCase()}`}>
+                <ul
+                  className="divide-y rounded-xl border"
+                  aria-label={`Catégories de ${KIND_LABELS[k].toLowerCase()}`}
+                >
                   {list.map((c) => (
                     <li key={c.id} className="flex items-center gap-3 px-3 py-2.5">
                       <CategoryIcon icon={c.icon} color={c.color} size="md" />
@@ -144,7 +147,9 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ca
         category={editing}
         defaultKind={kind}
         onSaved={(c) => {
-          toastSuccess(editing ? `Catégorie « ${c.name} » modifiée.` : `Catégorie « ${c.name} » créée.`);
+          toastSuccess(
+            editing ? `Catégorie « ${c.name} » modifiée.` : `Catégorie « ${c.name} » créée.`,
+          );
           void invalidate();
         }}
       />

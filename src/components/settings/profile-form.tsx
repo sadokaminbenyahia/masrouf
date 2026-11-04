@@ -37,7 +37,11 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
   };
 
   return (
-    <SettingsSection id="profil" title="Profil" description="Votre prénom apparaît dans l'application.">
+    <SettingsSection
+      id="profil"
+      title="Profil"
+      description="Votre prénom apparaît dans l'application."
+    >
       <form onSubmit={submit} noValidate className="grid gap-4 sm:max-w-md">
         <div className="grid gap-2">
           <Label htmlFor="profil-prenom">Prénom</Label>
@@ -51,7 +55,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
             aria-describedby={error ? 'profil-prenom-erreur' : undefined}
           />
           {error && (
-            <p id="profil-prenom-erreur" className="text-xs text-expense">
+            <p id="profil-prenom-erreur" className="text-expense text-xs">
               {error}
             </p>
           )}

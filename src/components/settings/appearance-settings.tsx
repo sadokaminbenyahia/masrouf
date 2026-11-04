@@ -21,7 +21,11 @@ export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
   const { discreet, setDiscreet } = useDiscreetMode();
   // Le thème n'est connu qu'après l'hydratation (stockage local de next-themes).
-  const mounted = useSyncExternalStore(noop, () => true, () => false);
+  const mounted = useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
   const current = mounted ? (theme ?? 'system') : undefined;
 
   return (
@@ -46,7 +50,7 @@ export function AppearanceSettings() {
                   key={value}
                   htmlFor={id}
                   className={cn(
-                    'flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-3 text-sm transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50',
+                    'has-[:focus-visible]:ring-ring/50 flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-3 text-sm transition-colors has-[:focus-visible]:ring-[3px]',
                     active ? 'border-primary bg-brand-tint text-primary' : 'hover:bg-accent',
                   )}
                 >
@@ -62,7 +66,7 @@ export function AppearanceSettings() {
         <div className="flex items-start justify-between gap-4 sm:max-w-md">
           <div>
             <Label htmlFor="mode-discret">Mode discret</Label>
-            <p id="mode-discret-aide" className="mt-1 text-sm text-muted-foreground">
+            <p id="mode-discret-aide" className="text-muted-foreground mt-1 text-sm">
               Remplace les montants par « ••• ». Également accessible depuis la barre du haut.
             </p>
           </div>

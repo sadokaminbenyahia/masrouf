@@ -56,7 +56,7 @@ export function ShortcutsDialog() {
           </section>
           <section aria-labelledby="raccourcis-navigation">
             <h3 id="raccourcis-navigation" className="mb-2 text-sm font-semibold">
-              Aller à… <span className="font-normal text-muted-foreground">(G puis)</span>
+              Aller à… <span className="text-muted-foreground font-normal">(G puis)</span>
             </h3>
             <dl className="flex flex-col gap-2">
               {NAV_ITEMS.map((item) => (

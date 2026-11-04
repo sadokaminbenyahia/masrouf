@@ -66,7 +66,7 @@ export function Providers({ children }: { children: ReactNode }) {
               richColors
               closeButton
               position={isDesktop ? 'bottom-right' : 'bottom-center'}
-              offset={isDesktop ? 24 : { bottom: 88, left: 16, right: 16 }}
+              offset={isDesktop ? { bottom: 96, right: 24 } : { bottom: 88, left: 16, right: 16 }}
               mobileOffset={{ bottom: 88, left: 16, right: 16 }}
             />
           </DiscreetModeProvider>

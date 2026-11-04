@@ -43,7 +43,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning className={plex.variable}>
-      <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
+      <body className="bg-background text-foreground min-h-dvh font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

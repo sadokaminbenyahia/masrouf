@@ -23,7 +23,7 @@ export function ExportCard({ today }: { today: ISODate }) {
     >
       <div className="grid gap-4">
         <PeriodPicker today={today} value={period} onChange={setPeriod} />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Du {formatDateFR(from)} au {formatDateFR(to)}.
         </p>
         <div>

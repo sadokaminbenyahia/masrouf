@@ -110,9 +110,7 @@ export function OnboardingDialog({ userName, accounts, categories }: OnboardingD
     if (selected.length > 0) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.budgets() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
-      toastSuccess(
-        selected.length === 1 ? '1 budget créé.' : `${selected.length} budgets créés.`,
-      );
+      toastSuccess(selected.length === 1 ? '1 budget créé.' : `${selected.length} budgets créés.`);
     }
   };
 
@@ -143,9 +141,9 @@ export function OnboardingDialog({ userName, accounts, categories }: OnboardingD
         showCloseButton={false}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <div className="border-b bg-brand-tint/50 px-6 pt-6 pb-4">
+        <div className="bg-brand-tint/50 border-b px-6 pt-6 pb-4">
           <DialogHeader className="pr-0">
-            <p className="text-xs font-medium tracking-wide text-primary uppercase">
+            <p className="text-primary text-xs font-medium tracking-wide uppercase">
               Étape {step + 1} sur {STEPS.length} · {STEPS[step]}
             </p>
             <DialogTitle className="text-xl">Bienvenue sur Masrouf</DialogTitle>
@@ -226,9 +224,7 @@ export function OnboardingDialog({ userName, accounts, categories }: OnboardingD
               </Button>
             ) : (
               <Button type="button" onClick={next} disabled={saving}>
-                {saving ? (
-                  <Loader2Icon className="animate-spin" aria-hidden="true" />
-                ) : null}
+                {saving ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
                 Suivant
                 {!saving && <ArrowRightIcon aria-hidden="true" />}
               </Button>
@@ -244,7 +240,7 @@ function StepHeading({ title, text }: { title: string; text: string }) {
   return (
     <div className="mb-4">
       <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
+      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{text}</p>
     </div>
   );
 }
@@ -275,13 +271,13 @@ function WelcomeStep({ userName }: { userName: string }) {
       />
       <ul className="flex flex-col gap-3">
         {points.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="flex items-start gap-3 rounded-xl border bg-card p-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-primary">
+          <li key={title} className="bg-card flex items-start gap-3 rounded-xl border p-3">
+            <span className="bg-brand-tint text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
               <Icon className="size-[18px]" aria-hidden="true" />
             </span>
             <span>
               <span className="block text-sm font-medium">{title}</span>
-              <span className="block text-sm text-muted-foreground">{text}</span>
+              <span className="text-muted-foreground block text-sm">{text}</span>
             </span>
           </li>
         ))}
@@ -306,7 +302,7 @@ function AccountsStep({
         text="Indiquez ce que contient chaque compte aujourd'hui. Laissez vide pour commencer à zéro ; vous pourrez tout modifier dans « Comptes »."
       />
       {accounts.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+        <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-sm">
           Aucun compte pour l&apos;instant. Vous pourrez en créer depuis la page « Comptes ».
         </p>
       ) : (
@@ -316,7 +312,7 @@ function AccountsStep({
             return (
               <li
                 key={a.id}
-                className="flex flex-col gap-2 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+                className="bg-card flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <Label htmlFor={id} className="flex items-center gap-3">
                   <span
@@ -328,7 +324,7 @@ function AccountsStep({
                   </span>
                   <span className="flex flex-col gap-0.5">
                     <span>{a.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
+                    <span className="text-muted-foreground text-xs font-normal">
                       {ACCOUNT_TYPE_LABELS[a.type]} · solde de départ
                     </span>
                   </span>
@@ -377,7 +373,7 @@ function IncomeStep({
           placeholder="2 400"
           aria-describedby="onboarding-revenu-aide"
         />
-        <p id="onboarding-revenu-aide" className="text-xs text-muted-foreground">
+        <p id="onboarding-revenu-aide" className="text-muted-foreground text-xs">
           Facultatif. Exemple : 2400 ou 2 400,500.
         </p>
       </div>
@@ -391,8 +387,8 @@ function IncomeStep({
               ['Épargne', split.savings],
             ] as const
           ).map(([label, v]) => (
-            <div key={label} className="rounded-lg bg-muted px-2 py-2">
-              <dt className="text-xs text-muted-foreground">{label}</dt>
+            <div key={label} className="bg-muted rounded-lg px-2 py-2">
+              <dt className="text-muted-foreground text-xs">{label}</dt>
               <dd className="text-sm font-semibold">
                 <Money value={v} decimals={0} />
               </dd>
@@ -424,7 +420,7 @@ function IncomeStep({
                   <CategoryIcon icon={p.icon} color={p.color} size="sm" />
                   <Label htmlFor={id} className="flex-1 cursor-pointer">
                     {p.categoryName}
-                    <span className="text-xs font-normal text-muted-foreground">
+                    <span className="text-muted-foreground text-xs font-normal">
                       {Math.round(p.share * 100)} % · {p.group === 'NEEDS' ? 'besoin' : 'envie'}
                     </span>
                   </Label>
@@ -476,13 +472,13 @@ function FirstActionStep({
               type="button"
               disabled={disabled}
               onClick={() => onChoose(id)}
-              className="group flex h-full w-full flex-col items-start gap-2 rounded-xl border bg-card p-3.5 text-left transition-[border-color,box-shadow,transform] outline-none hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 motion-reduce:hover:translate-y-0"
+              className="group bg-card hover:border-primary/40 hover:shadow-card focus-visible:ring-ring/50 flex h-full w-full flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-[border-color,box-shadow,transform] outline-none hover:-translate-y-0.5 focus-visible:ring-[3px] disabled:opacity-50 motion-reduce:hover:translate-y-0"
             >
-              <span className="flex size-9 items-center justify-center rounded-lg bg-brand-tint text-primary">
+              <span className="bg-brand-tint text-primary flex size-9 items-center justify-center rounded-lg">
                 <Icon className="size-[18px]" aria-hidden="true" />
               </span>
               <span className="text-sm font-medium">{title}</span>
-              <span className="text-xs leading-relaxed text-muted-foreground">{text}</span>
+              <span className="text-muted-foreground text-xs leading-relaxed">{text}</span>
             </button>
           </li>
         ))}

@@ -41,7 +41,7 @@ function TabLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.6875rem] font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+        'focus-visible:ring-ring/50 flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.6875rem] font-medium transition-colors outline-none focus-visible:ring-[3px]',
         active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
       )}
     >
@@ -65,7 +65,7 @@ export function MobileNav() {
     <>
       <nav
         aria-label="Navigation mobile"
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-safe backdrop-blur supports-[backdrop-filter]:bg-card/85 md:hidden"
+        className="bg-card/95 pb-safe supports-[backdrop-filter]:bg-card/85 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur md:hidden"
       >
         <ul className="mx-auto flex max-w-lg items-stretch gap-1 px-2 py-1">
           <li className="flex flex-1">
@@ -90,7 +90,7 @@ export function MobileNav() {
               type="button"
               onClick={() => openQuickAdd()}
               aria-label="Ajouter une transaction"
-              className="-mt-5 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-overlay ring-4 ring-background transition-transform outline-none hover:bg-primary/90 focus-visible:ring-[3px] focus-visible:ring-ring active:scale-95 motion-reduce:transition-none"
+              className="bg-primary text-primary-foreground shadow-overlay ring-background hover:bg-primary/90 focus-visible:ring-ring -mt-5 flex size-14 items-center justify-center rounded-2xl ring-4 transition-transform outline-none focus-visible:ring-[3px] active:scale-95 motion-reduce:transition-none"
             >
               <PlusIcon className="size-6" aria-hidden="true" strokeWidth={2.4} />
             </button>
@@ -110,7 +110,7 @@ export function MobileNav() {
               aria-haspopup="dialog"
               aria-expanded={moreOpen}
               className={cn(
-                'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.6875rem] font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                'focus-visible:ring-ring/50 flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.6875rem] font-medium transition-colors outline-none focus-visible:ring-[3px]',
                 moreActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -139,7 +139,7 @@ export function MobileNav() {
                       aria-current={active ? 'page' : undefined}
                       onClick={() => setMoreOpen(false)}
                       className={cn(
-                        'flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border p-2 text-center text-xs font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                        'focus-visible:ring-ring/50 flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border p-2 text-center text-xs font-medium transition-colors outline-none focus-visible:ring-[3px]',
                         active
                           ? 'border-primary/40 bg-brand-tint text-primary'
                           : 'bg-card text-foreground hover:bg-accent',

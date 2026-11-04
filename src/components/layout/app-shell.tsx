@@ -28,7 +28,11 @@ export function AppShell({
     const url = new URL(window.location.href);
     if (url.searchParams.get('nouveau') !== '1') return;
     url.searchParams.delete('nouveau');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`,
+    );
     openQuickAdd({ prefill: { type: 'EXPENSE' } });
   }, []);
 
@@ -42,7 +46,7 @@ export function AppShell({
     <>
       <a
         href="#contenu"
-        className="fixed top-3 left-3 z-[100] -translate-y-20 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-overlay transition-transform focus-visible:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="bg-primary text-primary-foreground shadow-overlay focus-visible:ring-ring/50 fixed top-3 left-3 z-[100] -translate-y-20 rounded-lg px-4 py-2.5 text-sm font-medium transition-transform focus-visible:translate-y-0 focus-visible:ring-[3px] focus-visible:outline-none"
       >
         Aller au contenu
       </a>

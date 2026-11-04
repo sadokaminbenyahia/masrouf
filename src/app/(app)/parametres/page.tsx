@@ -23,9 +23,7 @@ export default async function ParametresPage() {
       <div className="grid gap-5 lg:grid-cols-2">
         <ProfileForm name={profile.value.name} email={profile.value.email} />
         <AppearanceSettings />
-        <CategoriesManager
-          initialCategories={categories.ok ? categories.value : []}
-        />
+        <CategoriesManager initialCategories={categories.ok ? categories.value : []} />
         <div className="grid content-start gap-5">
           <ExportCard today={today()} />
           <OnboardingReset />

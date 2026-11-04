@@ -61,10 +61,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         {props.open && (
-          <CategoryForm
-            key={props.category?.id ?? `new-${props.defaultKind}`}
-            {...props}
-          />
+          <CategoryForm key={props.category?.id ?? `new-${props.defaultKind}`} {...props} />
         )}
       </DialogContent>
     </Dialog>
@@ -116,7 +113,7 @@ function CategoryForm({ category, defaultKind, onOpenChange, onSaved }: Category
       </DialogHeader>
 
       {formError && (
-        <p role="alert" className="rounded-lg bg-expense/8 px-3 py-2 text-sm text-expense">
+        <p role="alert" className="bg-expense/8 text-expense rounded-lg px-3 py-2 text-sm">
           {formError}
         </p>
       )}
@@ -137,7 +134,7 @@ function CategoryForm({ category, defaultKind, onOpenChange, onSaved }: Category
         </div>
       </div>
       {errors.name && (
-        <p id="categorie-nom-erreur" className="-mt-3 text-xs text-expense">
+        <p id="categorie-nom-erreur" className="text-expense -mt-3 text-xs">
           {errors.name.join(' ')}
         </p>
       )}
@@ -157,7 +154,7 @@ function CategoryForm({ category, defaultKind, onOpenChange, onSaved }: Category
               ))}
             </SelectContent>
           </Select>
-          {errors.group && <p className="text-xs text-expense">{errors.group.join(' ')}</p>}
+          {errors.group && <p className="text-expense text-xs">{errors.group.join(' ')}</p>}
         </div>
       )}
 
@@ -172,8 +169,8 @@ function CategoryForm({ category, defaultKind, onOpenChange, onSaved }: Category
               aria-label={`Couleur ${c}`}
               onClick={() => setColor(c)}
               className={cn(
-                'size-8 rounded-full ring-offset-2 ring-offset-popover transition-transform outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
-                color === c ? 'scale-110 ring-2 ring-foreground' : 'hover:scale-105',
+                'ring-offset-popover focus-visible:ring-ring size-8 rounded-full ring-offset-2 transition-transform outline-none focus-visible:ring-[3px]',
+                color === c ? 'ring-foreground scale-110 ring-2' : 'hover:scale-105',
               )}
               style={{ backgroundColor: c }}
             />
@@ -193,7 +190,7 @@ function CategoryForm({ category, defaultKind, onOpenChange, onSaved }: Category
               title={n}
               onClick={() => setIcon(n)}
               className={cn(
-                'flex aspect-square items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                'focus-visible:ring-ring/50 flex aspect-square items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-[3px]',
                 icon === n
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',

@@ -17,13 +17,13 @@ export function SettingsSection({
   return (
     <section
       aria-labelledby={`${id}-titre`}
-      className={cn('rounded-xl border bg-card p-5 shadow-card sm:p-6', className)}
+      className={cn('bg-card shadow-card rounded-xl border p-5 sm:p-6', className)}
     >
       <div className="mb-5">
         <h2 id={`${id}-titre`} className="text-base font-semibold">
           {title}
         </h2>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
       </div>
       {children}
     </section>

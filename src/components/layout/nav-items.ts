@@ -22,8 +22,20 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/tableau-de-bord', label: 'Tableau de bord', icon: LayoutDashboardIcon, shortcut: 'd', section: 'main' },
-  { href: '/transactions', label: 'Transactions', icon: ArrowLeftRightIcon, shortcut: 't', section: 'main' },
+  {
+    href: '/tableau-de-bord',
+    label: 'Tableau de bord',
+    icon: LayoutDashboardIcon,
+    shortcut: 'd',
+    section: 'main',
+  },
+  {
+    href: '/transactions',
+    label: 'Transactions',
+    icon: ArrowLeftRightIcon,
+    shortcut: 't',
+    section: 'main',
+  },
   { href: '/comptes', label: 'Comptes', icon: WalletIcon, shortcut: 'c', section: 'main' },
   { href: '/budgets', label: 'Budgets', icon: PiggyBankIcon, shortcut: 'b', section: 'plan' },
   { href: '/objectifs', label: 'Objectifs', icon: TargetIcon, shortcut: 'o', section: 'plan' },
@@ -31,7 +43,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/import', label: 'Import', icon: UploadIcon, shortcut: 'i', section: 'plan' },
   { href: '/analyses', label: 'Analyses', icon: ChartLineIcon, shortcut: 'a', section: 'insight' },
   { href: '/assistant', label: 'Assistant', icon: SparklesIcon, shortcut: 'q', section: 'insight' },
-  { href: '/parametres', label: 'Paramètres', icon: SettingsIcon, shortcut: 'p', section: 'system' },
+  {
+    href: '/parametres',
+    label: 'Paramètres',
+    icon: SettingsIcon,
+    shortcut: 'p',
+    section: 'system',
+  },
 ];
 
 export const NAV_SECTIONS: { id: NavItem['section']; label: string }[] = [

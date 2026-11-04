@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 export function FieldError({ id, messages }: { id: string; messages?: string[] }) {
   if (!messages || messages.length === 0) return null;
   return (
-    <p id={id} className="text-xs text-expense">
+    <p id={id} className="text-expense text-xs">
       {messages.join(' ')}
     </p>
   );

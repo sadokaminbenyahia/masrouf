@@ -29,7 +29,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Connexion</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Heureux de vous revoir. Connectez-vous pour retrouver vos comptes.
         </p>
       </div>
@@ -79,24 +79,27 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         Pas encore de compte ?{' '}
-        <Link href="/inscription" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/inscription"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
           Créer un compte
         </Link>
       </p>
 
       <aside
         aria-labelledby="demo-titre"
-        className="rounded-xl border border-dashed border-primary/30 bg-brand-tint/60 p-4 text-sm"
+        className="border-primary/30 bg-brand-tint/60 rounded-xl border border-dashed p-4 text-sm"
       >
-        <p id="demo-titre" className="flex items-center gap-2 font-medium text-foreground">
-          <SparklesIcon className="size-4 text-primary" aria-hidden="true" />
+        <p id="demo-titre" className="text-foreground flex items-center gap-2 font-medium">
+          <SparklesIcon className="text-primary size-4" aria-hidden="true" />
           Compte de démo
         </p>
-        <p className="mt-1 text-muted-foreground">
-          Compte de démo : <span className="font-medium text-foreground">demo@masrouf.tn</span> /{' '}
-          <span className="font-medium text-foreground">Demo1234!</span>
+        <p className="text-muted-foreground mt-1">
+          Compte de démo : <span className="text-foreground font-medium">demo@masrouf.tn</span> /{' '}
+          <span className="text-foreground font-medium">Demo1234!</span>
         </p>
         <Button type="button" variant="link" className="mt-1 h-auto px-0 py-1" onClick={fillDemo}>
           Utiliser le compte de démo

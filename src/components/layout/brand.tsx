@@ -25,7 +25,13 @@ export function LogoGlyph({ className }: { className?: string }) {
   );
 }
 
-export function BrandMark({ className, compact = false }: { className?: string; compact?: boolean }) {
+export function BrandMark({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoGlyph />

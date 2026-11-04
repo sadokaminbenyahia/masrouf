@@ -36,7 +36,10 @@ export function roundToStep(m: Millimes, step: Millimes = ROUNDING_STEP): Millim
   return Math.max(step, Math.round(m / step) * step);
 }
 
-export function proposeBudgets(income: Millimes, categories: readonly Category[]): BudgetProposal[] {
+export function proposeBudgets(
+  income: Millimes,
+  categories: readonly Category[],
+): BudgetProposal[] {
   if (!Number.isFinite(income) || income <= 0) return [];
   const out: BudgetProposal[] = [];
   for (const spec of BUDGET_PROPOSAL_SPECS) {
@@ -56,7 +59,11 @@ export function proposeBudgets(income: Millimes, categories: readonly Category[]
 }
 
 /** Répartition 50/30/20 du revenu (repères affichés). */
-export function split503020(income: Millimes): { needs: Millimes; wants: Millimes; savings: Millimes } {
+export function split503020(income: Millimes): {
+  needs: Millimes;
+  wants: Millimes;
+  savings: Millimes;
+} {
   const needs = Math.round(income * 0.5);
   const wants = Math.round(income * 0.3);
   return { needs, wants, savings: income - needs - wants };

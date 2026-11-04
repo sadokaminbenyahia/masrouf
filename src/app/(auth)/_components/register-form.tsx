@@ -17,7 +17,7 @@ export function RegisterForm() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Créer un compte</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Deux minutes pour démarrer. Vos catégories et comptes de base sont créés pour vous.
         </p>
       </div>
@@ -68,7 +68,7 @@ export function RegisterForm() {
             aria-invalid={fe.password ? true : undefined}
             aria-describedby={fe.password ? 'password-aide password-erreur' : 'password-aide'}
           />
-          <p id="password-aide" className="text-xs text-muted-foreground">
+          <p id="password-aide" className="text-muted-foreground text-xs">
             8 caractères minimum, avec au moins une lettre et un chiffre.
           </p>
           <FieldError id="password-erreur" messages={fe.password} />
@@ -79,9 +79,12 @@ export function RegisterForm() {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         Déjà inscrit ?{' '}
-        <Link href="/connexion" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/connexion"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
           Se connecter
         </Link>
       </p>

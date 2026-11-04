@@ -30,7 +30,7 @@ export function UserAvatar({ name }: { name: string }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-tint text-xs font-semibold text-primary ring-1 ring-primary/15"
+      className="bg-brand-tint text-primary ring-primary/15 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1"
     >
       {initials(name)}
     </span>
@@ -52,13 +52,16 @@ export function UserMenu({ user }: { user: ShellUser }) {
           <span className="hidden max-w-[9rem] truncate text-sm font-medium lg:inline">
             {user.name}
           </span>
-          <ChevronDownIcon className="hidden size-4 text-muted-foreground lg:block" aria-hidden="true" />
+          <ChevronDownIcon
+            className="text-muted-foreground hidden size-4 lg:block"
+            aria-hidden="true"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
           <span className="truncate text-sm font-medium">{user.name}</span>
-          <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+          <span className="text-muted-foreground truncate text-xs">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

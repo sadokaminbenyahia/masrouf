@@ -7,18 +7,20 @@ export function ErrorPanel({ digest, onRetry }: { digest?: string; onRetry: () =
   return (
     <div
       role="alert"
-      className="mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border bg-card px-6 py-10 text-center shadow-card"
+      className="bg-card shadow-card mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border px-6 py-10 text-center"
     >
-      <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-warning/12 text-warning">
+      <div className="bg-warning/12 text-warning mb-4 flex size-12 items-center justify-center rounded-2xl">
         <TriangleAlertIcon className="size-6" aria-hidden="true" />
       </div>
-      <h1 className="text-xl font-semibold tracking-tight">Cette page n&apos;a pas pu s&apos;afficher</h1>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+      <h1 className="text-xl font-semibold tracking-tight">
+        Cette page n&apos;a pas pu s&apos;afficher
+      </h1>
+      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
         Un problème inattendu est survenu. Vos données ne sont pas perdues : réessayez, ou revenez
         au tableau de bord.
       </p>
       {digest && (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-3 text-xs">
           Référence : <code className="font-mono">{digest}</code>
         </p>
       )}

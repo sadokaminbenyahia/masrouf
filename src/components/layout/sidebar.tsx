@@ -14,16 +14,12 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     <aside
       data-collapsed={collapsed}
       className={cn(
-        'sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200 ease-out md:flex',
+        'bg-sidebar sticky top-0 hidden h-dvh shrink-0 flex-col border-r transition-[width] duration-200 ease-out md:flex',
         collapsed ? 'w-[4.5rem]' : 'w-64',
       )}
     >
       <div className={cn('flex h-16 items-center', collapsed ? 'justify-center px-2' : 'px-5')}>
-        <Link
-          href="/tableau-de-bord"
-          className="rounded-lg"
-          aria-label="Masrouf, tableau de bord"
-        >
+        <Link href="/tableau-de-bord" className="rounded-lg" aria-label="Masrouf, tableau de bord">
           <BrandMark compact={collapsed} />
         </Link>
       </div>
@@ -34,9 +30,9 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           return (
             <div key={section.id} className="mt-4 first:mt-1">
               {collapsed ? (
-                <div className="mx-auto mb-2 h-px w-6 bg-border" aria-hidden="true" />
+                <div className="bg-border mx-auto mb-2 h-px w-6" aria-hidden="true" />
               ) : (
-                <p className="mb-1.5 px-3 text-[0.6875rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                <p className="text-muted-foreground mb-1.5 px-3 text-[0.6875rem] font-semibold tracking-[0.08em] uppercase">
                   {section.label}
                 </p>
               )}
@@ -49,23 +45,25 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
                       href={item.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                        'group focus-visible:ring-ring/50 relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px]',
                         collapsed && 'justify-center px-0',
                         active
-                          ? 'bg-card text-primary shadow-card ring-1 ring-border'
+                          ? 'bg-card text-primary shadow-card ring-border ring-1'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                       )}
                     >
                       {active && (
                         <span
                           aria-hidden="true"
-                          className="absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-primary"
+                          className="bg-primary absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full"
                         />
                       )}
                       <Icon
                         className={cn(
                           'size-[18px] shrink-0 transition-transform duration-150 group-hover:scale-105 motion-reduce:transition-none',
-                          active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+                          active
+                            ? 'text-primary'
+                            : 'text-muted-foreground group-hover:text-foreground',
                         )}
                         aria-hidden="true"
                       />
