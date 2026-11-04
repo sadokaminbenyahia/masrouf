@@ -7,7 +7,7 @@ import {
   transactionTypeSchema,
 } from './common';
 
-const tagsSchema = z
+const tagListSchema = z
   .array(
     z
       .string()
@@ -16,10 +16,11 @@ const tagsSchema = z
       .max(30)
       .regex(/^[^,;]+$/, 'Tag invalide.'),
   )
-  .max(10, '10 tags maximum.')
-  .default([]);
+  .max(10, '10 tags maximum.');
 
-const baseTransaction = z.object({
+// Champs SANS valeur par défaut : en Zod 4, `.partial()` conserve les `.default()`,
+// ce qui écraserait des champs absents d'un patch. Les défauts sont ajoutés via `.extend`.
+const transactionFields = z.object({
   accountId: idSchema,
   categoryId: idSchema.nullable().optional(),
   type: transactionTypeSchema,
@@ -27,9 +28,11 @@ const baseTransaction = z.object({
   date: isoDateSchema,
   label: z.string().trim().min(1, 'Libellé requis.').max(140),
   note: z.string().trim().max(500).nullable().optional(),
-  tags: tagsSchema,
+  tags: tagListSchema,
   transferAccountId: idSchema.nullable().optional(),
 });
+
+const baseTransaction = transactionFields.extend({ tags: tagListSchema.default([]) });
 
 const transferRule = <
   T extends { type?: string; transferAccountId?: string | null; accountId?: string },
@@ -46,7 +49,9 @@ export const transactionInputSchema = baseTransaction.refine(transferRule, trans
 export type TransactionInput = z.input<typeof transactionInputSchema>;
 
 /** Mise à jour partielle (édition inline). */
-export const transactionPatchSchema = baseTransaction.partial().refine(transferRule, transferIssue);
+export const transactionPatchSchema = transactionFields
+  .partial()
+  .refine(transferRule, transferIssue);
 export type TransactionPatch = z.input<typeof transactionPatchSchema>;
 
 /** Instantané renvoyé par la suppression, rejoué par « Annuler ». */

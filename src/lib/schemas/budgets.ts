@@ -24,7 +24,15 @@ export const goalInputSchema = z.object({
 });
 export type GoalInput = z.input<typeof goalInputSchema>;
 
-export const goalPatchSchema = goalInputSchema.partial();
+/** Patch : aucun défaut (Zod 4 conserve les `.default()` dans `.partial()`). */
+export const goalPatchSchema = z.object({
+  name: z.string().trim().min(1, 'Nom requis.').max(60).optional(),
+  targetAmount: positiveMillimesSchema.optional(),
+  savedAmount: z.number().int().min(0).optional(),
+  targetDate: isoDateSchema.nullable().optional(),
+  icon: iconSchema.optional(),
+  color: colorSchema.optional(),
+});
 export type GoalPatch = z.input<typeof goalPatchSchema>;
 
 /** Versement (positif) ou retrait (négatif) sur un objectif. */
