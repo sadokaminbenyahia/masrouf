@@ -89,7 +89,11 @@ describe('computeBudgetProgress', () => {
 describe('computeAllBudgetProgress / summarizeBudgets', () => {
   it('trie par sortOrder, ignore les catégories inconnues', () => {
     const list = computeAllBudgetProgress({
-      budgets: [budget('b2', 'c2', 100_000, 1), budget('b1', 'c1', 200_000, 0), budget('bx', 'x', 5)],
+      budgets: [
+        budget('b2', 'c2', 100_000, 1),
+        budget('b1', 'c1', 200_000, 0),
+        budget('bx', 'x', 5),
+      ],
       categories: new Map([
         ['c1', category('c1', 'Courses')],
         ['c2', category('c2', 'Cafés')],
@@ -101,7 +105,11 @@ describe('computeAllBudgetProgress / summarizeBudgets', () => {
     expect(list.map((p) => p.budget.id)).toEqual(['b1', 'b2']);
     expect(list.map((p) => p.level)).toEqual(['OK', 'WARNING']);
     expect(list.filter(isBudgetAlert).map((p) => p.budget.id)).toEqual(['b2']);
-    expect(summarizeBudgets(list)).toEqual({ budgeted: 300_000, spent: 85_000, remaining: 215_000 });
+    expect(summarizeBudgets(list)).toEqual({
+      budgeted: 300_000,
+      spent: 85_000,
+      remaining: 215_000,
+    });
     expect(summarizeBudgets([])).toBeNull();
   });
 

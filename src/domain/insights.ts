@@ -204,7 +204,10 @@ export function forgottenSubscriptionInsights(input: ForgottenSubscriptionInput)
       .filter((t) => t !== undefined);
     if (txs.some((t) => t.recurringId !== null)) continue;
     if (input.rules.some((r) => matchesExistingRule(c, r))) continue;
-    const first = txs.reduce<ISODate | null>((min, t) => (min === null || t.date < min ? t.date : min), null);
+    const first = txs.reduce<ISODate | null>(
+      (min, t) => (min === null || t.date < min ? t.date : min),
+      null,
+    );
     if (first === null || diffDays(first, input.today) < FORGOTTEN_MIN_DAYS) continue;
     const key = `forgotten-subscription:${c.merchantKey}`;
     if (seen.has(key)) continue;
@@ -244,7 +247,16 @@ export function computeInsights(input: InsightsInput): Insight[] {
   const all = [
     ...(input.ruleMonth ? rule503020Insights(input.ruleMonth, categories) : []),
     ...categorySpikeInsights(input.spikeMonth, input.categoryMonthly, categories),
-    ...(input.forgotten ? forgottenSubscriptionInsights({ ...input.forgotten, today: input.today }) : []),
+    ...(input.forgotten
+      ? forgottenSubscriptionInsights({
+          ...input.forgotten,
+          // Un versement d'épargne régulier n'est pas un abonnement.
+          candidates: input.forgotten.candidates.filter(
+            (c) => c.categoryId === null || categories.get(c.categoryId)?.group !== 'SAVINGS',
+          ),
+          today: input.today,
+        })
+      : []),
   ];
   const dismissed = new Set(input.dismissedKeys);
   return all
@@ -252,7 +264,8 @@ export function computeInsights(input: InsightsInput): Insight[] {
     .map((insight, index) => ({ insight, index }))
     .sort(
       (a, b) =>
-        SEVERITY_ORDER[a.insight.severity] - SEVERITY_ORDER[b.insight.severity] || a.index - b.index,
+        SEVERITY_ORDER[a.insight.severity] - SEVERITY_ORDER[b.insight.severity] ||
+        a.index - b.index,
     )
     .map((x) => x.insight);
 }

@@ -55,7 +55,11 @@ export async function createGoal(userId: string, data: GoalData): Promise<Goal> 
   });
 }
 
-export async function updateGoal(userId: string, id: string, data: Partial<GoalData>): Promise<Goal | null> {
+export async function updateGoal(
+  userId: string,
+  id: string,
+  data: Partial<GoalData>,
+): Promise<Goal | null> {
   const { count } = await prisma.goal.updateMany({ where: { id, userId }, data });
   return count === 0 ? null : findGoal(userId, id);
 }
@@ -84,6 +88,8 @@ export async function deleteGoal(userId: string, id: string): Promise<boolean> {
 
 export async function reorderGoals(userId: string, ids: readonly string[]): Promise<void> {
   await prisma.$transaction(
-    ids.map((id, index) => prisma.goal.updateMany({ where: { id, userId }, data: { sortOrder: index } })),
+    ids.map((id, index) =>
+      prisma.goal.updateMany({ where: { id, userId }, data: { sortOrder: index } }),
+    ),
   );
 }

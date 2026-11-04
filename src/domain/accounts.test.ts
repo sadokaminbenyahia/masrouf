@@ -23,7 +23,13 @@ const account = (id: string, over: Partial<Account> = {}): Account => ({
 describe('computeBalance', () => {
   it('initial + revenus − dépenses − virements sortants + entrants', () => {
     expect(
-      computeBalance(1000, { income: 500, expense: 200, transferOut: 100, transferIn: 50, count: 4 }),
+      computeBalance(1000, {
+        income: 500,
+        expense: 200,
+        transferOut: 100,
+        transferIn: 50,
+        count: 4,
+      }),
     ).toBe(1250);
     expect(computeBalance(-300, EMPTY_FLOWS)).toBe(-300);
   });

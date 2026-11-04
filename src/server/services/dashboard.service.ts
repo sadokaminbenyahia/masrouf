@@ -46,7 +46,10 @@ function ruleMonthFor(month: YearMonth, day: ISODate): YearMonth {
 }
 
 /** Matérialise d'abord les récurrences échues, puis agrège. `month` défaut = mois courant. */
-export async function getDashboard(userId: string, month?: YearMonth): Promise<Result<DashboardData>> {
+export async function getDashboard(
+  userId: string,
+  month?: YearMonth,
+): Promise<Result<DashboardData>> {
   const day = today();
   const materialized = await materializeDueRecurring(userId, day);
   if (!materialized.ok) return materialized;

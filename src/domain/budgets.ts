@@ -27,7 +27,11 @@ export function budgetLevel(ratio: number): BudgetLevel {
  * Dépense projetée en fin de mois au rythme actuel. Uniquement pour le mois de `today` ;
  * null pour un mois passé ou futur.
  */
-export function projectSpending(spent: Millimes, month: YearMonth, today: ISODate): Millimes | null {
+export function projectSpending(
+  spent: Millimes,
+  month: YearMonth,
+  today: ISODate,
+): Millimes | null {
   if (monthOf(today) !== month) return null;
   const { year, month: m } = parseYearMonth(month);
   const elapsed = parseISODate(today).day;
@@ -89,7 +93,8 @@ export function computeAllBudgetProgress(input: {
 export function sortBudgetProgress(list: readonly BudgetProgress[]): BudgetProgress[] {
   return [...list].sort(
     (a, b) =>
-      a.budget.sortOrder - b.budget.sortOrder || a.category.name.localeCompare(b.category.name, 'fr'),
+      a.budget.sortOrder - b.budget.sortOrder ||
+      a.category.name.localeCompare(b.category.name, 'fr'),
   );
 }
 

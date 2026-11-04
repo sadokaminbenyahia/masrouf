@@ -28,13 +28,21 @@ export async function listAccounts(
   return rows.map(toAccount);
 }
 
-export async function findAccount(userId: string, id: string, db: Db = prisma): Promise<Account | null> {
+export async function findAccount(
+  userId: string,
+  id: string,
+  db: Db = prisma,
+): Promise<Account | null> {
   const row = await db.account.findFirst({ where: { id, userId } });
   return row ? toAccount(row) : null;
 }
 
 /** Identifiants (parmi `ids`) appartenant à l'utilisateur. */
-export async function ownedAccountIds(userId: string, ids: readonly string[], db: Db = prisma): Promise<Set<string>> {
+export async function ownedAccountIds(
+  userId: string,
+  ids: readonly string[],
+  db: Db = prisma,
+): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const rows = await db.account.findMany({
     where: { userId, id: { in: [...new Set(ids)] } },
@@ -50,7 +58,13 @@ export async function nextSortOrder(userId: string, db: Db = prisma): Promise<nu
 
 export async function createAccount(
   userId: string,
-  data: { name: string; type: AccountType; initialBalance: number; color: string; sortOrder: number },
+  data: {
+    name: string;
+    type: AccountType;
+    initialBalance: number;
+    color: string;
+    sortOrder: number;
+  },
   db: Db = prisma,
 ): Promise<Account> {
   return toAccount(await db.account.create({ data: { ...data, userId } }));
@@ -128,7 +142,13 @@ export async function balanceAggregates(
     incoming: incoming.flatMap((g) =>
       g.transferAccountId === null
         ? []
-        : [{ transferAccountId: g.transferAccountId, amount: g._sum.amount ?? 0, count: g._count._all }],
+        : [
+            {
+              transferAccountId: g.transferAccountId,
+              amount: g._sum.amount ?? 0,
+              count: g._count._all,
+            },
+          ],
     ),
   };
 }

@@ -30,7 +30,11 @@ export async function listCategories(userId: string, db: Db = prisma): Promise<C
   return rows.map(toCategory);
 }
 
-export async function findCategory(userId: string, id: string, db: Db = prisma): Promise<Category | null> {
+export async function findCategory(
+  userId: string,
+  id: string,
+  db: Db = prisma,
+): Promise<Category | null> {
   const row = await db.category.findFirst({ where: { id, userId } });
   return row ? toCategory(row) : null;
 }
@@ -69,7 +73,11 @@ export interface CategoryData {
   sortOrder: number;
 }
 
-export async function createCategory(userId: string, data: CategoryData, db: Db = prisma): Promise<Category> {
+export async function createCategory(
+  userId: string,
+  data: CategoryData,
+  db: Db = prisma,
+): Promise<Category> {
   return toCategory(await db.category.create({ data: { ...data, userId } }));
 }
 
@@ -90,7 +98,10 @@ export async function deleteCategory(userId: string, id: string): Promise<boolea
       where: { userId, categoryId: id },
       data: { categoryId: null, categorySource: null, aiConfidence: null },
     });
-    await tx.recurringRule.updateMany({ where: { userId, categoryId: id }, data: { categoryId: null } });
+    await tx.recurringRule.updateMany({
+      where: { userId, categoryId: id },
+      data: { categoryId: null },
+    });
     const { count } = await tx.category.deleteMany({ where: { id, userId } });
     return count > 0;
   });

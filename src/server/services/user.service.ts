@@ -54,5 +54,7 @@ export async function bootstrapUser(userId: string): Promise<Result<void>> {
  * comptes par défaut sont recréés pour que l'application reste utilisable.
  */
 export async function deleteAllUserData(userId: string): Promise<Result<void>> {
-  return withPrismaErrors(async () => ((await userRepo.wipeData(userId)) ? ok(undefined) : notFound()));
+  return withPrismaErrors(async () =>
+    (await userRepo.wipeData(userId)) ? ok(undefined) : notFound(),
+  );
 }

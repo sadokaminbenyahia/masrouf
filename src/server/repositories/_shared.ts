@@ -16,7 +16,8 @@ export class DataIntegrityError extends Error {
 /** Valide une chaîne « enum » lue en base (SQLite n'a pas d'enum natif). */
 export function parseEnum<T extends string>(values: readonly T[], value: string, field: string): T {
   const found = values.find((v) => v === value);
-  if (found === undefined) throw new DataIntegrityError(`Valeur invalide pour ${field} : « ${value} »`);
+  if (found === undefined)
+    throw new DataIntegrityError(`Valeur invalide pour ${field} : « ${value} »`);
   return found;
 }
 

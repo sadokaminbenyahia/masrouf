@@ -35,12 +35,19 @@ export async function listBudgetProgress(
   );
 }
 
-export async function upsertBudget(userId: string, input: BudgetUpsertData): Promise<Result<Budget>> {
+export async function upsertBudget(
+  userId: string,
+  input: BudgetUpsertData,
+): Promise<Result<Budget>> {
   return withPrismaErrors(
     async () => {
       const category = await categoryRepo.findCategory(userId, input.categoryId);
       if (!category) {
-        return err(appError('NOT_FOUND', 'Catégorie introuvable.', { categoryId: ['Catégorie introuvable.'] }));
+        return err(
+          appError('NOT_FOUND', 'Catégorie introuvable.', {
+            categoryId: ['Catégorie introuvable.'],
+          }),
+        );
       }
       if (category.kind !== 'EXPENSE') {
         const message = 'Un budget s’applique à une catégorie de dépense.';

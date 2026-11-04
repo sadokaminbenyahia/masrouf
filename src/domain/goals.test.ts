@@ -78,7 +78,9 @@ describe('computeGoalProgress', () => {
   });
 
   it('cible nulle : ratio 0 sans division par zéro', () => {
-    expect(computeGoalProgress(goal({ targetAmount: 0, savedAmount: 0 }), '2026-11-04').ratio).toBe(0);
+    expect(computeGoalProgress(goal({ targetAmount: 0, savedAmount: 0 }), '2026-11-04').ratio).toBe(
+      0,
+    );
   });
 });
 
@@ -91,7 +93,10 @@ describe('applyContribution', () => {
     });
   });
   it('borne à 0 lors d’un retrait', () => {
-    expect(applyContribution(goal(), -1_000_000, now)).toEqual({ savedAmount: 0, completedAt: null });
+    expect(applyContribution(goal(), -1_000_000, now)).toEqual({
+      savedAmount: 0,
+      completedAt: null,
+    });
   });
   it('remet completedAt à null quand on redescend sous la cible', () => {
     const g = goal({ savedAmount: 1_500_000, completedAt: '2026-01-01T00:00:00.000Z' });

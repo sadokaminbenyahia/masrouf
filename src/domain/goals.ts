@@ -60,7 +60,10 @@ export function applyContribution(
   nowIso: string,
 ): { savedAmount: Millimes; completedAt: string | null } {
   const savedAmount = Math.max(0, goal.savedAmount + amount);
-  return { savedAmount, completedAt: completionDate(savedAmount, goal.targetAmount, goal.completedAt, nowIso) };
+  return {
+    savedAmount,
+    completedAt: completionDate(savedAmount, goal.targetAmount, goal.completedAt, nowIso),
+  };
 }
 
 /** Date d'atteinte cohérente avec le montant épargné (conserve la date existante si déjà atteint). */

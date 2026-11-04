@@ -21,7 +21,11 @@ export async function findBudget(userId: string, id: string): Promise<Budget | n
 }
 
 /** Crée ou met à jour le plafond d'une catégorie (unique par utilisateur et catégorie). */
-export async function upsertBudget(userId: string, categoryId: string, amount: number): Promise<Budget> {
+export async function upsertBudget(
+  userId: string,
+  categoryId: string,
+  amount: number,
+): Promise<Budget> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.budget.findFirst({ where: { userId, categoryId } });
     if (existing) {
@@ -43,6 +47,8 @@ export async function deleteBudget(userId: string, id: string): Promise<boolean>
 
 export async function reorderBudgets(userId: string, ids: readonly string[]): Promise<void> {
   await prisma.$transaction(
-    ids.map((id, index) => prisma.budget.updateMany({ where: { id, userId }, data: { sortOrder: index } })),
+    ids.map((id, index) =>
+      prisma.budget.updateMany({ where: { id, userId }, data: { sortOrder: index } }),
+    ),
   );
 }

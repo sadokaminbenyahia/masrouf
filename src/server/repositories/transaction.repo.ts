@@ -36,7 +36,11 @@ export function toTransaction(row: RowWithTags): Transaction {
     tags: row.tags.map((t) => t.name),
     transferAccountId: row.transferAccountId,
     recurringId: row.recurringId,
-    categorySource: parseNullableEnum(CATEGORY_SOURCES, row.categorySource, 'Transaction.categorySource'),
+    categorySource: parseNullableEnum(
+      CATEGORY_SOURCES,
+      row.categorySource,
+      'Transaction.categorySource',
+    ),
     aiConfidence: row.aiConfidence,
     createdAt: row.createdAt.toISOString(),
   };
@@ -70,7 +74,10 @@ export function buildWhere(userId: string, f: TransactionFilter): Prisma.Transac
   if (tag) and.push({ tags: { some: { userId, name: tag } } });
   if (f.from !== undefined || f.to !== undefined) {
     and.push({
-      date: { ...(f.from !== undefined ? { gte: f.from } : {}), ...(f.to !== undefined ? { lte: f.to } : {}) },
+      date: {
+        ...(f.from !== undefined ? { gte: f.from } : {}),
+        ...(f.to !== undefined ? { lte: f.to } : {}),
+      },
     });
   }
   const bounds = amountBounds(f.minAmount, f.maxAmount);
@@ -86,7 +93,11 @@ export async function findPage(
   const where = buildWhere(userId, query);
   const { field, direction } = query.sort;
   const primary: Prisma.TransactionOrderByWithRelationInput =
-    field === 'amount' ? { amount: direction } : field === 'label' ? { label: direction } : { date: direction };
+    field === 'amount'
+      ? { amount: direction }
+      : field === 'label'
+        ? { label: direction }
+        : { date: direction };
   // Départage stable pour une pagination déterministe.
   const orderBy: Prisma.TransactionOrderByWithRelationInput[] = [
     primary,
@@ -95,7 +106,13 @@ export async function findPage(
     { id: direction },
   ];
   const [rows, total, groups] = await Promise.all([
-    prisma.transaction.findMany({ where, orderBy, skip: window.skip, take: window.take, include: WITH_TAGS }),
+    prisma.transaction.findMany({
+      where,
+      orderBy,
+      skip: window.skip,
+      take: window.take,
+      include: WITH_TAGS,
+    }),
     prisma.transaction.count({ where }),
     prisma.transaction.groupBy({
       by: ['type'],
@@ -115,7 +132,11 @@ export async function findPage(
   };
 }
 
-export async function findTransaction(userId: string, id: string, db: Db = prisma): Promise<Transaction | null> {
+export async function findTransaction(
+  userId: string,
+  id: string,
+  db: Db = prisma,
+): Promise<Transaction | null> {
   const row = await db.transaction.findFirst({ where: { id, userId }, include: WITH_TAGS });
   return row ? toTransaction(row) : null;
 }
@@ -279,10 +300,17 @@ export async function findFlowsForDuplicates(
   db: Db = prisma,
 ): Promise<{ date: ISODate; amount: number; type: TransactionType; label: string }[]> {
   const rows = await db.transaction.findMany({
-    where: { userId, type: { in: ['EXPENSE', 'INCOME'] }, date: { gte: range.from, lte: range.to } },
+    where: {
+      userId,
+      type: { in: ['EXPENSE', 'INCOME'] },
+      date: { gte: range.from, lte: range.to },
+    },
     select: { date: true, amount: true, type: true, label: true },
   });
-  return rows.map((r) => ({ ...r, type: parseEnum(TRANSACTION_TYPES, r.type, 'Transaction.type') }));
+  return rows.map((r) => ({
+    ...r,
+    type: parseEnum(TRANSACTION_TYPES, r.type, 'Transaction.type'),
+  }));
 }
 
 /** Insertion en masse (sans tags). */
@@ -348,14 +376,22 @@ export async function sumByCategoryAndDay(
     where: { userId, type, date: { gte: range.from, lte: range.to } },
     _sum: { amount: true },
   });
-  return groups.map((g) => ({ categoryId: g.categoryId, date: g.date, amount: g._sum.amount ?? 0 }));
+  return groups.map((g) => ({
+    categoryId: g.categoryId,
+    date: g.date,
+    amount: g._sum.amount ?? 0,
+  }));
 }
 
 /** Sommes par (jour, type) des revenus et dépenses — agrégées par mois dans le domaine. */
 export async function sumByDayAndType(userId: string, range: DateRange): Promise<DailyTypeSum[]> {
   const groups = await prisma.transaction.groupBy({
     by: ['date', 'type'],
-    where: { userId, type: { in: ['EXPENSE', 'INCOME'] }, date: { gte: range.from, lte: range.to } },
+    where: {
+      userId,
+      type: { in: ['EXPENSE', 'INCOME'] },
+      date: { gte: range.from, lte: range.to },
+    },
     _sum: { amount: true },
   });
   return groups.map((g) => ({

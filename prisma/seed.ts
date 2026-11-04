@@ -111,7 +111,7 @@ function generate(): SeedTx[] {
         account: 'bank',
         type: 'TRANSFER',
         to: 'card',
-        amount: dinarsToMillimes(300),
+        amount: dinarsToMillimes(650),
         date,
         label: 'Alimentation carte Visa',
         category: null,
@@ -214,7 +214,7 @@ function generate(): SeedTx[] {
           account: 'bank',
           type: 'TRANSFER',
           to: 'cash',
-          amount: amount(150, 250, 10_000),
+          amount: amount(190, 260, 10_000),
           date,
           label: 'Retrait DAB BIAT',
           category: null,
@@ -236,7 +236,7 @@ function generate(): SeedTx[] {
         category: 'Cafés',
       });
     }
-    if (chance(0.36)) {
+    if (chance(0.28)) {
       const shop = pick([
         { label: 'Carrefour La Marsa', account: 'card' as const },
         { label: 'Monoprix Lafayette', account: 'card' as const },
@@ -246,7 +246,7 @@ function generate(): SeedTx[] {
       add({
         account: shop.account,
         type: 'EXPENSE',
-        amount: amount(18, 95),
+        amount: amount(15, 65),
         date: d,
         label: shop.label,
         category: 'Courses',
@@ -267,7 +267,7 @@ function generate(): SeedTx[] {
         category: 'Transport',
       });
     }
-    if (chance(0.11)) {
+    if (chance(0.08)) {
       add({
         account: 'card',
         type: 'EXPENSE',
@@ -294,11 +294,11 @@ function generate(): SeedTx[] {
         ...(weekend ? { tags: ['sortie'] } : {}),
       });
     }
-    if (chance(0.05)) {
+    if (chance(0.045)) {
       add({
         account: 'card',
         type: 'EXPENSE',
-        amount: amount(35, 120, 500),
+        amount: amount(30, 100, 500),
         date: d,
         label: pick(['Zara Tunis City', 'Jumia.com.tn', 'Mabrouk', 'Décathlon']),
         category: 'Shopping',
@@ -431,7 +431,7 @@ const spentThisMonth = (txs: readonly SeedTx[], category: string) =>
 
 /**
  * Garantit au moins un budget en alerte (WARNING, 80–95 %) et un dépassé (EXCEEDED, ≥ 105 %)
- * ce mois-ci, quel que soit le jour du mois : on ajuste les dépenses du mois courant.
+ * ce mois-ci (Courses et Loisirs), quel que soit le jour du mois : on ajuste les dépenses du mois courant.
  */
 function enforceBudgetLevels(txs: SeedTx[]): void {
   // EXCEEDED : Loisirs.
@@ -448,25 +448,23 @@ function enforceBudgetLevels(txs: SeedTx[]): void {
       tags: ['sortie'],
     });
   }
-  // WARNING : Cafés, entre 80 % et 95 %.
-  const cafes = dinarsToMillimes(90);
-  const isRemovableCafe = (t: SeedTx) =>
-    t.category === 'Cafés' && monthOf(t.date) === currentMonth && t.date !== addDays(TODAY, -3);
-  while (spentThisMonth(txs, 'Cafés') > cafes * 0.95) {
-    const idx = txs.findIndex(isRemovableCafe);
+  // WARNING : Courses, entre 80 % et 95 % (le plein de courses du mois, payé par carte bancaire).
+  const courses = dinarsToMillimes(450);
+  const isRemovable = (t: SeedTx) => t.category === 'Courses' && monthOf(t.date) === currentMonth;
+  while (spentThisMonth(txs, 'Courses') > courses * 0.95) {
+    const idx = txs.findIndex(isRemovable);
     if (idx < 0) break;
     txs.splice(idx, 1);
   }
-  const spentCafes = spentThisMonth(txs, 'Cafés');
-  if (spentCafes < cafes * 0.8) {
+  const spentCourses = spentThisMonth(txs, 'Courses');
+  if (spentCourses < courses * 0.8) {
     txs.push({
-      account: 'cash',
+      account: 'bank',
       type: 'EXPENSE',
-      amount: Math.round(cafes * 0.88 - spentCafes),
+      amount: Math.round((courses * 0.88 - spentCourses) / 100) * 100,
       date: TODAY,
-      label: 'Café Mrabet - tournée entre collègues',
-      category: 'Cafés',
-      tags: ['travail'],
+      label: 'Carrefour La Marsa - courses du mois',
+      category: 'Courses',
     });
   }
 }

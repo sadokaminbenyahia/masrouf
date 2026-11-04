@@ -33,10 +33,9 @@ describe('compatibilité type ↔ catégorie', () => {
 
 describe('normalizeTags', () => {
   it('nettoie, déduplique sans tenir compte de la casse et limite à 10', () => {
-    expect(normalizeTags(['  Travail ', 'travail', 'famille  proche', '', 'Famille proche'])).toEqual([
-      'Travail',
-      'famille proche',
-    ]);
+    expect(
+      normalizeTags(['  Travail ', 'travail', 'famille  proche', '', 'Famille proche']),
+    ).toEqual(['Travail', 'famille proche']);
     expect(normalizeTags(Array.from({ length: 15 }, (_, i) => `t${i}`))).toHaveLength(10);
   });
 });

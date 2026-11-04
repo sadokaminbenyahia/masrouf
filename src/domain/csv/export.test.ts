@@ -80,7 +80,9 @@ describe('transactionsToCsv', () => {
     expect(csv.startsWith(CSV_BOM)).toBe(true);
     const lines = csv.slice(1).split('\r\n');
     expect(lines[0]).toBe('Date;Libellé;Montant;Type;Catégorie;Compte;Tags;Note');
-    expect(lines[1]).toBe('07/03/2026;Café;-12,500;Dépense;Cafés;BIAT;travail, matin;"avec ""Sami""; payé"');
+    expect(lines[1]).toBe(
+      '07/03/2026;Café;-12,500;Dépense;Cafés;BIAT;travail, matin;"avec ""Sami""; payé"',
+    );
     expect(lines[2]).toBe('07/03/2026;Salaire;2600,000;Revenu;;BIAT;;');
     expect(lines[3]).toBe('07/03/2026;Retrait DAB;100,000;Virement;;BIAT → Espèces;;');
     expect(lines[4]).toBe(`07/03/2026;"'=HYPERLINK(""http://x"")";-12,500;Dépense;;;;`);

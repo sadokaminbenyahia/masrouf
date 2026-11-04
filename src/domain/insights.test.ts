@@ -104,9 +104,9 @@ describe('rule503020Insights', () => {
   });
 
   it('aucun revenu : rien', () => {
-    expect(rule503020Insights({ month: '2026-10', income: 0, expense: 5, byCategory: [] }, catMap)).toEqual(
-      [],
-    );
+    expect(
+      rule503020Insights({ month: '2026-10', income: 0, expense: 5, byCategory: [] }, catMap),
+    ).toEqual([]);
   });
 });
 
@@ -204,17 +204,19 @@ const txMap = new Map([
 
 describe('matchesExistingRule', () => {
   it('par libellé ou par catégorie + montant proche', () => {
-    expect(matchesExistingRule(candidate({ merchantKey: 'ooredoo', label: 'OOREDOO' }), rule())).toBe(
+    expect(
+      matchesExistingRule(candidate({ merchantKey: 'ooredoo', label: 'OOREDOO' }), rule()),
+    ).toBe(true);
+    expect(matchesExistingRule(candidate({ categoryId: 'telecom', amount: 48_000 }), rule())).toBe(
       true,
     );
-    expect(matchesExistingRule(candidate({ categoryId: 'telecom', amount: 48_000 }), rule())).toBe(true);
     expect(matchesExistingRule(candidate({ categoryId: 'telecom', amount: 30_000 }), rule())).toBe(
       false,
     );
     expect(matchesExistingRule(candidate(), rule())).toBe(false);
-    expect(matchesExistingRule(candidate({ merchantKey: 'ooredoo' }), rule({ type: 'INCOME' }))).toBe(
-      false,
-    );
+    expect(
+      matchesExistingRule(candidate({ merchantKey: 'ooredoo' }), rule({ type: 'INCOME' })),
+    ).toBe(false);
   });
 });
 
@@ -239,9 +241,9 @@ describe('forgottenSubscriptionInsights', () => {
 
   it('ignore les revenus, les séries liées à une règle, trop récentes ou déjà suivies', () => {
     const base = { today: '2026-11-04', rules: [rule()], transactions: txMap };
-    expect(forgottenSubscriptionInsights({ ...base, candidates: [candidate({ type: 'INCOME' })] })).toEqual(
-      [],
-    );
+    expect(
+      forgottenSubscriptionInsights({ ...base, candidates: [candidate({ type: 'INCOME' })] }),
+    ).toEqual([]);
     expect(
       forgottenSubscriptionInsights({
         ...base,
@@ -296,5 +298,25 @@ describe('computeInsights', () => {
       ['FORGOTTEN_SUBSCRIPTION', 'INFO'],
     ]);
     expect(computeInsights({ ...input, ruleMonth: null, forgotten: null })).toHaveLength(1);
+  });
+
+  it('un versement d’épargne régulier n’est pas un abonnement oublié', () => {
+    const list = computeInsights({
+      today: '2026-11-04',
+      categories,
+      ruleMonth: null,
+      spikeMonth: '2026-11',
+      categoryMonthly: [],
+      forgotten: {
+        candidates: [
+          candidate({ categoryId: 'epargne', merchantKey: 'virement epargne' }),
+          candidate({ categoryId: null, merchantKey: 'spotify' }),
+        ],
+        rules: [],
+        transactions: txMap,
+      },
+      dismissedKeys: [],
+    });
+    expect(list.map((i) => i.key)).toEqual(['forgotten-subscription:spotify']);
   });
 });

@@ -44,7 +44,10 @@ export async function listGoals(userId: string): Promise<Result<GoalProgress[]>>
   return ok(await progressOf(userId, await goalRepo.listGoals(userId)));
 }
 
-export async function createGoal(userId: string, input: GoalInputData): Promise<Result<GoalProgress>> {
+export async function createGoal(
+  userId: string,
+  input: GoalInputData,
+): Promise<Result<GoalProgress>> {
   return withPrismaErrors(async () => {
     const goal = await goalRepo.createGoal(userId, {
       name: input.name.trim(),

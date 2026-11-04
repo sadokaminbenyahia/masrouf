@@ -37,7 +37,11 @@ export async function listRecurring(userId: string): Promise<RecurringRule[]> {
   return rows.map(toRecurringRule);
 }
 
-export async function findRecurring(userId: string, id: string, db: Db = prisma): Promise<RecurringRule | null> {
+export async function findRecurring(
+  userId: string,
+  id: string,
+  db: Db = prisma,
+): Promise<RecurringRule | null> {
   const row = await db.recurringRule.findFirst({ where: { id, userId } });
   return row ? toRecurringRule(row) : null;
 }
@@ -75,7 +79,11 @@ export async function deleteRecurring(userId: string, id: string): Promise<boole
 }
 
 /** Règles actives à création automatique dont l'échéance est passée. */
-export async function listDueRules(userId: string, today: ISODate, db: Db = prisma): Promise<RecurringRule[]> {
+export async function listDueRules(
+  userId: string,
+  today: ISODate,
+  db: Db = prisma,
+): Promise<RecurringRule[]> {
   const rows = await db.recurringRule.findMany({
     where: { userId, active: true, autoCreate: true, nextDate: { lte: today } },
     orderBy: { nextDate: 'asc' },

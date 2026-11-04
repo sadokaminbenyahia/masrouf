@@ -76,7 +76,9 @@ export async function previewImport(
   input: ImportPreviewData,
 ): Promise<Result<ImportPreviewRow[]>> {
   if (!(await accountRepo.findAccount(userId, input.accountId))) {
-    return err(appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }));
+    return err(
+      appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }),
+    );
   }
   const rows = input.rows;
   const hashes = rows.map((r) => computeImportHash(r));
@@ -121,7 +123,9 @@ export async function commitImport(
 ): Promise<Result<ImportCommitResult>> {
   return withPrismaErrors(async () => {
     if (!(await accountRepo.findAccount(userId, input.accountId))) {
-      return err(appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }));
+      return err(
+        appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }),
+      );
     }
     const categoryIds = input.rows.flatMap((r) => (r.categoryId === null ? [] : [r.categoryId]));
     const categories = await categoryRepo.findCategoriesByIds(userId, categoryIds);
@@ -160,7 +164,11 @@ export async function commitImport(
                   recurringId: null,
                   importHash: hashes[i] ?? computeImportHash(r),
                   categorySource:
-                    r.categoryId === null ? null : r.categoryFromAI ? ('AI' as const) : ('IMPORT' as const),
+                    r.categoryId === null
+                      ? null
+                      : r.categoryFromAI
+                        ? ('AI' as const)
+                        : ('IMPORT' as const),
                   aiConfidence: null,
                 },
               ],

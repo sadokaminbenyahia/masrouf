@@ -21,12 +21,16 @@ async function checkRefs(
   categoryId: string | null | undefined,
 ): Promise<Result<void>> {
   if (accountId !== undefined && !(await accountRepo.findAccount(userId, accountId))) {
-    return err(appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }));
+    return err(
+      appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }),
+    );
   }
   if (categoryId !== undefined && categoryId !== null) {
     const c = await categoryRepo.findCategory(userId, categoryId);
     if (!c) {
-      return err(appError('NOT_FOUND', 'Catégorie introuvable.', { categoryId: ['Catégorie introuvable.'] }));
+      return err(
+        appError('NOT_FOUND', 'Catégorie introuvable.', { categoryId: ['Catégorie introuvable.'] }),
+      );
     }
     const mismatch = categoryMismatchMessage(type, c.kind);
     if (mismatch !== null) return err(appError('VALIDATION', mismatch, { categoryId: [mismatch] }));

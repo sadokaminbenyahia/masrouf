@@ -5,7 +5,9 @@ import type { UserProfile } from '@/domain/types';
 import { prisma } from '@/server/db';
 import type { Db } from './_shared';
 
-export function toUserProfile(row: Pick<User, 'id' | 'email' | 'name' | 'currency' | 'onboardedAt'>): UserProfile {
+export function toUserProfile(
+  row: Pick<User, 'id' | 'email' | 'name' | 'currency' | 'onboardedAt'>,
+): UserProfile {
   return {
     id: row.id,
     email: row.email,
@@ -15,7 +17,13 @@ export function toUserProfile(row: Pick<User, 'id' | 'email' | 'name' | 'currenc
   };
 }
 
-const PROFILE_SELECT = { id: true, email: true, name: true, currency: true, onboardedAt: true } as const;
+const PROFILE_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  currency: true,
+  onboardedAt: true,
+} as const;
 
 export async function findProfile(userId: string): Promise<UserProfile | null> {
   const row = await prisma.user.findUnique({ where: { id: userId }, select: PROFILE_SELECT });

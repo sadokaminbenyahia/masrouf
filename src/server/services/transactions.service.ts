@@ -58,7 +58,9 @@ async function checkAccounts(
   const ids = transferAccountId === null ? [accountId] : [accountId, transferAccountId];
   const owned = await accountRepo.ownedAccountIds(userId, ids);
   if (!owned.has(accountId)) {
-    return err(appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }));
+    return err(
+      appError('NOT_FOUND', 'Compte introuvable.', { accountId: ['Compte introuvable.'] }),
+    );
   }
   if (transferAccountId !== null && !owned.has(transferAccountId)) {
     return err(
@@ -76,10 +78,13 @@ async function checkCategory(
   type: TransactionType,
   categoryId: string,
 ): Promise<Result<void>> {
-  if (type === 'TRANSFER') return validation('categoryId', 'Un virement ne peut pas avoir de catégorie.');
+  if (type === 'TRANSFER')
+    return validation('categoryId', 'Un virement ne peut pas avoir de catégorie.');
   const category = await categoryRepo.findCategory(userId, categoryId);
   if (!category) {
-    return err(appError('NOT_FOUND', 'Catégorie introuvable.', { categoryId: ['Catégorie introuvable.'] }));
+    return err(
+      appError('NOT_FOUND', 'Catégorie introuvable.', { categoryId: ['Catégorie introuvable.'] }),
+    );
   }
   const mismatch = categoryMismatchMessage(type, category.kind);
   return mismatch === null ? ok(undefined) : validation('categoryId', mismatch);
@@ -102,7 +107,11 @@ async function predictedCategory(
 ): Promise<{ categoryId: string; confidence: number } | null> {
   const r = await predictCategory(userId, input);
   if (!r.ok) {
-    console.warn('[transactions] catégorisation automatique indisponible :', r.error.code, r.error.message);
+    console.warn(
+      '[transactions] catégorisation automatique indisponible :',
+      r.error.code,
+      r.error.message,
+    );
     return null;
   }
   const p = r.value;
@@ -279,7 +288,8 @@ export async function updateTransaction(
           aiConfidence: null,
         });
       }
-      if (decision.learn && patch.categoryId !== null) pendingLearn = { categoryId: patch.categoryId };
+      if (decision.learn && patch.categoryId !== null)
+        pendingLearn = { categoryId: patch.categoryId };
     } else if (type !== before.type && before.categoryId !== null) {
       const current = await categoryRepo.findCategory(userId, before.categoryId);
       if (!current || !isCategoryCompatible(type, current.kind)) {
@@ -468,7 +478,8 @@ export async function getTransactionsInRange(
   range: DateRange,
   filter?: { types?: TransactionType[]; categoryIds?: string[] },
 ): Promise<Result<Transaction[]>> {
-  if (range.from > range.to) return validation('range', 'La date de début doit précéder la date de fin.');
+  if (range.from > range.to)
+    return validation('range', 'La date de début doit précéder la date de fin.');
   return ok(await txRepo.findInRange(userId, range, filter ?? {}));
 }
 

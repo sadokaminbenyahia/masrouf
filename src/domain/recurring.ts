@@ -114,7 +114,11 @@ export function upcomingRules(
         r.nextDate <= until &&
         (r.endDate === null || r.nextDate <= r.endDate),
     )
-    .sort((a, b) => (a.nextDate < b.nextDate ? -1 : a.nextDate > b.nextDate ? 1 : 0) || a.label.localeCompare(b.label, 'fr'))
+    .sort(
+      (a, b) =>
+        (a.nextDate < b.nextDate ? -1 : a.nextDate > b.nextDate ? 1 : 0) ||
+        a.label.localeCompare(b.label, 'fr'),
+    )
     .slice(0, limit);
 }
 
