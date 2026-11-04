@@ -16,12 +16,13 @@ import {
 } from '@/app/actions/transactions';
 import type { ISODate } from '@/domain/dates';
 import type { Transaction } from '@/domain/types';
+import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { errorMessage, unwrap } from '@/lib/query';
 import type { TransactionPatch } from '@/lib/schemas/transactions';
 import { toastError, toastSuccess, toastUndo } from '@/lib/toast';
 import { invalidateFinanceQueries } from './cache';
 import { buildUndoPatch, patchPage, removeFromPage } from './optimistic';
-import { pluralize } from './text';
+import { describeTransaction, pluralize } from './text';
 
 interface CacheContext {
   key: QueryKey;
@@ -30,6 +31,7 @@ interface CacheContext {
 
 export function useTransactionMutations(pageKey: QueryKey) {
   const queryClient = useQueryClient();
+  const { discreet } = useDiscreetMode();
 
   async function optimistic(
     update: (page: TransactionPage) => TransactionPage,
@@ -66,20 +68,21 @@ export function useTransactionMutations(pageKey: QueryKey) {
   }
 
   const update = useMutation({
-    mutationFn: async (v: { id: string; patch: TransactionPatch; message: string | null }) =>
+    /** `confirm` : confirmation d'une catégorie IA (toast simple, sans « Annuler »). */
+    mutationFn: async (v: { id: string; patch: TransactionPatch; confirm: boolean }) =>
       unwrap(await updateTransactionAction(v.id, v.patch)),
     onMutate: (v) => optimistic((page) => patchPage(page, new Map([[v.id, v.patch]]))),
     onError: (e, _v, ctx) => {
       rollback(ctx);
       toastError(errorMessage(e));
     },
-    onSuccess: ({ before }, v) => {
-      if (v.message === null) {
+    onSuccess: ({ before, after }, v) => {
+      if (v.confirm) {
         toastSuccess('Catégorie confirmée');
         return;
       }
       const undo = buildUndoPatch(before, v.patch);
-      toastUndo(v.message, () =>
+      toastUndo(describeTransaction(after, 'modifié', discreet), () =>
         runUndo(
           (page) => patchPage(page, new Map([[v.id, undo]])),
           async () => unwrap(await updateTransactionAction(v.id, undo)),
@@ -97,8 +100,8 @@ export function useTransactionMutations(pageKey: QueryKey) {
       rollback(ctx);
       toastError(errorMessage(e));
     },
-    onSuccess: (snapshot) => {
-      toastUndo('Transaction supprimée', () =>
+    onSuccess: (snapshot, t) => {
+      toastUndo(describeTransaction(t, 'supprimé', discreet), () =>
         runUndo(
           null,
           async () => unwrap(await restoreTransactionAction(snapshot)),
@@ -114,7 +117,7 @@ export function useTransactionMutations(pageKey: QueryKey) {
       unwrap(await duplicateTransactionAction(v.t.id, v.date)),
     onError: (e) => toastError(errorMessage(e)),
     onSuccess: (copy) => {
-      toastUndo('Transaction dupliquée', () =>
+      toastUndo(describeTransaction(copy, 'dupliqué', discreet), () =>
         runUndo(
           (page) => removeFromPage(page, [copy.id]),
           async () => unwrap(await deleteTransactionAction(copy.id)),
@@ -199,11 +202,11 @@ export function useTransactionMutations(pageKey: QueryKey) {
 
   return {
     updateTransaction: (t: Transaction, patch: TransactionPatch) =>
-      update.mutate({ id: t.id, patch, message: 'Transaction modifiée' }),
+      update.mutate({ id: t.id, patch, confirm: false }),
     /** Confirme une catégorie proposée par l'IA (elle devient une catégorie choisie). */
     confirmCategory: (t: Transaction) => {
       if (t.categoryId === null) return;
-      update.mutate({ id: t.id, patch: { categoryId: t.categoryId }, message: null });
+      update.mutate({ id: t.id, patch: { categoryId: t.categoryId }, confirm: true });
     },
     deleteTransaction: (t: Transaction) => remove.mutate(t),
     duplicateTransaction: (t: Transaction, date: ISODate) => duplicate.mutate({ t, date }),

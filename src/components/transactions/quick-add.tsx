@@ -1,10 +1,12 @@
 'use client';
 /**
- * Ajout rapide global : bouton flottant (≥ md), touche `N`, événement QUICK_ADD_EVENT.
+ * Ajout rapide global : touche `N` et événement QUICK_ADD_EVENT (émis par le bouton
+ * « Ajouter une transaction » de la barre du haut sur desktop et par le bouton central de la
+ * navigation mobile). Pas de bouton flottant : il masquait des contenus et faisait doublon.
  * Champ en langage naturel (« café 3,500 hier ») qui pré-remplit le formulaire.
  */
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent } from 'react';
 import { parseEntryAction } from '@/app/actions/ai';
 import { deleteTransactionAction } from '@/app/actions/transactions';
@@ -12,16 +14,17 @@ import { AiBadge } from '@/components/shared/ai-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DEFAULT_TIMEZONE, todayInTimeZone, type ISODate } from '@/domain/dates';
 import type { Transaction } from '@/domain/types';
 import { QUICK_ADD_EVENT, onUiEvent, type QuickAddDetail } from '@/lib/events';
+import { useDiscreetMode } from '@/lib/hooks/use-discreet-mode';
 import { useHotkey } from '@/lib/hooks/use-hotkey';
 import { errorMessage, unwrap } from '@/lib/query';
 import type { TransactionInput } from '@/lib/schemas/transactions';
 import { toastError, toastSuccess, toastUndo } from '@/lib/toast';
 import { invalidateFinanceQueries } from './cache';
 import { ResponsiveDialog } from './edit-transaction-dialog';
+import { describeTransaction } from './text';
 import { TransactionForm } from './transaction-form';
 
 const DEFAULT_EXAMPLES = ['café 3,500 hier', 'courses carrefour 87,250', 'salaire 2600 le 1er'];
@@ -36,6 +39,7 @@ type InitialFocus = 'amount' | 'submit' | 'none';
 
 export function QuickAddTransaction() {
   const queryClient = useQueryClient();
+  const { discreet } = useDiscreetMode();
   const [open, setOpen] = useState(false);
   const [today, setToday] = useState<ISODate>(() => todayInTimeZone(DEFAULT_TIMEZONE, new Date()));
   const [text, setText] = useState('');
@@ -122,7 +126,7 @@ export function QuickAddTransaction() {
 
   function handleSaved(t: Transaction) {
     setOpen(false);
-    toastUndo('Transaction ajoutée', async () => {
+    toastUndo(describeTransaction(t, 'ajouté', discreet), async () => {
       try {
         unwrap(await deleteTransactionAction(t.id));
         toastSuccess('Ajout annulé');
@@ -224,33 +228,13 @@ export function QuickAddTransaction() {
   );
 
   return (
-    <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            onClick={() => openWith({})}
-            aria-label="Ajouter une transaction"
-            aria-keyshortcuts="N"
-            className="fixed right-6 bottom-6 z-40 hidden size-14 rounded-full shadow-lg md:inline-flex"
-          >
-            <Plus className="size-6" aria-hidden />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          Ajouter une transaction <kbd className="ml-1 font-sans">N</kbd>
-        </TooltipContent>
-      </Tooltip>
-
-      <ResponsiveDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Nouvelle transaction"
-        description="Saisissez-la en langage naturel ou remplissez le formulaire."
-      >
-        {body}
-      </ResponsiveDialog>
-    </>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Nouvelle transaction"
+      description="Saisissez-la en langage naturel ou remplissez le formulaire."
+    >
+      {body}
+    </ResponsiveDialog>
   );
 }

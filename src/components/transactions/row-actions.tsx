@@ -17,8 +17,20 @@ export interface RowActionHandlers {
   onConfirmCategory: (t: Transaction) => void;
 }
 
-/** Menu « Actions pour <libellé> » : Modifier, Dupliquer, Supprimer. */
-export function RowActions({ t, handlers }: { t: Transaction; handlers: RowActionHandlers }) {
+/**
+ * Menu « Actions pour <libellé> » : Modifier, Dupliquer, Supprimer.
+ * `narrow` (liste mobile) : bouton visuellement étroit (32 px) mais zone cliquable de 44 × 44 px
+ * (pseudo-élément), pour laisser plus de place au libellé.
+ */
+export function RowActions({
+  t,
+  handlers,
+  narrow = false,
+}: {
+  t: Transaction;
+  handlers: RowActionHandlers;
+  narrow?: boolean;
+}) {
   const aiCategory = t.categorySource === 'AI' && t.categoryId !== null;
   return (
     <DropdownMenu>
@@ -28,7 +40,12 @@ export function RowActions({ t, handlers }: { t: Transaction; handlers: RowActio
           variant="ghost"
           size="icon"
           aria-label={`Actions pour ${t.label}`}
-          className="size-11 md:size-9"
+          data-row-actions={t.id}
+          className={
+            narrow
+              ? "relative h-11 w-8 after:absolute after:inset-y-0 after:-right-1 after:-left-2 after:content-['']"
+              : 'size-11 md:size-9'
+          }
         >
           <MoreHorizontal className="size-4" aria-hidden />
         </Button>

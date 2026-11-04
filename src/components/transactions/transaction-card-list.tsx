@@ -46,18 +46,28 @@ export function TransactionCardList({
 
   return (
     <div
-      className={cn('grid gap-4 transition-opacity', busy && 'opacity-60')}
+      className={cn(
+        'grid grid-cols-[minmax(0,1fr)] gap-4 transition-opacity',
+        busy && 'opacity-60',
+      )}
       aria-busy={busy || undefined}
     >
       {groups.map((g) => {
         const headingId = `${baseId}-${g.date ?? 'all'}`;
         return (
-          <section key={g.date ?? 'all'} aria-labelledby={g.date ? headingId : undefined}>
+          <section
+            key={g.date ?? 'all'}
+            aria-labelledby={g.date ? headingId : undefined}
+            className="min-w-0"
+          >
             {g.date !== null && (
-              <div className="text-muted-foreground mb-1.5 flex items-center justify-between px-1 text-xs font-medium">
-                <h2 id={headingId}>{formatRelativeDayFR(g.date, today)}</h2>
-                <span className="inline-flex items-center gap-1">
-                  Total du jour <Money value={g.net} sign="always" className="text-foreground" />
+              <div className="text-muted-foreground mb-1.5 flex items-center justify-between gap-2 px-1 text-xs font-medium">
+                <h2 id={headingId} className="min-w-0 truncate">
+                  {formatRelativeDayFR(g.date, today)}
+                </h2>
+                <span className="inline-flex shrink-0 items-center gap-1">
+                  Total du jour
+                  <Money value={g.net} sign="always" decimals={0} className="text-foreground" />
                 </span>
               </div>
             )}
@@ -72,11 +82,16 @@ export function TransactionCardList({
                   ? accountsById.get(t.transferAccountId)
                   : undefined;
                 const selected = !!selection[t.id];
+                const aiCategory = t.categorySource === 'AI' ? category : null;
+                const hasExtras = t.tags.length > 0 || aiCategory !== null;
                 return (
+                  // Grille : la 1re ligne (case, icône, libellé, montant, actions) a une colonne
+                  // de libellé `minmax(0,1fr)` (troncature, jamais de débordement) ; les badges
+                  // (IA, tags) passent sur une 2e ligne qui s'étend sous le montant.
                   <li
                     key={t.id}
                     className={cn(
-                      'flex items-center gap-3 py-2 pr-1 pl-3',
+                      'grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 py-2 pr-1 pl-3',
                       selected && 'bg-accent/50',
                     )}
                   >
@@ -84,7 +99,8 @@ export function TransactionCardList({
                       checked={selected}
                       onClick={(e) => onToggleRow(t.id, e.shiftKey)}
                       aria-label={`Sélectionner ${t.label}`}
-                      className="size-5"
+                      // Zone cliquable de 44 × 44 px (pseudo-élément) autour de la case de 20 px.
+                      className="relative mr-1 size-5 after:absolute after:-inset-3 after:content-['']"
                     />
                     {t.type === 'TRANSFER' ? (
                       <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl">
@@ -95,8 +111,8 @@ export function TransactionCardList({
                     ) : (
                       <span className="bg-muted size-9 shrink-0 rounded-xl" aria-hidden />
                     )}
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 font-medium">
+                    <div className="min-w-0">
+                      <p className="flex min-w-0 items-center gap-1.5 font-medium">
                         <span className="truncate">{t.label}</span>
                         {t.recurringId && (
                           <Repeat
@@ -112,42 +128,42 @@ export function TransactionCardList({
                         {g.date === null && ` · ${formatRelativeDayFR(t.date, today)}`}
                       </p>
                       {t.note && <p className="text-muted-foreground truncate text-xs">{t.note}</p>}
-                      {(t.tags.length > 0 || t.categorySource === 'AI') && (
-                        <div className="mt-1 flex flex-wrap items-center gap-1">
-                          {t.categorySource === 'AI' && category && (
-                            <>
-                              <AiBadge
-                                {...(t.aiConfidence !== null ? { confidence: t.aiConfidence } : {})}
-                              />
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => handlers.onConfirmCategory(t)}
-                                aria-label={`Confirmer la catégorie ${category.name} pour ${t.label}`}
-                              >
-                                Confirmer
-                              </Button>
-                            </>
-                          )}
-                          {t.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="border-border rounded-md border px-1.5 text-[11px]"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                     <Money
                       value={t.amount}
                       type={t.type}
-                      className="shrink-0 text-sm font-semibold"
+                      className="text-right text-sm font-semibold"
                     />
-                    <RowActions t={t} handlers={handlers} />
+                    <RowActions t={t} handlers={handlers} narrow />
+                    {hasExtras && (
+                      <div className="col-span-3 col-start-3 flex min-w-0 flex-wrap items-center gap-1 pr-3">
+                        {aiCategory && (
+                          <>
+                            <AiBadge
+                              {...(t.aiConfidence !== null ? { confidence: t.aiConfidence } : {})}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => handlers.onConfirmCategory(t)}
+                              aria-label={`Confirmer la catégorie ${aiCategory.name} pour ${t.label}`}
+                            >
+                              Confirmer
+                            </Button>
+                          </>
+                        )}
+                        {t.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="border-border max-w-full truncate rounded-md border px-1.5 text-[11px]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </li>
                 );
               })}

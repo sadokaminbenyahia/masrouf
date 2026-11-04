@@ -216,7 +216,7 @@ export function TransactionsView({
       busy,
     };
     content = (
-      <div className="grid gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         {pageQuery.isError && (
           <ErrorPanel
             title="Les données affichées ne sont peut-être plus à jour"
@@ -263,8 +263,10 @@ export function TransactionsView({
     );
   }
 
+  // `minmax(0,1fr)` : sans cela, la piste implicite (auto) prend la largeur min-content des
+  // lignes (libellés `truncate` en nowrap) et la page défile horizontalement sur mobile.
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       {!(page && page.total === 0 && !filtersActive && !hasActiveFilters(urlQuery)) && (
         <TransactionFilters
           query={query}

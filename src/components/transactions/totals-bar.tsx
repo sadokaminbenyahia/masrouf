@@ -22,23 +22,24 @@ export function TotalsBar({
       <p className="text-muted-foreground w-full text-sm sm:w-auto">
         {pluralize(totals.count, 'transaction', 'transactions')}
       </p>
-      <dl className="grid flex-1 grid-cols-3 gap-3 sm:flex sm:justify-end sm:gap-8">
+      {/* Totaux arrondis au dinar ; flex-wrap : jamais de débordement sur mobile. */}
+      <dl className="flex min-w-0 flex-1 flex-wrap gap-x-6 gap-y-2 sm:justify-end sm:gap-x-8">
         <div>
           <dt className="text-muted-foreground text-xs">Revenus</dt>
           <dd className="font-medium">
-            <Money value={totals.income} type="INCOME" />
+            <Money value={totals.income} type="INCOME" decimals={0} />
           </dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">Dépenses</dt>
           <dd className="font-medium">
-            <Money value={totals.expense} type="EXPENSE" />
+            <Money value={totals.expense} type="EXPENSE" decimals={0} />
           </dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">Solde net</dt>
           <dd className="font-semibold">
-            <Money value={totals.net} sign="always" />
+            <Money value={totals.net} sign="always" decimals={0} />
           </dd>
         </div>
       </dl>

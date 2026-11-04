@@ -430,7 +430,8 @@ export function TransactionForm({
         </Field>
 
         <Field label="Date" htmlFor={ids.date} error={errors.date} errorId={errorId('date')}>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Champ sur toute la largeur (la date reste lisible), raccourcis en dessous. */}
+          <div className="grid gap-1.5">
             <Input
               id={ids.date}
               type="date"
@@ -439,7 +440,7 @@ export function TransactionForm({
                 setDate(e.target.value);
                 clearError('date');
               }}
-              className="min-h-11 min-w-0 flex-1"
+              className="min-h-11 w-full min-w-0"
               {...fieldProps('date')}
             />
             <div className="flex gap-1">
@@ -449,6 +450,7 @@ export function TransactionForm({
                 variant={date === today ? 'secondary' : 'ghost'}
                 aria-pressed={date === today}
                 onClick={() => setDate(today)}
+                className="h-11 md:h-8"
               >
                 Aujourd&apos;hui
               </Button>
@@ -458,6 +460,7 @@ export function TransactionForm({
                 variant={date === yesterday ? 'secondary' : 'ghost'}
                 aria-pressed={date === yesterday}
                 onClick={() => setDate(yesterday)}
+                className="h-11 md:h-8"
               >
                 Hier
               </Button>

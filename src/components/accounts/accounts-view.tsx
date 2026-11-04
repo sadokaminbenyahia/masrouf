@@ -130,13 +130,18 @@ export function AccountsView({ initialAccounts }: { initialAccounts: AccountWith
           <Button
             type="button"
             variant="outline"
+            className="h-11 md:h-10"
             disabled={active.length < 2}
             onClick={() => openQuickAdd({ prefill: { type: 'TRANSFER' } })}
           >
             <ArrowLeftRight aria-hidden />
             Faire un virement
           </Button>
-          <Button type="button" onClick={() => setForm({ open: true, account: null })}>
+          <Button
+            type="button"
+            className="h-11 md:h-10"
+            onClick={() => setForm({ open: true, account: null })}
+          >
             <Plus aria-hidden />
             Nouveau compte
           </Button>
@@ -177,8 +182,10 @@ export function AccountsView({ initialAccounts }: { initialAccounts: AccountWith
             >
               <div>
                 <p className="text-muted-foreground text-sm">Solde total</p>
+                {/* Total agrégé arrondi au dinar ; soldes par compte au millime. */}
                 <Money
                   value={totalBalance(accounts)}
+                  decimals={0}
                   className="text-3xl font-semibold tracking-tight"
                 />
               </div>
@@ -313,6 +320,12 @@ function AccountCard({
 }) {
   const meta = ACCOUNT_TYPE_META[account.type];
   const Icon = meta.icon;
+  // « Espèces · Espèces » : le type n'est affiché que s'il apporte une information.
+  const showType =
+    account.name.trim().localeCompare(meta.label, 'fr', { sensitivity: 'base' }) !== 0;
+  const subtitle = [showType ? meta.label : null, account.archived ? 'archivé' : null]
+    .filter((part): part is string => part !== null)
+    .join(' · ');
   return (
     <article
       className={cn(
@@ -329,7 +342,7 @@ function AccountCard({
           <Icon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold">
+          <h2 className="truncate font-semibold">
             {/* Lien étiré : toute la carte mène aux transactions du compte. */}
             <Link
               href={`/transactions?accountId=${encodeURIComponent(account.id)}`}
@@ -337,11 +350,10 @@ function AccountCard({
             >
               {account.name}
             </Link>
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            {meta.label}
-            {account.archived && ' · archivé'}
-          </p>
+          </h2>
+          {subtitle && (
+            <p className="text-muted-foreground text-sm first-letter:uppercase">{subtitle}</p>
+          )}
         </div>
         <div className="relative z-10">
           <DropdownMenu>

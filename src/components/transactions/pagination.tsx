@@ -39,7 +39,7 @@ export function Pagination({
           Par page
         </span>
         <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
-          <SelectTrigger aria-labelledby={sizeLabelId} className="min-h-10 w-20">
+          <SelectTrigger aria-labelledby={sizeLabelId} className="min-h-11 w-20 md:min-h-10">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

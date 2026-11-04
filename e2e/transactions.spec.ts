@@ -5,6 +5,30 @@ function quickAddDialog(page: Page): Locator {
   return page.getByRole('dialog', { name: 'Nouvelle transaction' });
 }
 
+/**
+ * Bouton d'ajout rapide de la barre du haut (desktop) : nom accessible « Ajouter une
+ * transaction », texte visible « Ajouter ». Il n'y a plus de bouton flottant.
+ */
+function quickAddButton(page: Page): Locator {
+  return page
+    .getByRole('banner')
+    .getByRole('button', { name: 'Ajouter une transaction', exact: true });
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Toast explicite d'une mutation : « <libellé> · 12,345 DT ajouté » (ou modifié, supprimé). */
+function transactionToast(
+  page: Page,
+  label: string,
+  verb: 'ajouté' | 'modifié' | 'supprimé',
+): Locator {
+  // Espace insécable entre le montant et « DT » (formatMoney) : `\s`.
+  return toast(page, new RegExp(`${escapeRegExp(label)} · .+\\sDT ${verb}`));
+}
+
 /** Saisie en langage naturel dans l'ajout rapide (Entrée pour analyser). */
 async function describeTransaction(dialog: Locator, text: string): Promise<void> {
   await dialog.getByLabel('Décrivez la transaction').fill(text);
@@ -14,14 +38,14 @@ async function describeTransaction(dialog: Locator, text: string): Promise<void>
 
 /** Crée une transaction (dépense) avec un libellé unique via le bouton d'ajout rapide. */
 async function createTransaction(page: Page, label: string, amount = '12,345'): Promise<void> {
-  await page.getByRole('button', { name: 'Ajouter une transaction', exact: true }).click();
+  await quickAddButton(page).click();
   const dialog = quickAddDialog(page);
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Montant', { exact: true }).fill(amount);
   await dialog.getByLabel('Libellé', { exact: true }).fill(label);
   await dialog.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(dialog).toBeHidden();
-  await expect(toast(page, 'Transaction ajoutée')).toBeVisible();
+  await expect(transactionToast(page, label, 'ajouté')).toBeVisible();
 }
 
 function transactionsTable(page: Page): Locator {
@@ -49,7 +73,7 @@ test.describe('Transactions', () => {
 
   test('ajout rapide : le bouton « Ajouter une transaction » ouvre la saisie', async ({ page }) => {
     await gotoApp(page, '/tableau-de-bord');
-    await page.getByRole('button', { name: 'Ajouter une transaction', exact: true }).click();
+    await quickAddButton(page).click();
     const dialog = quickAddDialog(page);
     await expect(dialog).toBeVisible();
     for (const label of ['Montant', 'Libellé', 'Date', 'Catégorie', 'Compte']) {
@@ -74,7 +98,7 @@ test.describe('Transactions', () => {
 
     await dialog.getByRole('button', { name: 'Enregistrer' }).click();
     await expect(dialog).toBeHidden();
-    const added = toast(page, 'Transaction ajoutée');
+    const added = transactionToast(page, 'Café', 'ajouté');
     await expect(added).toBeVisible();
     await added.getByRole('button', { name: 'Annuler' }).click();
     await expect(toast(page, 'Ajout annulé')).toBeVisible();
@@ -152,7 +176,7 @@ test.describe('Transactions', () => {
     await page.getByRole('menuitem', { name: 'Supprimer' }).click();
     await expect(rowFor(page, label)).toHaveCount(0);
 
-    const deleted = toast(page, 'Transaction supprimée');
+    const deleted = transactionToast(page, label, 'supprimé');
     await expect(deleted).toBeVisible();
     await deleted.getByRole('button', { name: 'Annuler' }).click();
     await expect(rowFor(page, label)).toHaveCount(1);

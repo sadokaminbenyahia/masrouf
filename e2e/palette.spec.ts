@@ -16,11 +16,8 @@ test.describe('Palette de commandes', () => {
   });
 
   test('Ctrl+K, « budg » puis Entrée → /budgets', async ({ page }) => {
-    // BUG: dès 3 caractères, l'entrée « Demander à l'assistant : budg » (groupe « Intelligence »,
-    // forceMount, rendu en tête de liste) est sélectionnée par défaut : Entrée mène à
-    // /assistant?q=budg au lieu de /budgets. Fichier probable :
-    // src/components/command-palette/command-palette.tsx.
-    test.fail();
+    // La meilleure correspondance (page Budgets) est sélectionnée ; « Demander à l'assistant »
+    // (groupe « Intelligence ») n'est proposé qu'après les pages et actions.
     const { palette, input } = await openPalette(page);
     await input.fill('budg');
     await expect(palette.getByRole('option', { name: /Budgets/ }).first()).toBeVisible();

@@ -34,13 +34,13 @@ export default async function TransactionsPage({
       description="Recherchez, filtrez et corrigez vos opérations."
       actions={
         <>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-11 md:h-10">
             <Link href="/import">
               <Upload aria-hidden />
               Importer
             </Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-11 md:h-10">
             <a href={exportHref(query)} download>
               <Download aria-hidden />
               Exporter

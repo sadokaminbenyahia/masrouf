@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatRelativeDayFR, type ISODate } from '@/domain/dates';
+import { formatDateFR, formatRelativeDayFR, type ISODate } from '@/domain/dates';
 import type { AccountWithBalance, Category, Transaction } from '@/domain/types';
 import { useHotkey } from '@/lib/hooks/use-hotkey';
 import type { TransactionPatch } from '@/lib/schemas/transactions';
@@ -143,10 +143,10 @@ export function TransactionsTable({
     },
   });
   const rowsById = new Map(table.getRowModel().rows.map((r) => [r.id, r]));
-  const groups =
-    sort.field === 'date'
-      ? groupByDay(items)
-      : [{ date: null, items, income: 0, expense: 0, net: 0 }];
+  const groupedByDay = sort.field === 'date';
+  const groups = groupedByDay
+    ? groupByDay(items)
+    : [{ date: null, items, income: 0, expense: 0, net: 0 }];
 
   function focusCell(cell: CellRef | null) {
     if (!cell) return;
@@ -323,9 +323,17 @@ export function TransactionsTable({
           />
         </TableCell>
 
-        <TableCell {...cellProps(t, 'date', 'w-32 whitespace-nowrap')}>
+        <TableCell
+          {...cellProps(t, 'date', cn('whitespace-nowrap', groupedByDay ? 'w-20' : 'w-32'))}
+        >
           {isEditing(t, 'date') ? (
             renderEditor(t, 'date')
+          ) : groupedByDay ? (
+            // Groupé par jour : l'en-tête de groupe porte déjà la date ; cellule compacte
+            // « 04/11 », toujours éditable (double-clic / Entrée).
+            <time dateTime={t.date} className="text-muted-foreground text-xs tabular-nums">
+              {formatDateFR(t.date, 'short').slice(0, 5)}
+            </time>
           ) : (
             <time dateTime={t.date}>{formatRelativeDayFR(t.date, today)}</time>
           )}
@@ -512,7 +520,12 @@ export function TransactionsTable({
                       <span>{formatRelativeDayFR(g.date, today)}</span>
                       <span className="inline-flex items-center gap-1.5">
                         Total du jour
-                        <Money value={g.net} sign="always" className="text-foreground" />
+                        <Money
+                          value={g.net}
+                          sign="always"
+                          decimals={0}
+                          className="text-foreground"
+                        />
                       </span>
                     </div>
                   </TableCell>
