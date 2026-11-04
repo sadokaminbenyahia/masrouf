@@ -36,7 +36,7 @@ import type { TransactionInput } from '@/lib/schemas/transactions';
 import { toastError, toastSuccess, toastUndo } from '@/lib/toast';
 import { invalidateFinanceQueries } from './cache';
 import { TransactionForm } from './transaction-form';
-import { useMediaQuery } from './use-media-query';
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 
 const DEFAULT_EXAMPLES = ['café 3,500 hier', 'courses carrefour 87,250', 'salaire 2600 le 1er'];
 

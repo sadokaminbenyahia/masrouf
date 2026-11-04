@@ -36,7 +36,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import type { CategoryPrediction } from '@/domain/ai/types';
 import { addDays, type ISODate } from '@/domain/dates';
-import { parseAmountInput } from '@/domain/money';
 import type { Transaction, TransactionType } from '@/domain/types';
 import { useCategories, useTags } from '@/lib/hooks/use-reference-data';
 import { ActionError, errorMessage, queryKeys, unwrap } from '@/lib/query';
@@ -58,6 +57,7 @@ import {
   type FieldErrors,
   type FormField,
 } from './form-utils';
+import { readAmountField } from './read-amount';
 import { TagInput } from './tag-input';
 
 export interface TransactionFormProps {
@@ -261,22 +261,12 @@ export function TransactionForm({
     clearError('transferAccountId');
   }
 
-  /** Lit le champ montant tel qu'affiché (la saisie peut ne pas encore être validée au blur). */
-  function readAmount(): { value: number | null; error?: string } {
-    const el = document.getElementById(ids.amount);
-    if (!(el instanceof HTMLInputElement)) return { value: amount };
-    const raw = el.value.trim();
-    if (raw === '') return { value: null };
-    const r = parseAmountInput(raw);
-    return r.ok ? { value: r.value } : { value: null, error: r.error };
-  }
-
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (mutation.isPending) return;
     setFormError(null);
 
-    const amountRead = readAmount();
+    const amountRead = readAmountField(ids.amount, amount);
     const pre: FieldErrors = {};
     if (amountRead.error) pre.amount = amountRead.error;
     else if (amountRead.value === null) pre.amount = 'Saisissez un montant.';

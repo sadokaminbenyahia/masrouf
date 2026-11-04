@@ -172,7 +172,8 @@ function removeSuggestion(qc: QueryClient, key: string): void {
 export function useAcceptSuggestion() {
   const qc = useQueryClient();
   return useMutation<RecurringRule, Error, RecurringCandidate, SuggestionSnapshot>({
-    mutationFn: async (candidate) => unwrap(await createRecurringAction(candidateToInput(candidate))),
+    mutationFn: async (candidate) =>
+      unwrap(await createRecurringAction(candidateToInput(candidate))),
     onMutate: async (candidate) => {
       const ctx = await snapshotSuggestions(qc);
       removeSuggestion(qc, candidate.key);
@@ -199,7 +200,9 @@ export function useAcceptSuggestion() {
       toastError(errorMessage(e));
     },
     onSuccess: (rule, candidate) =>
-      setRules(qc, (list) => list.map((r) => (r.id === `${TEMP_PREFIX}${candidate.key}` ? rule : r))),
+      setRules(qc, (list) =>
+        list.map((r) => (r.id === `${TEMP_PREFIX}${candidate.key}` ? rule : r)),
+      ),
     onSettled: () => invalidateRecurringDependents(qc),
   });
 }

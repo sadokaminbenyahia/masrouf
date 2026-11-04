@@ -21,14 +21,11 @@ import type { TransactionPatch } from '@/lib/schemas/transactions';
 import { toastError, toastSuccess, toastUndo } from '@/lib/toast';
 import { invalidateFinanceQueries } from './cache';
 import { buildUndoPatch, patchPage, removeFromPage } from './optimistic';
+import { pluralize } from './text';
 
 interface CacheContext {
   key: QueryKey;
   previous: TransactionPage | undefined;
-}
-
-export function pluralize(n: number, singular: string, plural: string): string {
-  return `${n} ${n > 1 ? plural : singular}`;
 }
 
 export function useTransactionMutations(pageKey: QueryKey) {
@@ -145,7 +142,7 @@ export function useTransactionMutations(pageKey: QueryKey) {
     onSuccess: (snapshots) => {
       if (snapshots.length === 0) return;
       toastUndo(
-        `${pluralize(snapshots.length, 'transaction supprimée', 'transactions supprimées')}`,
+        pluralize(snapshots.length, 'transaction supprimée', 'transactions supprimées'),
         () =>
           runUndo(
             null,

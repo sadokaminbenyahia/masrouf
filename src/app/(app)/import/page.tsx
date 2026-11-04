@@ -10,10 +10,7 @@ export const metadata: Metadata = { title: 'Importer un relevé' };
 
 export default async function ImportPage() {
   const userId = await requireUserId();
-  const [accounts, categories] = await Promise.all([
-    listAccounts(userId),
-    listCategories(userId),
-  ]);
+  const [accounts, categories] = await Promise.all([listAccounts(userId), listCategories(userId)]);
   // En cas d'échec, l'assistant recharge ces données côté client et affiche l'erreur.
   return (
     <>

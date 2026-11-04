@@ -84,6 +84,42 @@ export async function listDueRules(userId: string, today: ISODate, db: Db = pris
 }
 
 /**
+ * Matérialise les échéances dans une transaction Prisma : pour chaque règle, avance d'abord
+ * `nextDate` sous verrou optimiste, puis crée les transactions (categorySource 'RECURRING').
+ * Si une autre requête a déjà traité la règle, elle est ignorée. Renvoie le nombre créé.
+ */
+export async function materializeRules(
+  userId: string,
+  plans: readonly { rule: RecurringRule; dates: readonly ISODate[]; nextDate: ISODate }[],
+): Promise<number> {
+  return prisma.$transaction(
+    async (tx) => {
+      let created = 0;
+      for (const { rule, dates, nextDate } of plans) {
+        if (dates.length === 0) continue;
+        if (!(await advanceNextDate(userId, rule.id, rule.nextDate, nextDate, tx))) continue;
+        const r = await tx.transaction.createMany({
+          data: dates.map((date) => ({
+            userId,
+            accountId: rule.accountId,
+            categoryId: rule.categoryId,
+            type: rule.type,
+            amount: rule.amount,
+            date,
+            label: rule.label,
+            recurringId: rule.id,
+            categorySource: rule.categoryId === null ? null : 'RECURRING',
+          })),
+        });
+        created += r.count;
+      }
+      return created;
+    },
+    { timeout: 30_000 },
+  );
+}
+
+/**
  * Avance `nextDate` uniquement si elle vaut encore `expected` (verrou optimiste) :
  * garantit qu'une échéance n'est matérialisée qu'une fois, même en cas d'appels concurrents.
  */

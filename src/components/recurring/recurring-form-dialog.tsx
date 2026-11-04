@@ -99,7 +99,7 @@ function initialValues(
 function FieldError({ id, messages }: { id: string; messages: string[] | undefined }) {
   if (!messages || messages.length === 0) return null;
   return (
-    <p id={id} className="text-sm text-expense">
+    <p id={id} className="text-expense text-sm">
       {messages[0]}
     </p>
   );
@@ -275,7 +275,7 @@ function RecurringForm({
             ))}
           </RadioGroup>
           {editing && (
-            <p className="text-xs text-muted-foreground">Le type ne peut pas être modifié.</p>
+            <p className="text-muted-foreground text-xs">Le type ne peut pas être modifié.</p>
           )}
         </fieldset>
       </div>
@@ -376,7 +376,7 @@ function RecurringForm({
       <div className="flex items-start justify-between gap-4 rounded-xl border p-3">
         <div className="space-y-1">
           <Label htmlFor={ids.autoCreate}>Création automatique</Label>
-          <p id={`${ids.autoCreate}-help`} className="text-sm text-muted-foreground">
+          <p id={`${ids.autoCreate}-help`} className="text-muted-foreground text-sm">
             La transaction est ajoutée toute seule à chaque échéance.
           </p>
         </div>
@@ -399,7 +399,9 @@ function RecurringForm({
           Annuler
         </Button>
         <Button type="submit" disabled={pending}>
-          {pending && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+          {pending && (
+            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          )}
           Enregistrer
         </Button>
       </DialogFooter>

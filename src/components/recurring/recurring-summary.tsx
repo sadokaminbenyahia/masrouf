@@ -29,7 +29,7 @@ function Stat({
   return (
     <Card className="gap-2 px-5 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-muted-foreground text-sm">{label}</p>
         <span className={cn('flex size-8 items-center justify-center rounded-lg', iconClass)}>
           <Icon className="size-4" aria-hidden="true" />
         </span>
@@ -37,7 +37,7 @@ function Stat({
       <p className="text-2xl font-semibold">
         <Money value={value} decimals={0} {...(type ? { type } : {})} {...(sign ? { sign } : {})} />
       </p>
-      <p className="text-xs text-muted-foreground">{hint}</p>
+      <p className="text-muted-foreground text-xs">{hint}</p>
     </Card>
   );
 }

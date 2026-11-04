@@ -9,7 +9,7 @@ export default function ImportLoading() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-full max-w-md" />
       </div>
-      <div className="overflow-hidden rounded-xl border bg-card" aria-hidden="true">
+      <div className="bg-card overflow-hidden rounded-xl border" aria-hidden="true">
         <div className="flex items-center gap-3 border-b px-4 py-4 sm:px-6">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="flex flex-1 items-center gap-2">

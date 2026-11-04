@@ -49,7 +49,8 @@ export function RecurringRuleItem({
   onDelete,
 }: RecurringRuleItemProps) {
   const titleId = useId();
-  const overdue = rule.active && rule.nextDate < today && (rule.endDate === null || rule.endDate >= today);
+  const overdue =
+    rule.active && rule.nextDate < today && (rule.endDate === null || rule.endDate >= today);
   return (
     <li
       aria-labelledby={titleId}
@@ -74,12 +75,12 @@ export function RecurringRuleItem({
           )}
           {overdue && <Badge variant="warning">En retard</Badge>}
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {frequencyLabel(rule.frequency)}
           {account && ` · ${account.name}`}
           {category ? ` · ${category.name}` : ' · Sans catégorie'}
         </p>
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
           <CalendarClock className="size-3.5 shrink-0" aria-hidden="true" />
           {scheduleText(rule, today)}
         </p>

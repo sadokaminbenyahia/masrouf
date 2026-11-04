@@ -129,7 +129,13 @@ describe('upcomingOccurrences', () => {
   it('respecte la date de fin et trie par libellé à date égale', () => {
     const items = upcomingOccurrences(
       [
-        rule({ id: 'z', label: 'Zumba', frequency: 'WEEKLY', nextDate: '2026-03-12', endDate: '2026-03-20' }),
+        rule({
+          id: 'z',
+          label: 'Zumba',
+          frequency: 'WEEKLY',
+          nextDate: '2026-03-12',
+          endDate: '2026-03-20',
+        }),
         rule({ id: 'e', label: 'Électricité', nextDate: '2026-03-12' }),
       ],
       TODAY,
@@ -146,7 +152,12 @@ describe('libellés', () => {
   it('fréquences', () => {
     expect(frequencyLabel('MONTHLY')).toBe('Tous les mois');
     expect(frequencyLabel('WEEKLY', true)).toBe('toutes les semaines');
-    expect(FREQUENCY_OPTIONS.map((o) => o.value)).toEqual(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']);
+    expect(FREQUENCY_OPTIONS.map((o) => o.value)).toEqual([
+      'WEEKLY',
+      'MONTHLY',
+      'QUARTERLY',
+      'YEARLY',
+    ]);
   });
 
   it('échéances relatives', () => {
