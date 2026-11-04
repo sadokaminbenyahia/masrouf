@@ -101,10 +101,7 @@ export function fromEpochDay(epochDay: number): ISODate {
 }
 
 /** Date du jour dans un fuseau donné (par défaut Africa/Tunis). */
-export function todayInTimeZone(
-  timeZone: string = DEFAULT_TIMEZONE,
-  now: Date = new Date(),
-): ISODate {
+export function todayInTimeZone(timeZone: string = DEFAULT_TIMEZONE, now: Date): ISODate {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',

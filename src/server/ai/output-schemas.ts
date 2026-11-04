@@ -24,6 +24,13 @@ const nonNegative = finite.refine((n) => n >= 0, 'Nombre négatif.');
 const probability = z.number().min(0).max(1);
 const id = z.string().min(1);
 const text = z.string();
+/** Lien produit par l'IA : chemin interne uniquement (défense en profondeur). */
+const internalHref = z
+  .string()
+  .refine(
+    (h) => h.startsWith('/') && !h.startsWith('//') && !h.includes('\\'),
+    'Lien interne attendu.',
+  );
 const severity = z.enum(['INFO', 'SUCCESS', 'WARNING', 'DANGER']);
 const flowType = z.enum(['EXPENSE', 'INCOME']);
 const frequency = z.enum(FREQUENCIES);
@@ -174,7 +181,7 @@ export const assistantAnswerSchema: z.ZodType<AssistantAnswer> = z.object({
     .nullable(),
   suggestions: z.array(text),
   period: z.object({ from: isoDateSchema, to: isoDateSchema, label: text }).nullable(),
-  href: text.nullable(),
+  href: internalHref.nullable(),
 });
 
 export const monthlySummarySchema: z.ZodType<MonthlySummary> = z.object({
@@ -183,7 +190,12 @@ export const monthlySummarySchema: z.ZodType<MonthlySummary> = z.object({
   paragraphs: z.array(text),
   highlights: z.array(highlight),
   recommendations: z.array(
-    z.object({ title: text, detail: text, impact: money.nullable(), href: text.nullable() }),
+    z.object({
+      title: text,
+      detail: text,
+      impact: money.nullable(),
+      href: internalHref.nullable(),
+    }),
   ),
 });
 

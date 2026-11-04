@@ -1,7 +1,7 @@
 // Propriétaire : agent K — implémentation serveur des outils typés de l'assistant (scopés userId)
 import 'server-only';
 import type { BalanceForecast, FinanceTools } from '@/domain/ai/types';
-import { merchantKey } from '@/domain/ai/text';
+import { aiEngine } from '@/server/ai/engine';
 import { listMonths, monthOf } from '@/domain/dates';
 import type { Result } from '@/domain/result';
 import type { MonthTotals } from '@/domain/types';
@@ -68,7 +68,7 @@ export function createFinanceTools(userId: string, deps: FinanceToolsDeps): Fina
     async topMerchants(f) {
       const groups = new Map<string, { label: string; total: number; count: number }>();
       for (const row of await repo.sumByLabel(userId, f)) {
-        const key = merchantKey(row.label) || row.label.trim().toLowerCase();
+        const key = aiEngine.merchantKey(row.label) || row.label.trim().toLowerCase();
         const cur = groups.get(key) ?? { label: titleCase(key), total: 0, count: 0 };
         groups.set(key, { ...cur, total: cur.total + row.total, count: cur.count + row.count });
       }

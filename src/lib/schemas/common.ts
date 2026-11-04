@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { isISODate, isYearMonth } from '@/domain/dates';
+import { MAX_AMOUNT_MILLIMES } from '@/domain/money';
 import {
   ACCOUNT_TYPES,
   CATEGORY_GROUPS,
@@ -12,8 +13,8 @@ import {
   TRANSACTION_TYPES,
 } from '@/domain/types';
 
-/** Plafond de sécurité : 1 milliard de dinars en millimes. */
-export const MAX_MILLIMES = 1_000_000_000_000;
+/** Plafond de sécurité (999 999,999 DT) — compatible avec les colonnes INT 32 bits. */
+export const MAX_MILLIMES = MAX_AMOUNT_MILLIMES;
 
 export const idSchema = z
   .string()

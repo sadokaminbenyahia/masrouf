@@ -26,7 +26,8 @@ export const importCommitInputSchema = z.object({
   rows: z
     .array(
       importRowSchema.extend({
-        importHash: z.string().min(1).max(128),
+        /** Indicatif : recalculé et vérifié côté serveur, jamais utilisé tel quel. */
+        importHash: z.string().min(1).max(128).optional(),
         categoryId: idSchema.nullable(),
         /** La catégorie vient-elle d'une suggestion IA non modifiée ? */
         categoryFromAI: z.boolean().default(false),

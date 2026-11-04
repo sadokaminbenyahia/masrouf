@@ -54,6 +54,10 @@ export async function withPrismaErrors<T>(
     if (isPrismaError(e, 'P2002')) {
       return err(appError('CONFLICT', messages.conflict ?? 'Cet élément existe déjà.'));
     }
+    if (isPrismaError(e, 'P2023') || isPrismaError(e, 'P2033')) {
+      // Valeur hors des bornes de la colonne (ex. entier > 32 bits) : refusée proprement.
+      return err(appError('VALIDATION', 'Montant hors limites.'));
+    }
     if (isPrismaError(e, 'P2025') || isPrismaError(e, 'P2003')) {
       return err(appError('NOT_FOUND', messages.notFound ?? 'Élément introuvable.'));
     }

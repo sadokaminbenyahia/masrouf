@@ -2,7 +2,7 @@
  * Objectifs d'épargne : progression, épargne mensuelle nécessaire et statut (pur).
  */
 import { diffMonthsYM, monthOf, parseISODate, type ISODate } from './dates';
-import type { Millimes } from './money';
+import { MAX_AMOUNT_MILLIMES, type Millimes } from './money';
 import type { Goal, GoalProgress } from './types';
 
 /**
@@ -59,7 +59,7 @@ export function applyContribution(
   amount: Millimes,
   nowIso: string,
 ): { savedAmount: Millimes; completedAt: string | null } {
-  const savedAmount = Math.max(0, goal.savedAmount + amount);
+  const savedAmount = Math.min(MAX_AMOUNT_MILLIMES, Math.max(0, goal.savedAmount + amount));
   return {
     savedAmount,
     completedAt: completionDate(savedAmount, goal.targetAmount, goal.completedAt, nowIso),

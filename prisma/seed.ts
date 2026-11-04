@@ -29,7 +29,7 @@ const prisma = new PrismaClient();
 const DEMO_EMAIL = 'demo@masrouf.tn';
 const DEMO_PASSWORD = 'Demo1234!';
 const SEED = 0x4d415352; // « MASR »
-const TODAY: ISODate = todayInTimeZone(process.env.APP_TIMEZONE ?? 'Africa/Tunis');
+const TODAY: ISODate = todayInTimeZone(process.env.APP_TIMEZONE ?? 'Africa/Tunis', new Date());
 const MONTHS = 6;
 
 // ───────────────────────── PRNG déterministe (mulberry32) ─────────────────────────

@@ -11,7 +11,7 @@ import { PasswordInput } from './password-input';
 
 const DEMO = { email: 'demo@masrouf.tn', password: 'Demo1234!' };
 
-export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
+export function LoginForm({ callbackUrl, showDemo }: { callbackUrl: string; showDemo: boolean }) {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(loginAction, {});
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -89,22 +89,24 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         </Link>
       </p>
 
-      <aside
-        aria-labelledby="demo-titre"
-        className="border-primary/30 bg-brand-tint/60 rounded-xl border border-dashed p-4 text-sm"
-      >
-        <p id="demo-titre" className="text-foreground flex items-center gap-2 font-medium">
-          <SparklesIcon className="text-primary size-4" aria-hidden="true" />
-          Compte de démo
-        </p>
-        <p className="text-muted-foreground mt-1">
-          Compte de démo : <span className="text-foreground font-medium">demo@masrouf.tn</span> /{' '}
-          <span className="text-foreground font-medium">Demo1234!</span>
-        </p>
-        <Button type="button" variant="link" className="mt-1 h-auto px-0 py-1" onClick={fillDemo}>
-          Utiliser le compte de démo
-        </Button>
-      </aside>
+      {showDemo ? (
+        <aside
+          aria-labelledby="demo-titre"
+          className="border-primary/30 bg-brand-tint/60 rounded-xl border border-dashed p-4 text-sm"
+        >
+          <p id="demo-titre" className="text-foreground flex items-center gap-2 font-medium">
+            <SparklesIcon className="text-primary size-4" aria-hidden="true" />
+            Compte de démo
+          </p>
+          <p className="text-muted-foreground mt-1">
+            Compte de démo : <span className="text-foreground font-medium">demo@masrouf.tn</span> /{' '}
+            <span className="text-foreground font-medium">Demo1234!</span>
+          </p>
+          <Button type="button" variant="link" className="mt-1 h-auto px-0 py-1" onClick={fillDemo}>
+            Utiliser le compte de démo
+          </Button>
+        </aside>
+      ) : null}
     </div>
   );
 }

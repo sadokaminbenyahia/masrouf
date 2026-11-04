@@ -1,6 +1,6 @@
 'use server';
 import { z } from 'zod';
-import type { ActionResult } from '@/domain/result';
+import { ok, type ActionResult } from '@/domain/result';
 import type { Transaction } from '@/domain/types';
 import { idSchema, isoDateSchema } from '@/lib/schemas/common';
 import {
@@ -82,7 +82,7 @@ export async function restoreTransactionsAction(
         if (!one.ok) return one;
         restored.push(one.value);
       }
-      return { ok: true as const, value: restored };
+      return ok(restored);
     },
   );
   if (r.ok) revalidateApp();

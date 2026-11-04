@@ -81,5 +81,8 @@
     "typescript-eslint": "^8.72.1",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

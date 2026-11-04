@@ -6,7 +6,10 @@ import { redirect } from 'next/navigation';
 import { loginSchema, registerSchema } from '@/lib/schemas/auth';
 import { zodFieldErrors } from '@/lib/schemas/common';
 import { signIn, signOut } from '@/server/auth/config';
-import { authLimiter } from '@/server/security/rate-limit';
+import { safeInternalPath } from '@/lib/safe-redirect';
+import { getCurrentUserId, revokeAllSessions } from '@/server/auth/session';
+import { clientIpFromHeaders } from '@/server/security/client-ip';
+import { authLimiter, registerGlobalLimiter } from '@/server/security/rate-limit';
 import { registerUser } from '@/server/services/auth.service';
 
 export interface AuthFormState {
@@ -26,21 +29,8 @@ function field(formData: FormData, name: string): string {
   return typeof v === 'string' ? v : '';
 }
 
-/** N'accepte qu'un chemin interne (« /… », jamais « //… » ni une URL absolue). */
-function safeCallbackUrl(raw: string): string {
-  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
-    return '/tableau-de-bord';
-  }
-  if (raw.startsWith('/connexion') || raw.startsWith('/inscription') || raw.startsWith('/api/')) {
-    return '/tableau-de-bord';
-  }
-  return raw;
-}
-
 async function clientIp(): Promise<string> {
-  const h = await headers();
-  const fwd = h.get('x-forwarded-for');
-  return fwd?.split(',')[0]?.trim() || h.get('x-real-ip') || 'local';
+  return clientIpFromHeaders(await headers());
 }
 
 /** Connexion par identifiants. Renvoie un état d'erreur, ou redirige en cas de succès. */
@@ -75,7 +65,7 @@ export async function loginAction(
   }
   const failure = await credentialsSignIn(parsed.data.email, parsed.data.password);
   if (failure) return { error: failure, values: { email } };
-  redirect(safeCallbackUrl(field(formData, 'callbackUrl')));
+  redirect(safeInternalPath(field(formData, 'callbackUrl')));
 }
 
 export async function registerAction(
@@ -87,7 +77,8 @@ export async function registerAction(
   const values = { name, email };
 
   const ip = await clientIp();
-  if (!authLimiter.check(`register:ip:${ip}`).allowed) {
+  const ipAllowed = ip === 'direct' || authLimiter.check(`register:ip:${ip}`).allowed;
+  if (!ipAllowed || !registerGlobalLimiter.check('register:global').allowed) {
     return { error: RATE_LIMITED, values };
   }
 
@@ -110,6 +101,18 @@ export async function registerAction(
   redirect('/tableau-de-bord');
 }
 
+/**
+ * Déconnexion : supprime le cookie de session SANS redirection serveur. Le client doit
+ * ensuite faire un rechargement complet (`window.location.assign('/connexion')`) pour vider
+ * tout cache en mémoire (TanStack Query) avant qu'un autre utilisateur ne se connecte.
+ */
 export async function logoutAction(): Promise<void> {
-  await signOut({ redirectTo: '/connexion' });
+  await signOut({ redirect: false });
+}
+
+/** Révoque toutes les sessions (tous appareils) puis déconnecte (même contrat que logoutAction). */
+export async function logoutEverywhereAction(): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (userId) await revokeAllSessions(userId);
+  await signOut({ redirect: false });
 }

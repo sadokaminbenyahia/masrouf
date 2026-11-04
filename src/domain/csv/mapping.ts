@@ -4,7 +4,7 @@
  * puis conversion en `ImportRow[]` (côté client, avant l'aperçu serveur).
  */
 import { isISODate, toISODate, type ISODate } from '../dates';
-import type { Millimes } from '../money';
+import { MAX_AMOUNT_MILLIMES, type Millimes } from '../money';
 import type { ImportRow } from '../types';
 
 export type DateFormat = 'DMY' | 'YMD' | 'MDY';
@@ -24,8 +24,8 @@ export interface ColumnMapping {
 /** Longueurs maximales acceptées par le serveur (`importRowSchema`). */
 export const MAX_LABEL_LENGTH = 140;
 export const MAX_NOTE_LENGTH = 500;
-/** Plafond de sécurité : 1 milliard de dinars en millimes (identique à `MAX_MILLIMES`). */
-const MAX_AMOUNT: Millimes = 1_000_000_000_000;
+/** Plafond de sécurité (identique à `MAX_AMOUNT_MILLIMES`). */
+const MAX_AMOUNT: Millimes = MAX_AMOUNT_MILLIMES;
 
 // ───────────────────────── En-têtes ─────────────────────────
 

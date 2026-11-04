@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  MAX_MILLIMES,
   colorSchema,
   iconSchema,
   idSchema,
@@ -17,7 +18,7 @@ export type BudgetUpsertInput = z.input<typeof budgetUpsertSchema>;
 export const goalInputSchema = z.object({
   name: z.string().trim().min(1, 'Nom requis.').max(60),
   targetAmount: positiveMillimesSchema,
-  savedAmount: z.number().int().min(0).default(0),
+  savedAmount: z.number().int().min(0).max(MAX_MILLIMES, 'Montant trop élevé.').default(0),
   targetDate: isoDateSchema.nullable().optional(),
   icon: iconSchema.default('PiggyBank'),
   color: colorSchema.default('#15803D'),
@@ -28,7 +29,7 @@ export type GoalInput = z.input<typeof goalInputSchema>;
 export const goalPatchSchema = z.object({
   name: z.string().trim().min(1, 'Nom requis.').max(60).optional(),
   targetAmount: positiveMillimesSchema.optional(),
-  savedAmount: z.number().int().min(0).optional(),
+  savedAmount: z.number().int().min(0).max(MAX_MILLIMES, 'Montant trop élevé.').optional(),
   targetDate: isoDateSchema.nullable().optional(),
   icon: iconSchema.optional(),
   color: colorSchema.optional(),

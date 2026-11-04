@@ -50,7 +50,7 @@ function useServiceWorker(): void {
   }, []);
 }
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, nonce }: { children: ReactNode; nonce?: string }) {
   const router = useRouter();
   const [queryClient] = useState(() => makeQueryClient((href) => router.replace(href)));
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -58,7 +58,13 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+        nonce={nonce}
+      >
         <TooltipProvider>
           <DiscreetModeProvider>
             {children}

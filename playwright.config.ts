@@ -30,6 +30,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: 'file:./e2e.db',
       AUTH_TRUST_HOST: 'true',
+      MASROUF_DEMO_MODE: 'true',
       AUTH_SECRET: process.env.AUTH_SECRET ?? 'e2e-secret-not-for-production-0123456789',
     },
   },

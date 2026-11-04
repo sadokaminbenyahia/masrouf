@@ -3,7 +3,8 @@
  * Aucune API externe, aucune clé, aucun modèle téléchargé.
  */
 import type { AIEngine } from './engine';
-import { categorize, learnCorrection, trainCategorizer } from './categorizer';
+import { categorize, CATEGORIZER_VERSION, learnCorrection, trainCategorizer } from './categorizer';
+import { merchantKey } from './text';
 import { parseEntry } from './nl-entry';
 import { detectAnomalies } from './anomalies';
 import { detectRecurring } from './recurring-detect';
@@ -16,6 +17,9 @@ import { computeHealthScore } from './health';
 
 export class LocalAIEngine implements AIEngine {
   readonly name = 'masrouf-local-v1';
+  readonly categorizerVersion = CATEGORIZER_VERSION;
+
+  merchantKey = merchantKey;
 
   trainCategorizer = trainCategorizer;
   learnCorrection = learnCorrection;

@@ -16,24 +16,26 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  passwordHash String
-  currency     String    @default("TND")
-  onboardedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  passwordHash   String
+  currency       String    @default("TND")
+  onboardedAt    DateTime?
+  /// Incrémentée pour révoquer toutes les sessions JWT existantes
+  sessionVersion Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  accounts      Account[]
-  categories    Category[]
-  transactions  Transaction[]
-  tags          Tag[]
-  budgets       Budget[]
-  goals         Goal[]
-  recurring     RecurringRule[]
-  aiModels      AiModel[]
-  dismissed     DismissedInsight[]
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  tags         Tag[]
+  budgets      Budget[]
+  goals        Goal[]
+  recurring    RecurringRule[]
+  aiModels     AiModel[]
+  dismissed    DismissedInsight[]
 }
 
 model Account {
@@ -50,10 +52,10 @@ model Account {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions         Transaction[]   @relation("TransactionAccount")
-  incomingTransfers    Transaction[]   @relation("TransferTarget")
-  recurring            RecurringRule[]
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]   @relation("TransactionAccount")
+  incomingTransfers Transaction[]   @relation("TransferTarget")
+  recurring         RecurringRule[]
 
   @@index([userId, archived])
 }

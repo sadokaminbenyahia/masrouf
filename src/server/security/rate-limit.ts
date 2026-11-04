@@ -16,6 +16,7 @@ export interface RateLimiter {
 
 export function createRateLimiter(max: number, windowMs: number): RateLimiter {
   const hits = new Map<string, number[]>();
+  let sweepCounter = 0;
   return {
     check(key) {
       const now = Date.now();
@@ -27,7 +28,8 @@ export function createRateLimiter(max: number, windowMs: number): RateLimiter {
       }
       recent.push(now);
       hits.set(key, recent);
-      if (hits.size > 10_000) {
+      sweepCounter = (sweepCounter + 1) % 1000;
+      if (sweepCounter === 0 && hits.size > 10_000) {
         for (const [k, v] of hits) if (v.every((t) => now - t >= windowMs)) hits.delete(k);
       }
       return { allowed: true, remaining: max - recent.length, retryAfterMs: 0 };
@@ -43,10 +45,26 @@ const envInt = (name: string, fallback: number) => {
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
 
-/** Connexion / inscription : par e-mail et par IP. */
+/**
+ * Connexion / inscription : par couple (e-mail, IP) et par IP.
+ * Pour une IP fiable derrière un proxy, configurer TRUST_PROXY_HOPS (voir client-ip.ts).
+ */
 export const authLimiter = createRateLimiter(
   envInt('RATE_LIMIT_AUTH_MAX', 10),
   envInt('RATE_LIMIT_AUTH_WINDOW_MS', 60_000),
+);
+/**
+ * Connexion : plafond large par e-mail seul (toutes IP confondues) pour freiner le credential
+ * stuffing distribué, sans permettre de bloquer facilement un compte ciblé.
+ */
+export const loginEmailLimiter = createRateLimiter(
+  envInt('RATE_LIMIT_LOGIN_EMAIL_MAX', 50),
+  15 * 60_000,
+);
+/** Inscriptions : plafond GLOBAL (chaque inscription coûte un hachage bcrypt). */
+export const registerGlobalLimiter = createRateLimiter(
+  envInt('RATE_LIMIT_REGISTER_GLOBAL_MAX', 30),
+  60_000,
 );
 /** Appels IA : par utilisateur. */
 export const aiLimiter = createRateLimiter(

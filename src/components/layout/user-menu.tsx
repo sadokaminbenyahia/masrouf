@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useTransition } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDownIcon, KeyboardIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export function UserAvatar({ name }: { name: string }) {
 
 export function UserMenu({ user }: { user: ShellUser }) {
   const [pending, startTransition] = useTransition();
+  const queryClient = useQueryClient();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -82,6 +84,11 @@ export function UserMenu({ user }: { user: ShellUser }) {
           onSelect={() =>
             startTransition(async () => {
               await logoutAction();
+              // Rechargement COMPLET voulu (pas router.push) : il détruit tout état client de
+              // la session (cache TanStack Query) avant qu'un autre utilisateur ne se connecte.
+              queryClient.clear();
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+              window.location.assign('/connexion');
             })
           }
         >

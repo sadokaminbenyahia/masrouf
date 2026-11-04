@@ -32,6 +32,11 @@ import type {
 
 export interface AIEngine {
   readonly name: string;
+  /** Version du format de CategorizerModel (réentraînement si elle change). */
+  readonly categorizerVersion: number;
+
+  /** Clé marchand normalisée d'un libellé bancaire (« PAIEMENT CB CARREFOUR 12/03 » → « carrefour »). */
+  merchantKey(label: string): string;
 
   /** Entraîne un classifieur à partir des transactions catégorisées par l'utilisateur. */
   trainCategorizer(samples: TrainingSample[]): CategorizerModel;

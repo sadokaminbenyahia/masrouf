@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { flowTypeSchema, idSchema, positiveMillimesSchema, yearMonthSchema } from './common';
+import {
+  flowTypeSchema,
+  idSchema,
+  MAX_MILLIMES,
+  positiveMillimesSchema,
+  yearMonthSchema,
+} from './common';
 
 export const parseEntryInputSchema = z.object({
   text: z.string().trim().min(1, 'Écrivez une dépense.').max(200),
@@ -18,7 +24,7 @@ export const whatIfInputSchema = z.object({
   adjustments: z
     .array(z.object({ categoryId: idSchema, percent: z.number().min(0).max(100) }))
     .max(30),
-  extraMonthlySaving: z.number().int().min(0).max(1_000_000_000).default(0),
+  extraMonthlySaving: z.number().int().min(0).max(MAX_MILLIMES).default(0),
 });
 export type WhatIfActionInput = z.input<typeof whatIfInputSchema>;
 export const dismissInputSchema = z.object({ key: z.string().min(1).max(200) });

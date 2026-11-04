@@ -1,7 +1,7 @@
 // Propriétaire : agent A
 import 'server-only';
 import { totalBalance } from '@/domain/accounts';
-import { detectRecurring } from '@/domain/ai/recurring-detect';
+import { aiEngine } from '@/server/ai/engine';
 import {
   buildCategorySlices,
   buildMonthlySeries,
@@ -109,7 +109,7 @@ export async function getDashboard(
   const summary = summarizeBudgets(budgets.value);
   const remainingToSpend = summary === null ? null : summary.remaining;
 
-  const candidates = detectRecurring({
+  const candidates = aiEngine.detectRecurring({
     today: day,
     transactions: history.map(toAiTransaction),
     existing: recurring.value,

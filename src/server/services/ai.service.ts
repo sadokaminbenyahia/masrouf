@@ -11,7 +11,6 @@ import {
   type YearMonth,
 } from '@/domain/dates';
 import { appError, err, ok, type Result } from '@/domain/result';
-import { CATEGORIZER_VERSION } from '@/domain/ai/categorizer';
 import type {
   AiCategory,
   AiTransaction,
@@ -176,7 +175,7 @@ async function persistModel(
   const checked = validated(categorizerModelSchema, model, 'modèle entraîné');
   if (!checked.ok) return checked;
   modelCache.delete(userId);
-  await saveAiModel(userId, MODEL_KIND, CATEGORIZER_VERSION, JSON.stringify(checked.value));
+  await saveAiModel(userId, MODEL_KIND, aiEngine.categorizerVersion, JSON.stringify(checked.value));
   cacheModel(userId, checked.value);
   return checked;
 }
@@ -220,9 +219,9 @@ async function getModel(userId: string): Promise<Result<CategorizerModel>> {
   if (cached) return ok(cached);
   const stored = await loadAiModel(userId, MODEL_KIND);
   const raw = stored ? parseJson(stored.data) : null;
-  if (stored && stored.version === CATEGORIZER_VERSION) {
+  if (stored && stored.version === aiEngine.categorizerVersion) {
     const parsed = categorizerModelSchema.safeParse(raw);
-    if (parsed.success && parsed.data.version === CATEGORIZER_VERSION) {
+    if (parsed.success && parsed.data.version === aiEngine.categorizerVersion) {
       cacheModel(userId, parsed.data);
       return ok(parsed.data);
     }

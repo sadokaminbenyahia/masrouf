@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Sans } from 'next/font/google';
+import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { Providers } from '@/components/providers';
 import './globals.css';
@@ -40,11 +41,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Nonce CSP généré par src/proxy.ts (rend toutes les pages dynamiques, ce qui est voulu).
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="fr" suppressHydrationWarning className={plex.variable}>
       <body className="bg-background text-foreground min-h-dvh font-sans antialiased">
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>
   );

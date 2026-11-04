@@ -11,6 +11,12 @@ export type Millimes = number;
 export const MILLIMES_PER_UNIT = 1000;
 export const DEFAULT_CURRENCY = 'TND';
 
+/**
+ * Plafond métier d'un montant unitaire : 999 999,999 DT. Les colonnes SQLite sont des INT
+ * 32 bits (max 2 147 483 647) : ce plafond garantit qu'aucune écriture ne déborde.
+ */
+export const MAX_AMOUNT_MILLIMES = 999_999_999;
+
 /** Espace insécable utilisé comme séparateur de milliers (rendu identique serveur/client). */
 const NBSP = ' ';
 

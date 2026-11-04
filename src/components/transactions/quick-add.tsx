@@ -37,7 +37,7 @@ type InitialFocus = 'amount' | 'submit' | 'none';
 export function QuickAddTransaction() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [today, setToday] = useState<ISODate>(() => todayInTimeZone(DEFAULT_TIMEZONE));
+  const [today, setToday] = useState<ISODate>(() => todayInTimeZone(DEFAULT_TIMEZONE, new Date()));
   const [text, setText] = useState('');
   const [prefill, setPrefill] = useState<Partial<TransactionInput>>({});
   const [formKey, setFormKey] = useState(0);
@@ -93,7 +93,7 @@ export function QuickAddTransaction() {
   function openWith(detail: QuickAddDetail) {
     requestRef.current++;
     const base = detail.prefill ?? {};
-    setToday(todayInTimeZone(DEFAULT_TIMEZONE));
+    setToday(todayInTimeZone(DEFAULT_TIMEZONE, new Date()));
     setText(detail.text ?? '');
     setPrefill(base);
     setFocus(detail.prefill && !detail.text ? 'amount' : 'none');
